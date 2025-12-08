@@ -6,7 +6,11 @@ import {
     Image as ImageIcon, Smile, Info, X, FileText, Download,
     ChevronRight, ChevronDown, Clock, MapPin, Mail
 } from 'lucide-react';
+<<<<<<< HEAD
 import { Button } from '../system/ui/Button';
+=======
+import { Button } from '../ui/Button';
+>>>>>>> 53fafa32c836fe954100174bfb62eb362839bf0b
 import { MOCK_USERS } from '../../data/mockData';
 
 // --- Types ---
