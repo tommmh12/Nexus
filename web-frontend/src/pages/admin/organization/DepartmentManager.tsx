@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Department, EmployeeProfile } from "../../types";
 // TODO: Replace with API call
 import { Button } from "../../../components/system/ui/Button";
 import { Input } from "../../../components/system/ui/Input";
+import { departmentService } from "../../../services/departmentService";
 import {
   Plus,
   MoreHorizontal,
@@ -725,6 +726,37 @@ export const DepartmentManager = () => {
   const [selectedDept, setSelectedDept] = useState<Department | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingDept, setEditingDept] = useState<Department | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Load departments from API
+  useEffect(() => {
+    const loadDepartments = async () => {
+      try {
+        setIsLoading(true);
+        const depts = await departmentService.getAllDepartments();
+        // Map backend data to frontend format
+        const mappedDepts = depts.map((d: any) => ({
+          id: d.id.toString(),
+          name: d.name,
+          code: d.code || "",
+          description: d.description || "",
+          managerName: d.managerName || "Chưa có",
+          managerAvatar: d.managerAvatar || "https://ui-avatars.com/api/?name=" + (d.name || "Department"),
+          memberCount: d.memberCount || 0,
+          budget: d.budget || "---",
+          kpiStatus: d.kpiStatus || "On Track",
+          parentDeptId: d.parentDeptId,
+        }));
+        setDepartments(mappedDepts);
+      } catch (error) {
+        console.error("Error loading departments:", error);
+        alert("Không thể tải danh sách phòng ban. Vui lòng thử lại.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadDepartments();
+  }, []);
 
   const handleViewDetail = (dept: Department) => {
     setSelectedDept(dept);
@@ -742,32 +774,97 @@ export const DepartmentManager = () => {
     setIsFormOpen(true);
   };
 
-  const handleDelete = (id: string, e: React.MouseEvent) => {
+  const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (window.confirm("Bạn có chắc chắn muốn xóa phòng ban này?")) {
-      setDepartments((prev) => prev.filter((d) => d.id !== id));
+      try {
+        await departmentService.deleteDepartment(parseInt(id));
+        setDepartments((prev) => prev.filter((d) => d.id !== id));
+        if (selectedDept?.id === id) {
+          setSelectedDept(null);
+          setView("list");
+        }
+        alert("Xóa phòng ban thành công!");
+      } catch (error) {
+        console.error("Error deleting department:", error);
+        alert("Không thể xóa phòng ban. Vui lòng thử lại.");
+      }
     }
   };
 
-  const handleSaveDept = (dept: Department) => {
-    if (editingDept) {
-      setDepartments((prev) => prev.map((d) => (d.id === dept.id ? dept : d)));
-      if (selectedDept && selectedDept.id === dept.id) setSelectedDept(dept);
-    } else {
-      // Khi tạo mới, set các giá trị mặc định cho các trường không hiển thị
-      const newDept: Department = {
-        ...dept,
-        id: `dept-${Date.now()}`,
-        managerName: dept.managerName || "Chưa có",
-        managerAvatar: dept.managerAvatar || "https://ui-avatars.com/api/?name=" + (dept.name || "Department"),
-        memberCount: dept.memberCount || 0,
-        description: dept.description || "",
-        budget: dept.budget || "---",
-        kpiStatus: dept.kpiStatus || "On Track",
-      };
-      setDepartments((prev) => [...prev, newDept]);
+  const handleSaveDept = async (dept: Department) => {
+    try {
+      setIsLoading(true);
+      // Find managerId from managerName if provided
+      let managerId: number | undefined = undefined;
+      if (dept.managerName && dept.managerName !== "Chưa có") {
+        const manager = users.find((u) => u.fullName === dept.managerName);
+        if (manager) {
+          // Try to get managerId from user - might need to adjust based on user structure
+          managerId = parseInt(manager.id) || undefined;
+        }
+      }
+      
+      if (editingDept) {
+        // Update existing department
+        const updated = await departmentService.updateDepartment(parseInt(dept.id), {
+          name: dept.name,
+          code: dept.code,
+          description: dept.description,
+          managerId: managerId,
+        });
+        // Reload departments to get updated data
+        const depts = await departmentService.getAllDepartments();
+        const mappedDepts = depts.map((d: any) => ({
+          id: d.id.toString(),
+          name: d.name,
+          code: d.code || "",
+          description: d.description || "",
+          managerName: d.managerName || "Chưa có",
+          managerAvatar: d.managerAvatar || "https://ui-avatars.com/api/?name=" + (d.name || "Department"),
+          memberCount: d.memberCount || 0,
+          budget: d.budget || "---",
+          kpiStatus: d.kpiStatus || "On Track",
+          parentDeptId: d.parentDeptId,
+        }));
+        setDepartments(mappedDepts);
+        if (selectedDept && selectedDept.id === dept.id) {
+          const updatedDept = mappedDepts.find((d) => d.id === dept.id);
+          if (updatedDept) setSelectedDept(updatedDept);
+        }
+        alert("Cập nhật phòng ban thành công!");
+      } else {
+        // Create new department
+        const newDept = await departmentService.createDepartment({
+          name: dept.name,
+          code: dept.code,
+          description: dept.description || "",
+          managerId: managerId,
+        });
+        // Reload departments to get the new one with all fields
+        const depts = await departmentService.getAllDepartments();
+        const mappedDepts = depts.map((d: any) => ({
+          id: d.id.toString(),
+          name: d.name,
+          code: d.code || "",
+          description: d.description || "",
+          managerName: d.managerName || "Chưa có",
+          managerAvatar: d.managerAvatar || "https://ui-avatars.com/api/?name=" + (d.name || "Department"),
+          memberCount: d.memberCount || 0,
+          budget: d.budget || "---",
+          kpiStatus: d.kpiStatus || "On Track",
+          parentDeptId: d.parentDeptId,
+        }));
+        setDepartments(mappedDepts);
+        alert("Tạo phòng ban thành công!");
+      }
+      setIsFormOpen(false);
+    } catch (error: any) {
+      console.error("Error saving department:", error);
+      alert(error.response?.data?.error || "Không thể lưu phòng ban. Vui lòng thử lại.");
+    } finally {
+      setIsLoading(false);
     }
-    setIsFormOpen(false);
   };
 
   const handleTransferUser = (userId: string, targetDeptName: string) => {

@@ -12,8 +12,16 @@ export interface Department {
   name: string;
   code?: string;
   description: string;
-  managerName: string;
+  managerName?: string;
+  managerId?: number;
   memberCount: number;
+}
+
+export interface CreateDepartmentRequest {
+  name: string;
+  code?: string;
+  description?: string;
+  managerId?: number;
 }
 
 export const departmentService = {
@@ -29,5 +37,25 @@ export const departmentService = {
       headers: getAuthHeader(),
     });
     return response.data;
+  },
+
+  createDepartment: async (department: CreateDepartmentRequest): Promise<Department> => {
+    const response = await axios.post(`${API_URL}/departments`, department, {
+      headers: getAuthHeader(),
+    });
+    return response.data;
+  },
+
+  updateDepartment: async (id: number, department: CreateDepartmentRequest): Promise<Department> => {
+    const response = await axios.put(`${API_URL}/departments/${id}`, department, {
+      headers: getAuthHeader(),
+    });
+    return response.data;
+  },
+
+  deleteDepartment: async (id: number): Promise<void> => {
+    await axios.delete(`${API_URL}/departments/${id}`, {
+      headers: getAuthHeader(),
+    });
   },
 };

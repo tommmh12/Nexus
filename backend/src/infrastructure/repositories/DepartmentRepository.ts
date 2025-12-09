@@ -9,6 +9,7 @@ export class DepartmentRepository {
       SELECT 
         d.id,
         d.name,
+        d.code,
         d.description,
         d.manager_id as managerId,
         u.full_name as managerName,
@@ -28,6 +29,7 @@ export class DepartmentRepository {
       SELECT 
         d.id,
         d.name,
+        d.code,
         d.description,
         d.manager_id as managerId,
         u.full_name as managerName,
@@ -46,8 +48,8 @@ export class DepartmentRepository {
 
   async create(department: Partial<Department>): Promise<Department> {
     const [result] = await this.db.query(
-      "INSERT INTO departments (name, description, manager_id) VALUES (?, ?, ?)",
-      [department.name, department.description, department.managerId]
+      "INSERT INTO departments (name, code, description, manager_id) VALUES (?, ?, ?, ?)",
+      [department.name, department.code || null, department.description || null, department.managerId || null]
     );
     const insertResult = result as any;
     const created = await this.findById(insertResult.insertId);
@@ -57,8 +59,8 @@ export class DepartmentRepository {
 
   async update(id: number, department: Partial<Department>): Promise<void> {
     await this.db.query(
-      "UPDATE departments SET name = ?, description = ?, manager_id = ? WHERE id = ?",
-      [department.name, department.description, department.managerId, id]
+      "UPDATE departments SET name = ?, code = ?, description = ?, manager_id = ? WHERE id = ?",
+      [department.name, department.code || null, department.description || null, department.managerId || null, id]
     );
   }
 
