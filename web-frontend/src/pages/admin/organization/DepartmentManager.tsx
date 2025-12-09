@@ -52,9 +52,11 @@ const DepartmentFormModal = ({
   onCancel,
   users,
 }: DepartmentFormProps) => {
+  const isEditMode = !!department;
   const [formData, setFormData] = useState<Partial<Department>>(
     department || {
       name: "",
+      code: "",
       description: "",
       managerName: "",
       budget: "",
@@ -69,7 +71,7 @@ const DepartmentFormModal = ({
     const manager = users.find((u) => u.fullName === formData.managerName);
     const managerAvatar = manager
       ? manager.avatarUrl
-      : "https://ui-avatars.com/api/?name=" + formData.managerName;
+      : formData.managerAvatar || "https://ui-avatars.com/api/?name=" + (formData.managerName || "Department");
 
     onSave({ ...formData, managerAvatar } as Department);
   };
@@ -79,7 +81,7 @@ const DepartmentFormModal = ({
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6">
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-lg font-bold text-slate-900">
-            {department ? "Chỉnh sửa Phòng ban" : "Thêm Phòng ban mới"}
+            {isEditMode ? "Chỉnh sửa Phòng ban" : "Thêm Phòng ban mới"}
           </h3>
           <button
             onClick={onCancel}
@@ -96,64 +98,75 @@ const DepartmentFormModal = ({
             required
           />
 
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-2">
-              Trưởng phòng
-            </label>
-            <select
-              className="w-full bg-slate-50 border border-slate-200 rounded-md p-2.5 text-sm outline-none focus:ring-2 focus:ring-brand-500"
-              value={formData.managerName}
-              onChange={(e) =>
-                setFormData({ ...formData, managerName: e.target.value })
-              }
-            >
-              <option value="">Chọn trưởng phòng...</option>
-              {users.map((u) => (
-                <option key={u.id} value={u.fullName}>
-                  {u.fullName} ({u.email})
-                </option>
-              ))}
-            </select>
-          </div>
+          <Input
+            label="Mã phòng ban"
+            value={formData.code || ""}
+            onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+            required
+          />
 
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-2">
-              Mô tả nhiệm vụ
-            </label>
-            <textarea
-              className="w-full bg-slate-50 border border-slate-200 rounded-md p-3 text-sm focus:ring-2 focus:ring-brand-500 outline-none h-24 resize-none"
-              value={formData.description}
-              onChange={(e) =>
-                setFormData({ ...formData, description: e.target.value })
-              }
-            ></textarea>
-          </div>
+          {isEditMode && (
+            <>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Trưởng phòng
+                </label>
+                <select
+                  className="w-full bg-slate-50 border border-slate-200 rounded-md p-2.5 text-sm outline-none focus:ring-2 focus:ring-brand-500"
+                  value={formData.managerName}
+                  onChange={(e) =>
+                    setFormData({ ...formData, managerName: e.target.value })
+                  }
+                >
+                  <option value="">Chọn trưởng phòng...</option>
+                  {users.map((u) => (
+                    <option key={u.id} value={u.fullName}>
+                      {u.fullName} ({u.email})
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <Input
-              label="Ngân sách (Budget)"
-              value={formData.budget}
-              onChange={(e) =>
-                setFormData({ ...formData, budget: e.target.value })
-              }
-            />
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">
-                Trạng thái KPI
-              </label>
-              <select
-                className="w-full bg-slate-50 border border-slate-200 rounded-md p-2.5 text-sm outline-none focus:ring-2 focus:ring-brand-500"
-                value={formData.kpiStatus}
-                onChange={(e) =>
-                  setFormData({ ...formData, kpiStatus: e.target.value as any })
-                }
-              >
-                <option value="On Track">On Track (Đúng tiến độ)</option>
-                <option value="At Risk">At Risk (Rủi ro)</option>
-                <option value="Behind">Behind (Chậm trễ)</option>
-              </select>
-            </div>
-          </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Mô tả nhiệm vụ
+                </label>
+                <textarea
+                  className="w-full bg-slate-50 border border-slate-200 rounded-md p-3 text-sm focus:ring-2 focus:ring-brand-500 outline-none h-24 resize-none"
+                  value={formData.description}
+                  onChange={(e) =>
+                    setFormData({ ...formData, description: e.target.value })
+                  }
+                ></textarea>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <Input
+                  label="Ngân sách (Budget)"
+                  value={formData.budget}
+                  onChange={(e) =>
+                    setFormData({ ...formData, budget: e.target.value })
+                  }
+                />
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    Trạng thái KPI
+                  </label>
+                  <select
+                    className="w-full bg-slate-50 border border-slate-200 rounded-md p-2.5 text-sm outline-none focus:ring-2 focus:ring-brand-500"
+                    value={formData.kpiStatus}
+                    onChange={(e) =>
+                      setFormData({ ...formData, kpiStatus: e.target.value as any })
+                    }
+                  >
+                    <option value="On Track">On Track (Đúng tiến độ)</option>
+                    <option value="At Risk">At Risk (Rủi ro)</option>
+                    <option value="Behind">Behind (Chậm trễ)</option>
+                  </select>
+                </div>
+              </div>
+            </>
+          )}
 
           <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
             <Button type="button" variant="ghost" onClick={onCancel}>
@@ -447,6 +460,9 @@ const DepartmentDetailView = ({
                   <h1 className="text-3xl font-bold text-slate-900 mb-2">
                     {department.name}
                   </h1>
+                  {department.code && (
+                    <p className="text-sm text-slate-400 mb-2">Mã phòng ban: {department.code}</p>
+                  )}
                   <p className="text-slate-500 max-w-2xl">
                     {department.description}
                   </p>
@@ -738,7 +754,17 @@ export const DepartmentManager = () => {
       setDepartments((prev) => prev.map((d) => (d.id === dept.id ? dept : d)));
       if (selectedDept && selectedDept.id === dept.id) setSelectedDept(dept);
     } else {
-      const newDept = { ...dept, id: `dept-${Date.now()}` };
+      // Khi tạo mới, set các giá trị mặc định cho các trường không hiển thị
+      const newDept: Department = {
+        ...dept,
+        id: `dept-${Date.now()}`,
+        managerName: dept.managerName || "Chưa có",
+        managerAvatar: dept.managerAvatar || "https://ui-avatars.com/api/?name=" + (dept.name || "Department"),
+        memberCount: dept.memberCount || 0,
+        description: dept.description || "",
+        budget: dept.budget || "---",
+        kpiStatus: dept.kpiStatus || "On Track",
+      };
       setDepartments((prev) => [...prev, newDept]);
     }
     setIsFormOpen(false);
@@ -860,9 +886,14 @@ export const DepartmentManager = () => {
                   </div>
                 </div>
 
-                <h3 className="text-lg font-bold text-slate-900 mb-2">
-                  {dept.name}
-                </h3>
+                <div className="mb-2">
+                  <h3 className="text-lg font-bold text-slate-900">
+                    {dept.name}
+                  </h3>
+                  {dept.code && (
+                    <p className="text-xs text-slate-400 mt-1">Mã: {dept.code}</p>
+                  )}
+                </div>
                 <p className="text-sm text-slate-500 mb-6 line-clamp-2 min-h-[40px]">
                   {dept.description}
                 </p>

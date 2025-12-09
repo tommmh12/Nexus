@@ -125,6 +125,7 @@ export interface ProjectReport {
 export interface Department {
   id: string;
   name: string;
+  code?: string;
   managerName: string;
   managerAvatar: string;
   memberCount: number;
