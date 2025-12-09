@@ -1,4 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import {
+  Routes,
+  Route,
+  NavLink,
+  useNavigate,
+  useLocation,
+} from "react-router-dom";
 import { User, Notification } from "../../../types";
 // TODO: Replace with API call
 import { Button } from "./system/ui/Button";
@@ -28,24 +35,37 @@ import {
   BellRing,
 } from "lucide-react";
 
-// Import Feature Modules
-import { Overview } from "./dashboard/Overview";
-import { ResourceManagement } from "./dashboard/ResourceManagement";
-import { ProjectModule } from "./projects/ProjectModule";
-// import { KanbanBoard } from './projects/KanbanBoard'; // Removed
-import { WorkflowDesigner } from "./projects/WorkflowDesigner";
-import { TaskSettings } from "./projects/TaskSettings";
-import { DepartmentManager } from "./organization/DepartmentManager";
-import { OrgChart } from "./organization/OrgChart";
-import { UserManager, UserTableWidget } from "./organization/UserManager";
-import { MeetingAdmin } from "./workspace/MeetingAdmin";
-import { EventManager } from "./workspace/EventManager";
-import { ForumModule, ForumManager } from "./forum/ForumModule";
-import { NewsModule, NewsManager } from "./news/NewsModule";
-import { ChatManager } from "./communication/ChatManager";
-import { AuditLogManager } from "./system/AuditLogManager";
-import { AlertManager } from "./system/AlertManager";
-import { GeneralSettings } from "./system/GeneralSettings";
+// Stable components for routes to prevent remounting
+const OverviewPage = () => (
+  <>
+    <Overview />
+    <div className="mt-8">
+      <UserTableWidget />
+    </div>
+  </>
+);
+
+// Import Feature Modules from pages/admin
+import { Overview } from "../pages/admin/dashboard/Overview";
+import { ResourceManagement } from "../pages/admin/dashboard/ResourceManagement";
+import { ProjectModule } from "../pages/admin/projects/ProjectModule";
+// import { KanbanBoard } from '../pages/admin/projects/KanbanBoard'; // Removed
+import { WorkflowDesigner } from "../pages/admin/projects/WorkflowDesigner";
+import { TaskSettings } from "../pages/admin/projects/TaskSettings";
+import { DepartmentManager } from "../pages/admin/organization/DepartmentManager";
+import { OrgChart } from "../pages/admin/organization/OrgChart";
+import {
+  UserManager,
+  UserTableWidget,
+} from "../pages/admin/organization/UserManager";
+import { MeetingAdmin } from "../pages/admin/workspace/MeetingAdmin";
+import { EventManager } from "../pages/admin/workspace/EventManager";
+import { ForumModule, ForumManager } from "../pages/admin/forum/ForumModule";
+import { NewsModule, NewsManager } from "../pages/admin/news/NewsModule";
+import { ChatManager } from "../pages/admin/communication/ChatManager";
+import { AuditLogManager } from "../pages/admin/system/AuditLogManager";
+import { AlertManager } from "../pages/admin/system/AlertManager";
+import { GeneralSettings } from "../pages/admin/system/GeneralSettings";
 
 interface DashboardProps {
   user: User;
@@ -187,10 +207,68 @@ const ContentAdminDashboard = ({
 };
 
 export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  console.log(
+    "📊 Dashboard rendering - pathname:",
+    location.pathname,
+    "full location:",
+    location
+  );
+
+  // Determine role-based prefix (case-insensitive)
+  const userRole = user.role?.toLowerCase();
+  const rolePrefix =
+    userRole === "admin"
+      ? "/admin"
+      : userRole === "department-manager" || userRole === "manager"
+      ? "/manager"
+      : "/employee";
+
+  console.log("👤 User role:", user.role, "rolePrefix:", rolePrefix);
+
+  // State
   const [activeMenu, setActiveMenu] = useState<string>("overview");
+
+  // Handle redirect to overview if at base path - run once on mount
+  useEffect(() => {
+    const currentPath = location.pathname;
+    if (currentPath === rolePrefix || currentPath === `${rolePrefix}/`) {
+      console.log("🔀 Redirecting from base path to overview");
+      navigate(`overview`, { replace: true });
+    }
+  }, []); // Empty deps - only run once on mount
+
+  // Sync activeMenu with URL changes
+  React.useEffect(() => {
+    console.log("🔄 Dashboard useEffect running");
+    const pathParts = location.pathname.split("/").filter(Boolean);
+    const section =
+      pathParts.length >= 2 ? pathParts[pathParts.length - 1] : "overview";
+
+    // Use functional update to access current value without adding to deps
+    setActiveMenu((current) => {
+      console.log(
+        "setActiveMenu check - current:",
+        current,
+        "section:",
+        section
+      );
+      if (current !== section) {
+        console.log("✏️ Updating activeMenu from", current, "to", section);
+        return section;
+      }
+      console.log("✅ No update needed");
+      return current;
+    });
+  }, [location.pathname]); // Only depend on pathname
+
   const [expandedMenus, setExpandedMenus] = useState<string[]>([
     "dashboard",
+    "project-management",
     "community",
+    "content-cms",
+    "organization",
     "workspace",
     "communication",
     "moderation",
@@ -230,86 +308,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
   };
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
-
-  // Content Renderer Switch
-  const renderContent = () => {
-    switch (activeMenu) {
-      case "overview":
-        return (
-          <>
-            <Overview />
-            <div className="mt-8">
-              <UserTableWidget />
-            </div>
-          </>
-        );
-      case "resources":
-        return <ResourceManagement />;
-      case "pm-projects":
-        return <ProjectModule />;
-      // case 'pm-board': return <KanbanBoard />; // Removed
-      case "pm-workflows":
-        return <WorkflowDesigner />;
-      case "pm-settings":
-        return <TaskSettings />;
-      case "departments":
-        return <DepartmentManager />;
-      case "org-chart":
-        return <OrgChart />;
-      case "users":
-        return <UserManager />;
-      case "meeting-admin":
-        return <MeetingAdmin />;
-      case "event-manager":
-        return <EventManager />;
-
-      // Reader Views
-      case "forum-reader":
-        return <ForumModule />;
-      case "news-reader":
-        return <NewsModule />;
-
-      // Admin Views
-      case "cms-news":
-        return <NewsManager />;
-      case "cms-forum":
-        return <ForumManager />;
-
-      // Chat Module
-      case "chat-manager":
-        return <ChatManager />;
-
-      // System & Safety
-      case "audit-logs":
-        return <AuditLogManager />;
-      case "alert-manager":
-        return <AlertManager />;
-      case "general-settings":
-        return <GeneralSettings />;
-
-      default:
-        return (
-          <div className="flex flex-col items-center justify-center h-[60vh] text-center animate-fadeIn">
-            <div className="bg-slate-100 p-6 rounded-full mb-4">
-              <Briefcase size={48} className="text-slate-300" />
-            </div>
-            <h2 className="text-xl font-semibold text-slate-900">
-              Tính năng đang phát triển
-            </h2>
-            <p className="text-slate-500 mt-2 max-w-md">
-              Module{" "}
-              <span className="font-medium text-slate-800">
-                {getBreadcrumb()}
-              </span>{" "}
-              đang được xây dựng. Vui lòng quay lại sau.
-            </p>
-            <Button className="mt-6" onClick={() => setActiveMenu("overview")}>
-              Quay về Dashboard
-            </Button>
-          </div>
-        );
-    }
-  };
 
   // Determine if we need to remove padding for full-width views (like CMS or Chat)
   const isFullWidthView = ["cms-news", "cms-forum", "chat-manager"].includes(
@@ -364,7 +362,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                     onClick={() =>
                       item.children
                         ? toggleMenu(item.id)
-                        : setActiveMenu(item.id)
+                        : navigate(`${rolePrefix}/${item.id}`)
                     }
                     className={`
                                 w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
@@ -423,7 +421,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                         {item.children.map((child) => (
                           <button
                             key={child.id}
-                            onClick={() => setActiveMenu(child.id)}
+                            onClick={() =>
+                              navigate(`${rolePrefix}/${child.id}`)
+                            }
                             className={`
                                             w-full flex items-center justify-between px-3 py-2 rounded-md text-sm transition-colors
                                             ${
@@ -655,7 +655,69 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
           <div
             className={`mx-auto h-full ${isFullWidthView ? "" : "max-w-7xl"}`}
           >
-            {renderContent()}
+            <Routes>
+              {/* Dashboard Routes */}
+              <Route path="overview" element={<OverviewPage />} />
+              <Route path="resources" element={<ResourceManagement />} />
+
+              {/* Project Management Routes */}
+              <Route path="pm-projects" element={<ProjectModule />} />
+              <Route path="pm-projects/:id" element={<ProjectModule />} />
+              <Route path="pm-workflows" element={<WorkflowDesigner />} />
+              <Route path="pm-settings" element={<TaskSettings />} />
+
+              {/* Organization Routes */}
+              <Route path="departments" element={<DepartmentManager />} />
+              <Route path="org-chart" element={<OrgChart />} />
+              <Route path="users" element={<UserManager />} />
+
+              {/* Workspace Routes */}
+              <Route path="meeting-admin" element={<MeetingAdmin />} />
+              <Route path="meeting-admin/:id" element={<MeetingAdmin />} />
+              <Route path="event-manager" element={<EventManager />} />
+
+              {/* Community Routes */}
+              <Route path="forum-reader" element={<ForumModule />} />
+              <Route path="news-reader" element={<NewsModule />} />
+
+              {/* Content Management Routes */}
+              <Route path="cms-news" element={<NewsManager />} />
+              <Route path="cms-forum" element={<ForumManager />} />
+
+              {/* Communication Routes */}
+              <Route path="chat-manager" element={<ChatManager />} />
+
+              {/* System & Safety Routes */}
+              <Route path="audit-logs" element={<AuditLogManager />} />
+              <Route path="alert-manager" element={<AlertManager />} />
+
+              {/* Settings Routes */}
+              <Route path="general-settings" element={<GeneralSettings />} />
+
+              {/* Default/Not Found */}
+              <Route
+                path="*"
+                element={
+                  <div className="flex flex-col items-center justify-center h-[60vh] text-center animate-fadeIn">
+                    <div className="bg-slate-100 p-6 rounded-full mb-4">
+                      <Briefcase size={48} className="text-slate-300" />
+                    </div>
+                    <h2 className="text-xl font-semibold text-slate-900">
+                      Tính năng đang phát triển
+                    </h2>
+                    <p className="text-slate-500 mt-2 max-w-md">
+                      Module đang được xây dựng. Vui lòng quay lại sau.
+                    </p>
+                    <Button
+                      className="mt-6"
+                      onClick={() => navigate(`${rolePrefix}/overview`)}
+                    >
+                      Quay về Dashboard
+                    </Button>
+                  </div>
+                }
+              />
+            </Routes>
           </div>
         </main>
       </div>

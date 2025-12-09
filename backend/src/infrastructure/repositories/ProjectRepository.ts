@@ -1,5 +1,6 @@
 import { RowDataPacket } from "mysql2";
 import { dbPool } from "../database/connection.js";
+import crypto from "crypto";
 
 export class ProjectRepository {
   private db = dbPool;
@@ -55,14 +56,18 @@ export class ProjectRepository {
   }
 
   async createProject(projectData: any) {
+    // Generate UUID for the project
+    const projectId = crypto.randomUUID();
+
     const query = `
       INSERT INTO projects (
-        code, name, description, manager_id, workflow_id, 
+        id, code, name, description, manager_id, workflow_id, 
         status, priority, budget, start_date, end_date
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
-    const [result] = await this.db.query(query, [
+    await this.db.query(query, [
+      projectId,
       projectData.code,
       projectData.name,
       projectData.description || null,
@@ -75,39 +80,67 @@ export class ProjectRepository {
       projectData.endDate || null,
     ]);
 
-    return (result as any).insertId;
+    return projectId;
   }
 
   async updateProject(id: string, projectData: any) {
+    // Build dynamic query based on provided fields
+    const updates: string[] = [];
+    const values: any[] = [];
+
+    if (projectData.name !== undefined) {
+      updates.push("name = ?");
+      values.push(projectData.name);
+    }
+    if (projectData.description !== undefined) {
+      updates.push("description = ?");
+      values.push(projectData.description || null);
+    }
+    if (projectData.managerId !== undefined) {
+      updates.push("manager_id = ?");
+      values.push(projectData.managerId || null);
+    }
+    if (projectData.workflowId !== undefined) {
+      updates.push("workflow_id = ?");
+      values.push(projectData.workflowId || null);
+    }
+    if (projectData.status !== undefined) {
+      updates.push("status = ?");
+      values.push(projectData.status);
+    }
+    if (projectData.priority !== undefined) {
+      updates.push("priority = ?");
+      values.push(projectData.priority);
+    }
+    if (projectData.progress !== undefined) {
+      updates.push("progress = ?");
+      values.push(projectData.progress || 0);
+    }
+    if (projectData.budget !== undefined) {
+      updates.push("budget = ?");
+      values.push(projectData.budget || null);
+    }
+    if (projectData.startDate !== undefined) {
+      updates.push("start_date = ?");
+      values.push(projectData.startDate || null);
+    }
+    if (projectData.endDate !== undefined) {
+      updates.push("end_date = ?");
+      values.push(projectData.endDate || null);
+    }
+
+    if (updates.length === 0) {
+      return; // No fields to update
+    }
+
     const query = `
       UPDATE projects 
-      SET 
-        name = ?,
-        description = ?,
-        manager_id = ?,
-        workflow_id = ?,
-        status = ?,
-        priority = ?,
-        progress = ?,
-        budget = ?,
-        start_date = ?,
-        end_date = ?
+      SET ${updates.join(", ")}
       WHERE id = ? AND deleted_at IS NULL
     `;
 
-    await this.db.query(query, [
-      projectData.name,
-      projectData.description || null,
-      projectData.managerId || null,
-      projectData.workflowId || null,
-      projectData.status,
-      projectData.priority,
-      projectData.progress || 0,
-      projectData.budget || null,
-      projectData.startDate || null,
-      projectData.endDate || null,
-      id,
-    ]);
+    values.push(id);
+    await this.db.query(query, values);
   }
 
   async deleteProject(id: string) {

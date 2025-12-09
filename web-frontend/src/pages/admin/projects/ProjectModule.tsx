@@ -15,13 +15,17 @@ import {
   Edit2,
   Trash2,
 } from "lucide-react";
-import { projectService, workflowService } from "../../services/projectService";
+import {
+  projectService,
+  workflowService,
+} from "../../../services/projectService";
 import {
   departmentService,
   Department,
-} from "../../services/departmentService";
-import { Button } from "../system/ui/Button";
-import { Input } from "../system/ui/Input";
+} from "../../../services/departmentService";
+import { authService } from "../../../services/authService";
+import { Button } from "../../../components/system/ui/Button";
+import { Input } from "../../../components/system/ui/Input";
 import { ProjectDetailView } from "./ProjectDetailView";
 
 interface Project {
@@ -31,6 +35,7 @@ interface Project {
   description?: string;
   managerName?: string;
   workflowName?: string;
+  workflowId?: string;
   status: string;
   priority: string;
   progress: number;
@@ -38,6 +43,7 @@ interface Project {
   completedTaskCount?: number;
   startDate?: string;
   endDate?: string;
+  budget?: number;
 }
 
 interface Workflow {
@@ -354,6 +360,212 @@ const CreateProjectWizard = ({
   );
 };
 
+// ==================== EDIT PROJECT MODAL ====================
+const EditProjectModal = ({
+  project,
+  departments,
+  workflows,
+  onCancel,
+  onSave,
+}: {
+  project: Project;
+  departments: Department[];
+  workflows: Workflow[];
+  onCancel: () => void;
+  onSave: (data: any) => void;
+}) => {
+  const [formData, setFormData] = useState({
+    name: project.name || "",
+    code: project.code || "",
+    description: project.description || "",
+    priority: project.priority || "Medium",
+    status: project.status || "Planning",
+    startDate: project.startDate || "",
+    endDate: project.endDate || "",
+    budget: project.budget?.toString() || "",
+    workflowId: project.workflowId || "",
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSave(formData);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 animate-fadeIn">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
+          <h2 className="text-xl font-bold text-slate-900">Chỉnh sửa dự án</h2>
+          <button
+            onClick={onCancel}
+            className="p-2 hover:bg-slate-100 rounded-lg transition"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          {/* Basic Info */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Mã dự án <span className="text-red-500">*</span>
+              </label>
+              <Input
+                value={formData.code}
+                onChange={(e) =>
+                  setFormData({ ...formData, code: e.target.value })
+                }
+                placeholder="VD: CRM-2025"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Tên dự án <span className="text-red-500">*</span>
+              </label>
+              <Input
+                value={formData.name}
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
+                placeholder="VD: Nâng cấp hệ thống CRM"
+                required
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              Mô tả
+            </label>
+            <textarea
+              className="w-full border border-slate-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              rows={3}
+              value={formData.description}
+              onChange={(e) =>
+                setFormData({ ...formData, description: e.target.value })
+              }
+              placeholder="Mô tả ngắn gọn về dự án..."
+            />
+          </div>
+
+          {/* Status & Priority */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Trạng thái
+              </label>
+              <select
+                className="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500"
+                value={formData.status}
+                onChange={(e) =>
+                  setFormData({ ...formData, status: e.target.value })
+                }
+              >
+                <option value="Planning">Planning</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Review">Review</option>
+                <option value="Done">Done</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Độ ưu tiên
+              </label>
+              <select
+                className="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500"
+                value={formData.priority}
+                onChange={(e) =>
+                  setFormData({ ...formData, priority: e.target.value })
+                }
+              >
+                <option value="Low">Thấp</option>
+                <option value="Medium">Trung bình</option>
+                <option value="High">Cao</option>
+                <option value="Critical">Khẩn cấp</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Dates & Budget */}
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Ngày bắt đầu
+              </label>
+              <Input
+                type="date"
+                value={formData.startDate}
+                onChange={(e) =>
+                  setFormData({ ...formData, startDate: e.target.value })
+                }
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Ngày kết thúc
+              </label>
+              <Input
+                type="date"
+                value={formData.endDate}
+                onChange={(e) =>
+                  setFormData({ ...formData, endDate: e.target.value })
+                }
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Ngân sách (VNĐ)
+              </label>
+              <Input
+                type="number"
+                value={formData.budget}
+                onChange={(e) =>
+                  setFormData({ ...formData, budget: e.target.value })
+                }
+                placeholder="100000000"
+              />
+            </div>
+          </div>
+
+          {/* Workflow */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              Quy trình công việc
+            </label>
+            <select
+              className="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500"
+              value={formData.workflowId}
+              onChange={(e) =>
+                setFormData({ ...formData, workflowId: e.target.value })
+              }
+            >
+              <option value="">-- Chọn workflow --</option>
+              {workflows.map((w) => (
+                <option key={w.id} value={w.id}>
+                  {w.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-3 justify-end pt-4 border-t">
+            <Button type="button" variant="ghost" onClick={onCancel}>
+              Hủy
+            </Button>
+            <Button type="submit">
+              <Check size={18} className="mr-2" />
+              Lưu thay đổi
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
 // ==================== MAIN COMPONENT ====================
 export const ProjectModule = () => {
   const { id } = useParams<{ id: string }>();
@@ -365,6 +577,7 @@ export const ProjectModule = () => {
 
   const [view, setView] = useState<"list" | "create" | "detail">("list");
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
@@ -405,7 +618,17 @@ export const ProjectModule = () => {
         workflowService.getWorkflows(),
       ]);
 
-      if (projectsRes.success) setProjects(projectsRes.data);
+      if (projectsRes.success) {
+        // Map snake_case from backend to camelCase for frontend
+        const mappedProjects = projectsRes.data.map((p: any) => ({
+          ...p,
+          workflowName: p.workflowName || p.workflow_name,
+          managerName: p.managerName || p.manager_name,
+          startDate: p.startDate || p.start_date,
+          endDate: p.endDate || p.end_date,
+        }));
+        setProjects(mappedProjects);
+      }
       setDepartments(deptsData);
       if (workflowsRes.success) setWorkflows(workflowsRes.data);
     } catch (err: any) {
@@ -418,6 +641,9 @@ export const ProjectModule = () => {
 
   const handleCreateProject = async (formData: any) => {
     try {
+      // Get current user to set as manager
+      const currentUser = authService.getStoredUser();
+
       const response = await projectService.createProject({
         name: formData.name,
         code: formData.code,
@@ -427,6 +653,7 @@ export const ProjectModule = () => {
         startDate: formData.startDate,
         endDate: formData.endDate,
         budget: Number(formData.budget) || 0,
+        managerId: currentUser?.id, // Set creator as manager
         departments: formData.departmentIds.map((id: string) => Number(id)),
       });
 
@@ -437,6 +664,35 @@ export const ProjectModule = () => {
       }
     } catch (error: any) {
       console.error("Lỗi tạo dự án:", error);
+      alert(
+        "❌ Có lỗi xảy ra: " + (error.response?.data?.message || error.message)
+      );
+    }
+  };
+
+  const handleUpdateProject = async (formData: any) => {
+    if (!editingProject) return;
+
+    try {
+      const response = await projectService.updateProject(editingProject.id, {
+        name: formData.name,
+        code: formData.code,
+        description: formData.description,
+        workflowId: Number(formData.workflowId) || null,
+        priority: formData.priority,
+        status: formData.status,
+        startDate: formData.startDate || null,
+        endDate: formData.endDate || null,
+        budget: Number(formData.budget) || null,
+      });
+
+      if (response.success) {
+        await loadData();
+        setEditingProject(null);
+        alert("✅ Cập nhật dự án thành công!");
+      }
+    } catch (error: any) {
+      console.error("Lỗi cập nhật dự án:", error);
       alert(
         "❌ Có lỗi xảy ra: " + (error.response?.data?.message || error.message)
       );
@@ -501,7 +757,7 @@ export const ProjectModule = () => {
 
   const handleEditProject = (project: Project, e: React.MouseEvent) => {
     e.stopPropagation();
-    navigate(`${rolePrefix}/pm-projects/${project.id}`);
+    setEditingProject(project);
     setOpenMenuId(null);
   };
 
@@ -707,6 +963,17 @@ export const ProjectModule = () => {
             <span className="font-medium">Thêm dự án mới</span>
           </div>
         </div>
+      )}
+
+      {/* Edit Project Modal */}
+      {editingProject && (
+        <EditProjectModal
+          project={editingProject}
+          departments={departments}
+          workflows={workflows}
+          onCancel={() => setEditingProject(null)}
+          onSave={handleUpdateProject}
+        />
       )}
     </div>
   );

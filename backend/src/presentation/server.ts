@@ -6,8 +6,11 @@ import dotenv from "dotenv";
 import authRoutes from "./routes/auth.routes.js";
 import dashboardRoutes from "./routes/dashboard.routes.js";
 import projectRoutes from "./routes/project.routes.js";
+import taskRoutes from "./routes/task.routes.js";
+import reportRoutes from "./routes/report.routes.js";
 import workflowRoutes from "./routes/workflow.routes.js";
 import settingsRoutes from "./routes/settings.routes.js";
+import departmentRoutes from "./routes/departmentRoutes.js";
 
 dotenv.config();
 
@@ -39,8 +42,11 @@ app.get("/health", (req: Request, res: Response) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/projects", projectRoutes);
+app.use("/api/tasks", taskRoutes);
+app.use("/api/reports", reportRoutes);
 app.use("/api/workflows", workflowRoutes);
 app.use("/api/settings", settingsRoutes);
+app.use("/api/departments", departmentRoutes);
 
 // 404 Handler
 app.use((req: Request, res: Response) => {

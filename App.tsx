@@ -1,48 +1,71 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { LoginScreen } from "./web-frontend/src/components/LoginScreen";
-import { Dashboard } from "./web-frontend/src/components/Dashboard";
+import { AppRouter } from "./web-frontend/src/routes/AppRouter";
 import { AuthState, AuthStatus, User, UserRole } from "./types";
 import { authService } from "./web-frontend/src/services/authService";
 
 const App: React.FC = () => {
+  console.log("App component rendering");
   const [auth, setAuth] = useState<AuthState>({
     status: AuthStatus.IDLE,
     user: null,
     errorMessage: null,
   });
+  const [authCheckDone, setAuthCheckDone] = useState(false);
 
   // Check for existing session on mount
   useEffect(() => {
+    if (authCheckDone) return; // Prevent re-running
+
+    console.log("App.tsx useEffect - checking auth");
     const checkAuth = async () => {
-      const storedUser = authService.getStoredUser();
+      try {
+        const storedUser = authService.getStoredUser();
+        console.log("Stored user:", storedUser);
 
-      if (storedUser) {
-        // Verify token is still valid
-        const currentUser = await authService.getCurrentUser();
+        if (storedUser) {
+          // Verify token is still valid
+          const currentUser = await authService.getCurrentUser();
+          console.log("Current user from API:", currentUser);
 
-        if (currentUser) {
-          setAuth({
-            status: AuthStatus.SUCCESS,
-            user: {
-              id: currentUser.id,
-              name: currentUser.full_name,
-              email: currentUser.email,
-              avatarUrl:
-                currentUser.avatar_url ||
-                "https://api.dicebear.com/7.x/avataaars/svg?seed=default",
-              department: currentUser.department_name || "N/A",
-              role: currentUser.role as UserRole,
-            },
-            errorMessage: null,
-          });
+          if (currentUser) {
+            setAuth({
+              status: AuthStatus.SUCCESS,
+              user: {
+                id: currentUser.id,
+                name: currentUser.full_name,
+                email: currentUser.email,
+                avatarUrl:
+                  currentUser.avatar_url ||
+                  "https://api.dicebear.com/7.x/avataaars/svg?seed=default",
+                department: currentUser.department_name || "N/A",
+                role: currentUser.role as UserRole,
+              },
+              errorMessage: null,
+            });
+          }
+        } else {
+          // No stored user, ensure clean state
+          console.log("No stored user, skipping auth check");
+          // Don't call logout here as it may trigger unwanted side effects
+          // Just ensure state is clean
         }
+      } catch (error) {
+        console.error("Auth check error:", error);
+        // Clear any bad auth state
+        authService.logout();
+        setAuth({
+          status: AuthStatus.IDLE,
+          user: null,
+          errorMessage: null,
+        });
       }
     };
 
-    checkAuth();
-  }, []);
+    checkAuth().finally(() => setAuthCheckDone(true));
+  }, [authCheckDone]);
 
-  const handleLogin = async (email: string, password: string) => {
+  const handleLogin = useCallback(async (email: string, password: string) => {
     setAuth((prev) => ({
       ...prev,
       status: AuthStatus.LOADING,
@@ -78,22 +101,31 @@ const App: React.FC = () => {
             : "Đã xảy ra lỗi không xác định",
       });
     }
-  };
+  }, []);
 
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     await authService.logout();
     setAuth({
       status: AuthStatus.IDLE,
       user: null,
       errorMessage: null,
     });
-  };
+  }, []);
 
   // Simple conditional rendering based on auth status
+  console.log(
+    "App render check - auth.status:",
+    auth.status,
+    "auth.user:",
+    auth.user
+  );
+
   if (auth.status === AuthStatus.SUCCESS && auth.user) {
-    return <Dashboard user={auth.user} onLogout={handleLogout} />;
+    console.log("Rendering AppRouter with user:", auth.user.email);
+    return <AppRouter user={auth.user} onLogout={handleLogout} />;
   }
 
+  console.log("Rendering LoginScreen");
   return (
     <LoginScreen
       onLogin={handleLogin}

@@ -1,5 +1,6 @@
 import { RowDataPacket } from "mysql2";
 import { dbPool } from "../database/connection.js";
+import crypto from "crypto";
 
 export class WorkflowRepository {
   private db = dbPool;
@@ -46,19 +47,22 @@ export class WorkflowRepository {
   }
 
   async createWorkflow(workflowData: any, userId?: string) {
+    const workflowId = crypto.randomUUID();
+
     const query = `
-      INSERT INTO workflows (name, description, is_default, created_by)
-      VALUES (?, ?, ?, ?)
+      INSERT INTO workflows (id, name, description, is_default, created_by)
+      VALUES (?, ?, ?, ?, ?)
     `;
 
-    const [result] = await this.db.query(query, [
+    await this.db.query(query, [
+      workflowId,
       workflowData.name,
       workflowData.description || null,
       workflowData.isDefault || false,
       userId || null,
     ]);
 
-    return (result as any).insertId;
+    return workflowId;
   }
 
   async createWorkflowStatus(workflowId: string, statusData: any) {
