@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
-// TODO: Replace with API call
 import { NewsArticle } from "../../types";
+import { newsService } from "../../services/newsService";
+import { useRealtimeNews } from "../../hooks/useRealtimeNews";
 import { Button } from "../system/ui/Button";
 import { Input } from "../system/ui/Input";
 import {
@@ -167,10 +168,29 @@ export const NewsEditorModal = ({
 
   const [tagInput, setTagInput] = useState("");
 
+  // Reset form data when article changes
   useEffect(() => {
     if (article) {
       setFormData(article);
+    } else {
+      // Reset to default values when creating new article
+      setFormData({
+        title: "",
+        summary: "",
+        content: "",
+        category: "Announcement",
+        coverImage:
+          "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&q=80&w=2070",
+        status: "Draft",
+        tags: [],
+        authorName: "Admin", // Mock default
+        authorAvatar:
+          "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=100&h=100",
+        publishDate: new Date().toLocaleDateString("vi-VN"),
+        readTime: "5 phút đọc",
+      });
     }
+    setTagInput(""); // Reset tag input as well
   }, [article]);
 
   const handleChange = (field: keyof NewsArticle, value: any) => {
@@ -195,13 +215,54 @@ export const NewsEditorModal = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(formData as NewsArticle);
+    
+    // Validate required fields
+    if (!formData.title || !formData.title.trim()) {
+      alert("Vui lòng nhập tiêu đề bài viết");
+      return;
+    }
+    
+    if (!formData.content || !formData.content.trim()) {
+      alert("Vui lòng nhập nội dung bài viết");
+      return;
+    }
+    
+    // Ensure all required fields are present
+    const articleToSave: NewsArticle = {
+      id: article?.id || `news-${Date.now()}`,
+      title: formData.title.trim(),
+      summary: formData.summary || "",
+      content: formData.content.trim(),
+      coverImage: formData.coverImage || "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&q=80&w=2070",
+      category: formData.category || "Announcement",
+      authorName: formData.authorName || "Admin",
+      authorAvatar: formData.authorAvatar || "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=100&h=100",
+      publishDate: formData.publishDate || new Date().toLocaleDateString("vi-VN"),
+      readTime: formData.readTime || "5 phút đọc",
+      status: formData.status || "Draft",
+      tags: formData.tags || [],
+      isFeatured: formData.isFeatured || false,
+    };
+    
+    onSave(articleToSave);
+  };
+
+  const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn"
+      onClick={handleBackdropClick}
+    >
       {/* Modal Container */}
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl h-[90vh] flex flex-col overflow-hidden">
+      <div 
+        className="bg-white rounded-xl shadow-2xl w-full max-w-6xl h-[90vh] flex flex-col overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-white z-10">
           <div>
@@ -440,10 +501,47 @@ export const NewsManager = () => {
   >("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
+  const [loading, setLoading] = useState(true);
 
-  const handleDelete = (id: string) => {
+  useEffect(() => {
+    const fetchNews = async () => {
+      try {
+        setLoading(true);
+        const allNews = await newsService.getAll();
+        setNews(allNews);
+      } catch (error) {
+        console.error("Error fetching news:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchNews();
+  }, []);
+
+  // Real-time updates
+  useRealtimeNews({
+    onArticleCreated: (article) => {
+      setNews((prev) => [article, ...prev]);
+    },
+    onArticleUpdated: (article) => {
+      setNews((prev) => prev.map((a) => (a.id === article.id ? article : a)));
+    },
+    onArticlePublished: (article) => {
+      setNews((prev) => prev.map((a) => (a.id === article.id ? article : a)));
+    },
+    onArticleArchived: (article) => {
+      setNews((prev) => prev.map((a) => (a.id === article.id ? article : a)));
+    },
+  });
+
+  const handleDelete = async (id: string) => {
     if (window.confirm("Bạn có chắc chắn muốn xóa bài viết này?")) {
-      setNews((prev) => prev.filter((a) => a.id !== id));
+      try {
+        await newsService.deleteArticle(id);
+        setNews((prev) => prev.filter((a) => a.id !== id));
+      } catch (error: any) {
+        alert(error.message || "Không thể xóa bài viết");
+      }
     }
   };
 
@@ -561,28 +659,46 @@ export const NewsManager = () => {
       {/* Content Area */}
       {viewMode === "list" ? (
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1">
-          <table className="min-w-full divide-y divide-slate-200">
-            <thead className="bg-slate-50">
-              <tr>
-                <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
-                  Bài viết
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
-                  Tác giả
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
-                  Trạng thái
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
-                  Chuyên mục
-                </th>
-                <th className="px-6 py-4 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">
-                  Hành động
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-slate-200">
-              {filteredNews.map((item) => (
+          {filteredNews.length === 0 ? (
+            <div className="text-center py-16">
+              <FileText className="mx-auto h-16 w-16 text-slate-300 mb-4" />
+              <h3 className="text-lg font-bold text-slate-900 mb-2">
+                {news.length === 0 ? "Chưa có bài viết nào" : "Không tìm thấy bài viết"}
+              </h3>
+              <p className="text-slate-500 mb-4">
+                {news.length === 0 
+                  ? "Bắt đầu bằng cách tạo bài viết mới để quản lý nội dung bản tin."
+                  : "Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm."}
+              </p>
+              {news.length === 0 && (
+                <Button onClick={handleCreate}>
+                  <Plus size={18} className="mr-2" /> Tạo bài viết đầu tiên
+                </Button>
+              )}
+            </div>
+          ) : (
+            <table className="min-w-full divide-y divide-slate-200">
+              <thead className="bg-slate-50">
+                <tr>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    Bài viết
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    Tác giả
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    Trạng thái
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    Chuyên mục
+                  </th>
+                  <th className="px-6 py-4 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    Hành động
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-slate-200">
+                {filteredNews.map((item) => (
                 <tr
                   key={item.id}
                   className="hover:bg-slate-50 transition-colors group"
@@ -670,12 +786,32 @@ export const NewsManager = () => {
                   </td>
                 </tr>
               ))}
-            </tbody>
-          </table>
+              </tbody>
+            </table>
+          )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 animate-fadeIn">
-          {filteredNews.map((item) => (
+        <div>
+          {filteredNews.length === 0 ? (
+            <div className="text-center py-16 bg-white rounded-xl shadow-sm border border-slate-200">
+              <FileText className="mx-auto h-16 w-16 text-slate-300 mb-4" />
+              <h3 className="text-lg font-bold text-slate-900 mb-2">
+                {news.length === 0 ? "Chưa có bài viết nào" : "Không tìm thấy bài viết"}
+              </h3>
+              <p className="text-slate-500 mb-4">
+                {news.length === 0 
+                  ? "Bắt đầu bằng cách tạo bài viết mới để quản lý nội dung bản tin."
+                  : "Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm."}
+              </p>
+              {news.length === 0 && (
+                <Button onClick={handleCreate}>
+                  <Plus size={18} className="mr-2" /> Tạo bài viết đầu tiên
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 animate-fadeIn">
+              {filteredNews.map((item) => (
             <div
               key={item.id}
               className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden group hover:shadow-md transition-all flex flex-col"
@@ -730,6 +866,8 @@ export const NewsManager = () => {
               </div>
             </div>
           ))}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -742,6 +880,53 @@ export const NewsModule = () => {
   const [selectedArticle, setSelectedArticle] = useState<NewsArticle | null>(
     null
   );
+  const [news, setNews] = useState<NewsArticle[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchNews = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const publishedNews = await newsService.getPublished();
+        setNews(publishedNews);
+      } catch (err) {
+        console.error("Error fetching news:", err);
+        setError("Không thể tải bản tin. Vui lòng thử lại sau.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchNews();
+  }, []);
+
+  // Real-time updates for published articles
+  useRealtimeNews({
+    onArticlePublished: (article) => {
+      if (article.status === "Published") {
+        setNews((prev) => {
+          const exists = prev.find((a) => a.id === article.id);
+          if (exists) {
+            return prev.map((a) => (a.id === article.id ? article : a));
+          } else {
+            return [article, ...prev];
+          }
+        });
+      }
+    },
+    onArticleUpdated: (article) => {
+      if (article.status === "Published") {
+        setNews((prev) => prev.map((a) => (a.id === article.id ? article : a)));
+      } else {
+        setNews((prev) => prev.filter((a) => a.id !== article.id));
+      }
+    },
+    onArticleArchived: (article) => {
+      setNews((prev) => prev.filter((a) => a.id !== article.id));
+    },
+  });
 
   const handleArticleClick = (article: NewsArticle) => {
     setSelectedArticle(article);
@@ -751,6 +936,47 @@ export const NewsModule = () => {
 
   // Filter only published news for readers
   const publishedNews = news.filter((n) => n.status === "Published");
+
+  if (loading) {
+    return (
+      <div className="animate-fadeIn h-full flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-brand-600 mb-4"></div>
+          <p className="text-slate-500">Đang tải bản tin...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="animate-fadeIn h-full flex items-center justify-center">
+        <div className="text-center max-w-md">
+          <AlertCircle className="mx-auto h-12 w-12 text-red-500 mb-4" />
+          <h3 className="text-lg font-bold text-slate-900 mb-2">Lỗi tải dữ liệu</h3>
+          <p className="text-slate-600 mb-4">{error}</p>
+          <Button
+            onClick={() => {
+              setError(null);
+              setLoading(true);
+              newsService.getPublished()
+                .then((data) => {
+                  setNews(data);
+                  setLoading(false);
+                })
+                .catch((err) => {
+                  console.error("Error fetching news:", err);
+                  setError("Không thể tải bản tin. Vui lòng thử lại sau.");
+                  setLoading(false);
+                });
+            }}
+          >
+            Thử lại
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="animate-fadeIn h-full">
@@ -774,6 +1000,15 @@ export const NewsModule = () => {
               />
             </div>
           </div>
+
+          {/* Empty State */}
+          {publishedNews.length === 0 && (
+            <div className="text-center py-16">
+              <FileText className="mx-auto h-16 w-16 text-slate-300 mb-4" />
+              <h3 className="text-lg font-bold text-slate-900 mb-2">Chưa có bản tin nào</h3>
+              <p className="text-slate-500">Hiện tại chưa có bản tin nào được xuất bản.</p>
+            </div>
+          )}
 
           {/* Featured News (First item) */}
           {publishedNews.length > 0 && (

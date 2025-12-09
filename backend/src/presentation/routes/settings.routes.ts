@@ -4,9 +4,9 @@ import * as SettingsController from "../controllers/SettingsController.js";
 
 const router = Router();
 
-// All routes require authentication
+// Protected routes
 router.use(authMiddleware);
-
+router.get("/departments", SettingsController.getDepartments);
 router.get("/task", SettingsController.getTaskSettings);
 
 export default router;

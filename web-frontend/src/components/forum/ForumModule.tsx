@@ -1,6 +1,7 @@
-import React, { useState, useRef } from "react";
-// TODO: Replace with API call
+import React, { useState, useRef, useEffect } from "react";
 import { ForumPost, ForumCategory, Poll, ForumComment } from "../../types";
+import { forumService } from "../../services/forumService";
+import { useRealtimeForum } from "../../hooks/useRealtimeForum";
 import { Button } from "../system/ui/Button";
 import { Input } from "../system/ui/Input";
 import {
@@ -27,6 +28,10 @@ import {
   Flag,
   Filter,
   Flame,
+  Edit2,
+  Trash2,
+  X,
+  Save,
   Clock,
   CheckSquare,
   Square,
@@ -377,18 +382,103 @@ const PollWidget = ({ poll }: { poll: Poll }) => {
 };
 
 // --- REDESIGNED: Create Post Modal ---
-const CreatePostModal = ({ onClose }: { onClose: () => void }) => {
+const CreatePostModal = ({ 
+  onClose, 
+  onPostCreated 
+}: { 
+  onClose: () => void;
+  onPostCreated?: () => void;
+}) => {
   // Current User Mock
   const currentUser = {
     name: "Trần Minh Đức", // Mock logged in user
     avatar:
       "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=100&h=100",
     initials: "TD",
+    dept: "Technology",
+  };
+
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [categoryId, setCategoryId] = useState("");
+  const [categories, setCategories] = useState<ForumCategory[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const cats = await forumService.getCategories();
+        setCategories(cats);
+        if (cats.length > 0) {
+          setCategoryId(cats[0].id);
+        }
+      } catch (err) {
+        console.error("Error fetching categories:", err);
+      }
+    };
+    fetchCategories();
+  }, []);
+
+  const handleSubmit = async () => {
+    if (!title.trim()) {
+      setError("Vui lòng nhập tiêu đề bài viết");
+      return;
+    }
+    
+    if (!content.trim()) {
+      setError("Vui lòng nhập nội dung bài viết");
+      return;
+    }
+
+    if (!categoryId) {
+      setError("Vui lòng chọn chuyên mục");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const newPost = await forumService.createPost({
+        title: title.trim(),
+        content: content.trim(),
+        categoryId,
+        authorName: currentUser.name,
+        authorAvatar: currentUser.avatar,
+        authorDept: currentUser.dept,
+        tags: [],
+        status: "Pending",
+      });
+
+      if (onPostCreated) {
+        onPostCreated();
+      }
+      
+      onClose();
+    } catch (err: any) {
+      console.error("Error creating post:", err);
+      setError(err.message || "Không thể đăng bài. Vui lòng thử lại.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col min-h-[400px]">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fadeIn"
+      onClick={handleBackdropClick}
+    >
+      <div 
+        className="bg-white rounded-xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col min-h-[400px]"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="flex justify-between items-center px-6 py-4 border-b border-slate-100">
           <div className="flex items-center gap-3">
@@ -409,12 +499,22 @@ const CreatePostModal = ({ onClose }: { onClose: () => void }) => {
 
         {/* Body */}
         <div className="flex-1 p-6 flex flex-col">
+          {/* Error Message */}
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+              {error}
+            </div>
+          )}
+
           {/* Title Input */}
           <input
             type="text"
             placeholder="Thêm chủ đề"
             className="w-full text-xl font-medium text-slate-700 placeholder:text-slate-400 border-none focus:ring-0 px-0 mb-4"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
             autoFocus
+            required
           />
 
           {/* Toolbar */}
@@ -515,7 +615,10 @@ const CreatePostModal = ({ onClose }: { onClose: () => void }) => {
           {/* Content Input */}
           <textarea
             className="w-full flex-1 border-none focus:ring-0 resize-none px-0 text-slate-700 placeholder:text-slate-400 text-base leading-relaxed"
-            placeholder="Nhập tin nhắn"
+            placeholder="Nhập nội dung bài viết..."
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            required
           ></textarea>
         </div>
 
@@ -536,11 +639,16 @@ const CreatePostModal = ({ onClose }: { onClose: () => void }) => {
               <Plus size={20} strokeWidth={1.5} />
             </button>
 
-            {/* Hidden/Subtle Category Selector for functionality */}
+            {/* Category Selector */}
             <div className="w-px h-5 bg-slate-200 mx-1"></div>
-            <select className="bg-transparent text-sm text-slate-500 font-medium outline-none cursor-pointer hover:text-slate-700">
+            <select 
+              className="bg-transparent text-sm text-slate-500 font-medium outline-none cursor-pointer hover:text-slate-700 border border-slate-200 rounded px-2 py-1"
+              value={categoryId}
+              onChange={(e) => setCategoryId(e.target.value)}
+              required
+            >
               <option value="">Chọn chuyên mục</option>
-              {[].map((c) => (
+              {categories.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
                 </option>
@@ -563,13 +671,11 @@ const CreatePostModal = ({ onClose }: { onClose: () => void }) => {
                 <Sidebar size={18} strokeWidth={2} />
               </button>
               <Button
-                className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 h-10 rounded-lg font-medium shadow-sm transition-all"
-                onClick={() => {
-                  alert("Đăng bài thành công!");
-                  onClose();
-                }}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 h-10 rounded-lg font-medium shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={handleSubmit}
+                disabled={loading}
               >
-                Đăng
+                {loading ? "Đang đăng..." : "Đăng"}
               </Button>
             </div>
           </div>
@@ -834,10 +940,600 @@ const PostDetail = ({
 
 // ... ForumManager Code (Admin) Omitted for brevity as it's not the target of this change ...
 export const ForumManager = () => {
-  // ... [Original Admin Code] ...
+  const [activeTab, setActiveTab] = useState<"posts" | "categories">("posts");
+  const [posts, setPosts] = useState<ForumPost[]>([]);
+  const [categories, setCategories] = useState<ForumCategory[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [categoriesLoading, setCategoriesLoading] = useState(false);
+  const [filterStatus, setFilterStatus] = useState<"All" | "Pending" | "Approved" | "Rejected">("All");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<ForumCategory | null>(null);
+  const [categoryForm, setCategoryForm] = useState({
+    name: "",
+    description: "",
+    icon: "",
+    color: "",
+    order: 0,
+  });
+
+  useEffect(() => {
+    const fetchPosts = async () => {
+      try {
+        setLoading(true);
+        const allPosts = await forumService.getPosts();
+        setPosts(allPosts);
+      } catch (err) {
+        console.error("Error fetching posts:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPosts();
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === "categories") {
+      const fetchCategories = async () => {
+        try {
+          setCategoriesLoading(true);
+          const allCategories = await forumService.getCategories();
+          setCategories(allCategories);
+        } catch (err) {
+          console.error("Error fetching categories:", err);
+        } finally {
+          setCategoriesLoading(false);
+        }
+      };
+      fetchCategories();
+    }
+  }, [activeTab]);
+
+  // Real-time updates
+  useRealtimeForum({
+    onPostCreated: (post) => {
+      setPosts((prev) => [post, ...prev]);
+    },
+    onPostUpdated: (post) => {
+      setPosts((prev) => prev.map((p) => (p.id === post.id ? post : p)));
+    },
+    onPostApproved: (post) => {
+      setPosts((prev) => prev.map((p) => (p.id === post.id ? post : p)));
+    },
+    onPostRejected: (post) => {
+      setPosts((prev) => prev.map((p) => (p.id === post.id ? post : p)));
+    },
+  });
+
+  const handleApprove = async (id: string) => {
+    try {
+      await forumService.approvePost(id);
+      const updatedPosts = await forumService.getPosts();
+      setPosts(updatedPosts);
+    } catch (err) {
+      console.error("Error approving post:", err);
+      alert("Không thể duyệt bài viết. Vui lòng thử lại.");
+    }
+  };
+
+  const handleReject = async (id: string) => {
+    if (!window.confirm("Bạn có chắc chắn muốn từ chối bài viết này?")) {
+      return;
+    }
+    try {
+      await forumService.rejectPost(id);
+      const updatedPosts = await forumService.getPosts();
+      setPosts(updatedPosts);
+    } catch (err) {
+      console.error("Error rejecting post:", err);
+      alert("Không thể từ chối bài viết. Vui lòng thử lại.");
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm("Bạn có chắc chắn muốn xóa bài viết này?")) {
+      return;
+    }
+    try {
+      await forumService.deletePost(id);
+      setPosts((prev) => prev.filter((p) => p.id !== id));
+    } catch (err) {
+      console.error("Error deleting post:", err);
+      alert("Không thể xóa bài viết. Vui lòng thử lại.");
+    }
+  };
+
+  // Category management handlers
+  const handleCreateCategory = () => {
+    setEditingCategory(null);
+    setCategoryForm({ name: "", description: "", icon: "", color: "", order: 0 });
+    setIsCategoryModalOpen(true);
+  };
+
+  const handleEditCategory = (category: ForumCategory & { order?: number }) => {
+    setEditingCategory(category);
+    setCategoryForm({
+      name: category.name,
+      description: category.description || "",
+      icon: category.icon || "",
+      color: category.color || "",
+      order: (category as any).order || 0,
+    });
+    setIsCategoryModalOpen(true);
+  };
+
+  const handleSaveCategory = async () => {
+    if (!categoryForm.name.trim()) {
+      alert("Vui lòng nhập tên chuyên mục");
+      return;
+    }
+
+    try {
+      if (editingCategory) {
+        await forumService.updateCategory(editingCategory.id, categoryForm);
+      } else {
+        await forumService.createCategory(categoryForm);
+      }
+      
+      // Refresh categories
+      const allCategories = await forumService.getCategories();
+      setCategories(allCategories);
+      setIsCategoryModalOpen(false);
+      setEditingCategory(null);
+    } catch (err: any) {
+      alert(err.message || "Không thể lưu chuyên mục. Vui lòng thử lại.");
+    }
+  };
+
+  const handleDeleteCategory = async (id: string) => {
+    if (!window.confirm("Bạn có chắc chắn muốn xóa chuyên mục này? Các bài viết trong chuyên mục sẽ bị ảnh hưởng.")) {
+      return;
+    }
+    try {
+      await forumService.deleteCategory(id);
+      setCategories((prev) => prev.filter((c) => c.id !== id));
+    } catch (err: any) {
+      alert(err.message || "Không thể xóa chuyên mục. Vui lòng thử lại.");
+    }
+  };
+
+  const filteredPosts = posts.filter((item) => {
+    const matchesStatus =
+      filterStatus === "All" || item.status === filterStatus;
+    const matchesSearch = item.title
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase());
+    return matchesStatus && matchesSearch;
+  });
+
+  if (loading) {
+    return (
+      <div className="animate-fadeIn h-full flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-brand-600 mb-4"></div>
+          <p className="text-slate-500">Đang tải dữ liệu...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="p-8 text-center text-slate-500">
-      Tính năng kiểm duyệt đang được bảo trì.
+    <div className="animate-fadeIn h-full flex flex-col">
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h2 className="text-xl font-bold text-slate-900">Quản lý Diễn đàn</h2>
+          <p className="text-slate-500 mt-1">
+            Kiểm duyệt và quản lý bài viết, chuyên mục trong diễn đàn nội bộ.
+          </p>
+        </div>
+      </div>
+
+      {/* Tab Switcher */}
+      <div className="flex gap-2 mb-6 bg-slate-100 p-1 rounded-lg w-fit">
+        <button
+          onClick={() => setActiveTab("posts")}
+          className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${
+            activeTab === "posts"
+              ? "bg-white text-slate-900 shadow-sm"
+              : "text-slate-500 hover:text-slate-700"
+          }`}
+        >
+          Bài viết
+        </button>
+        <button
+          onClick={() => setActiveTab("categories")}
+          className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${
+            activeTab === "categories"
+              ? "bg-white text-slate-900 shadow-sm"
+              : "text-slate-500 hover:text-slate-700"
+          }`}
+        >
+          Chuyên mục
+        </button>
+      </div>
+
+      {/* Category Management */}
+      {activeTab === "categories" && (
+        <>
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h3 className="text-lg font-bold text-slate-900">Danh sách chuyên mục</h3>
+              <p className="text-sm text-slate-500 mt-1">
+                Quản lý các chuyên mục trong diễn đàn nội bộ
+              </p>
+            </div>
+            <button
+              onClick={handleCreateCategory}
+              className="flex items-center gap-2 px-4 py-2.5 bg-brand-600 text-white rounded-lg hover:bg-brand-700 transition-colors text-sm font-medium shadow-sm hover:shadow-md"
+            >
+              <Plus size={18} />
+              Tạo chuyên mục mới
+            </button>
+          </div>
+
+          {categoriesLoading ? (
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8 text-center">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600 mb-4"></div>
+              <p className="text-slate-500">Đang tải chuyên mục...</p>
+            </div>
+          ) : categories.length === 0 ? (
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-12 text-center">
+              <div className="mx-auto w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-6">
+                <MessageSquare className="h-10 w-10 text-slate-400" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 mb-2">Chưa có chuyên mục nào</h3>
+              <p className="text-slate-500 mb-6 max-w-md mx-auto">
+                Tạo chuyên mục đầu tiên để tổ chức và phân loại các bài viết trong diễn đàn.
+              </p>
+              <button
+                onClick={handleCreateCategory}
+                className="inline-flex items-center gap-2 px-6 py-3 bg-brand-600 text-white rounded-lg hover:bg-brand-700 transition-colors font-medium shadow-sm hover:shadow-md"
+              >
+                <Plus size={20} />
+                Tạo chuyên mục đầu tiên
+              </button>
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+              <table className="min-w-full divide-y divide-slate-200">
+                <thead className="bg-slate-50">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Tên chuyên mục
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Mô tả
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Icon & Màu
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Thứ tự
+                    </th>
+                    <th className="px-6 py-4 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Hành động
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-slate-200">
+                  {categories.map((category) => (
+                    <tr key={category.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="font-bold text-slate-900">{category.name}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-slate-600 max-w-md">
+                          {category.description || <span className="text-slate-400">Không có mô tả</span>}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          {category.icon && (
+                            <span className="text-lg">{category.icon}</span>
+                          )}
+                          {category.color && (
+                            <span className={`px-2 py-1 rounded text-xs ${category.color}`}>
+                              Màu
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-sm text-slate-600">{(category as any).order ?? 0}</span>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex justify-end gap-2">
+                          <button
+                            onClick={() => handleEditCategory(category)}
+                            className="p-2 text-slate-500 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors"
+                            title="Chỉnh sửa"
+                          >
+                            <Edit2 size={16} />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteCategory(category.id)}
+                            className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Xóa"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Category Modal */}
+          {isCategoryModalOpen && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+                <div className="flex justify-between items-center p-6 border-b border-slate-200">
+                  <h3 className="text-lg font-bold text-slate-900">
+                    {editingCategory ? "Chỉnh sửa chuyên mục" : "Tạo chuyên mục mới"}
+                  </h3>
+                  <button
+                    onClick={() => {
+                      setIsCategoryModalOpen(false);
+                      setEditingCategory(null);
+                    }}
+                    className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+                <div className="p-6 space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Tên chuyên mục <span className="text-red-500">*</span>
+                    </label>
+                    <Input
+                      value={categoryForm.name}
+                      onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })}
+                      placeholder="Ví dụ: Công nghệ, Thông báo..."
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Mô tả
+                    </label>
+                    <textarea
+                      value={categoryForm.description}
+                      onChange={(e) => setCategoryForm({ ...categoryForm, description: e.target.value })}
+                      placeholder="Mô tả ngắn về chuyên mục..."
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none resize-none"
+                      rows={3}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Icon
+                      </label>
+                      <Input
+                        value={categoryForm.icon}
+                        onChange={(e) => setCategoryForm({ ...categoryForm, icon: e.target.value })}
+                        placeholder="Ví dụ: Cpu, Bell..."
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Màu (CSS class)
+                      </label>
+                      <Input
+                        value={categoryForm.color}
+                        onChange={(e) => setCategoryForm({ ...categoryForm, color: e.target.value })}
+                        placeholder="Ví dụ: text-blue-600"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Thứ tự hiển thị
+                    </label>
+                    <Input
+                      type="number"
+                      value={categoryForm.order}
+                      onChange={(e) => setCategoryForm({ ...categoryForm, order: parseInt(e.target.value) || 0 })}
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end gap-3 p-6 border-t border-slate-200">
+                  <button
+                    onClick={() => {
+                      setIsCategoryModalOpen(false);
+                      setEditingCategory(null);
+                    }}
+                    className="px-4 py-2 text-slate-700 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    onClick={handleSaveCategory}
+                    className="px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 transition-colors flex items-center gap-2"
+                  >
+                    <Save size={16} />
+                    Lưu
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Posts Management */}
+      {activeTab === "posts" && (
+        <>
+          {/* Toolbar */}
+      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm mb-6 flex flex-col md:flex-row gap-4 justify-between items-center">
+        <div className="flex items-center gap-4 w-full md:w-auto">
+          <div className="flex bg-slate-100 p-1 rounded-lg">
+            {["All", "Pending", "Approved", "Rejected"].map((status) => (
+              <button
+                key={status}
+                onClick={() => setFilterStatus(status as any)}
+                className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
+                  filterStatus === status
+                    ? "bg-white text-slate-900 shadow-sm"
+                    : "text-slate-500 hover:text-slate-700"
+                }`}
+              >
+                {status === "All" ? "Tất cả" : status}
+              </button>
+            ))}
+          </div>
+          <div className="h-6 w-px bg-slate-200 hidden md:block"></div>
+          <div className="relative flex-1 md:flex-none">
+            <Search
+              size={16}
+              className="absolute left-3 top-2.5 text-slate-400"
+            />
+            <input
+              type="text"
+              placeholder="Tìm kiếm tiêu đề..."
+              className="pl-9 pr-4 py-2 bg-slate-50 border-none rounded-lg text-sm focus:ring-2 focus:ring-brand-500 w-full md:w-64"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Content Area */}
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1">
+        {filteredPosts.length === 0 ? (
+          <div className="text-center py-16">
+            <MessageSquare className="mx-auto h-16 w-16 text-slate-300 mb-4" />
+            <h3 className="text-lg font-bold text-slate-900 mb-2">
+              {posts.length === 0 ? "Chưa có bài viết nào" : "Không tìm thấy bài viết"}
+            </h3>
+            <p className="text-slate-500">
+              {posts.length === 0 
+                ? "Chưa có bài viết nào trong hệ thống."
+                : "Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm."}
+            </p>
+          </div>
+        ) : (
+          <table className="min-w-full divide-y divide-slate-200">
+            <thead className="bg-slate-50">
+              <tr>
+                <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  Bài viết
+                </th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  Tác giả
+                </th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  Trạng thái
+                </th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  Tương tác
+                </th>
+                <th className="px-6 py-4 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  Hành động
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-slate-200">
+              {filteredPosts.map((item) => (
+                <tr
+                  key={item.id}
+                  className="hover:bg-slate-50 transition-colors"
+                >
+                  <td className="px-6 py-4 w-[40%]">
+                    <div>
+                      <div className="font-bold text-slate-900 line-clamp-2 mb-1">
+                        {item.isPinned && <Pin size={14} className="inline mr-1 text-orange-500" />}
+                        {item.title}
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-slate-500">
+                        <Clock size={12} /> {new Date(item.timestamp).toLocaleDateString("vi-VN")}
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      <img
+                        src={item.authorAvatar}
+                        className="w-6 h-6 rounded-full"
+                        alt=""
+                      />
+                      <span className="text-sm text-slate-700 font-medium">
+                        {item.authorName}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${
+                        item.status === "Approved"
+                          ? "bg-green-50 text-green-700 border-green-100"
+                          : item.status === "Pending"
+                          ? "bg-amber-50 text-amber-700 border-amber-100"
+                          : "bg-red-50 text-red-700 border-red-100"
+                      }`}
+                    >
+                      <div
+                        className={`w-1.5 h-1.5 rounded-full ${
+                          item.status === "Approved"
+                            ? "bg-green-500"
+                            : item.status === "Pending"
+                            ? "bg-amber-500"
+                            : "bg-red-500"
+                        }`}
+                      ></div>
+                      {item.status}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3 text-xs text-slate-600">
+                      <span>👍 {item.upvotes}</span>
+                      <span>💬 {item.commentCount}</span>
+                      <span>👁️ {item.viewCount}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <div className="flex justify-end gap-2">
+                      {item.status === "Pending" && (
+                        <>
+                          <button
+                            onClick={() => handleApprove(item.id)}
+                            className="p-2 text-green-600 hover:text-green-700 hover:bg-green-50 rounded-lg transition-colors border border-transparent hover:border-green-200"
+                            title="Duyệt"
+                          >
+                            <Check size={16} />
+                          </button>
+                          <button
+                            onClick={() => handleReject(item.id)}
+                            className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-200"
+                            title="Từ chối"
+                          >
+                            <X size={16} />
+                          </button>
+                        </>
+                      )}
+                      <button
+                        onClick={() => handleDelete(item.id)}
+                        className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-slate-200"
+                        title="Xóa"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+        </>
+      )}
     </div>
   );
 };
@@ -854,6 +1550,53 @@ export const ForumModule = ({
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [feedSort, setFeedSort] = useState<"new" | "hot" | "saved">("new");
   const [profileTargetId, setProfileTargetId] = useState<string>("me");
+  const [posts, setPosts] = useState<ForumPost[]>([]);
+  const [categories, setCategories] = useState<ForumCategory[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const [allPosts, allCategories] = await Promise.all([
+          forumService.getPosts(),
+          forumService.getCategories(),
+        ]);
+        setPosts(allPosts);
+        setCategories(allCategories);
+      } catch (err) {
+        console.error("Error fetching data:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  // Real-time updates
+  useRealtimeForum({
+    onPostCreated: (post) => {
+      if (post.status === "Approved") {
+        setPosts((prev) => [post, ...prev]);
+      }
+    },
+    onPostUpdated: (post) => {
+      setPosts((prev) => prev.map((p) => (p.id === post.id ? post : p)));
+    },
+    onPostApproved: (post) => {
+      setPosts((prev) => {
+        const exists = prev.find((p) => p.id === post.id);
+        if (exists) {
+          return prev.map((p) => (p.id === post.id ? post : p));
+        } else {
+          return [post, ...prev];
+        }
+      });
+    },
+    onPostRejected: (post) => {
+      setPosts((prev) => prev.filter((p) => p.id !== post.id));
+    },
+  });
 
   const handlePostClick = (post: ForumPost) => {
     setSelectedPost(post);
@@ -871,8 +1614,17 @@ export const ForumModule = ({
     }
   };
 
+  const handlePostCreated = async () => {
+    try {
+      const allPosts = await forumService.getPosts();
+      setPosts(allPosts);
+    } catch (err) {
+      console.error("Error refreshing posts:", err);
+    }
+  };
+
   // Filter Logic
-  let filteredPosts: ForumPost[] = []; // TODO: Fetch from API
+  let filteredPosts: ForumPost[] = posts.filter((p) => p.status === "Approved");
   if (activeCategory !== "all") {
     filteredPosts = filteredPosts.filter(
       (p) => p.categoryId === activeCategory
@@ -883,6 +1635,10 @@ export const ForumModule = ({
   } else if (feedSort === "hot") {
     filteredPosts = [...filteredPosts].sort(
       (a, b) => b.upvotes + b.commentCount - (a.upvotes + a.commentCount)
+    );
+  } else if (feedSort === "new") {
+    filteredPosts = [...filteredPosts].sort(
+      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
     );
   }
 
@@ -896,10 +1652,24 @@ export const ForumModule = ({
     );
   }
 
+  if (loading) {
+    return (
+      <div className="animate-fadeIn h-full flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-brand-600 mb-4"></div>
+          <p className="text-slate-500">Đang tải diễn đàn...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="animate-fadeIn h-full">
       {showCreateModal && (
-        <CreatePostModal onClose={() => setShowCreateModal(false)} />
+        <CreatePostModal 
+          onClose={() => setShowCreateModal(false)}
+          onPostCreated={handlePostCreated}
+        />
       )}
 
       {view === "feed" ? (
@@ -1000,7 +1770,25 @@ export const ForumModule = ({
               </Button>
             </div>
 
-            {filteredPosts.map((post) => (
+            {filteredPosts.length === 0 ? (
+              <div className="text-center py-16 bg-white rounded-xl shadow-sm border border-slate-200">
+                <MessageSquare className="mx-auto h-16 w-16 text-slate-300 mb-4" />
+                <h3 className="text-lg font-bold text-slate-900 mb-2">
+                  {posts.length === 0 ? "Chưa có bài viết nào" : "Không tìm thấy bài viết"}
+                </h3>
+                <p className="text-slate-500 mb-4">
+                  {posts.length === 0 
+                    ? "Hãy là người đầu tiên chia sẻ trong diễn đàn!"
+                    : "Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm."}
+                </p>
+                {posts.length === 0 && (
+                  <Button onClick={() => setShowCreateModal(true)}>
+                    <Plus size={18} className="mr-2" /> Tạo bài viết đầu tiên
+                  </Button>
+                )}
+              </div>
+            ) : (
+              filteredPosts.map((post) => (
               <div
                 key={post.id}
                 onClick={() => handlePostClick(post)}
@@ -1101,7 +1889,8 @@ export const ForumModule = ({
                   </div>
                 </div>
               </div>
-            ))}
+              ))
+            )}
           </div>
 
           {/* Right Sidebar: Profile & Trending */}

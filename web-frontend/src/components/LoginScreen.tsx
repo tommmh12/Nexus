@@ -4,7 +4,7 @@ import { AuthStatus } from "../../../types";
 import { MessageSquare, Users, Zap, ShieldCheck } from "lucide-react";
 
 interface LoginScreenProps {
-  onLogin: (email: string, password: string) => Promise<void>;
+  onLogin: (email: string, password: string, rememberMe?: boolean) => Promise<void>;
   status: AuthStatus;
   errorMessage: string | null;
 }

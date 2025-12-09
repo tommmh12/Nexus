@@ -6,6 +6,7 @@ import {
   AuthResponse,
   User,
 } from "../../domain/entities/User.js";
+import { getJwtSecret, getJwtExpiresIn, getJwtRefreshExpiresIn } from "../../infrastructure/config/jwt.config.js";
 
 export class AuthService {
   private userRepository: UserRepository;
@@ -15,9 +16,9 @@ export class AuthService {
 
   constructor() {
     this.userRepository = new UserRepository();
-    this.jwtSecret = process.env.JWT_SECRET || "nexus_super_secret_key";
-    this.jwtExpiresIn = process.env.JWT_EXPIRES_IN || "7d";
-    this.jwtRefreshExpiresIn = process.env.JWT_REFRESH_EXPIRES_IN || "30d";
+    this.jwtSecret = getJwtSecret();
+    this.jwtExpiresIn = getJwtExpiresIn();
+    this.jwtRefreshExpiresIn = getJwtRefreshExpiresIn();
   }
 
   async login(credentials: LoginCredentials): Promise<AuthResponse> {

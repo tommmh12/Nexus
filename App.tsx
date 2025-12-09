@@ -42,7 +42,7 @@ const App: React.FC = () => {
     checkAuth();
   }, []);
 
-  const handleLogin = async (email: string, password: string) => {
+  const handleLogin = async (email: string, password: string, rememberMe?: boolean) => {
     setAuth((prev) => ({
       ...prev,
       status: AuthStatus.LOADING,
@@ -50,7 +50,7 @@ const App: React.FC = () => {
     }));
 
     try {
-      const response = await authService.login({ email, password });
+      const response = await authService.login({ email, password, rememberMe });
       const userData = response.data.user;
 
       setAuth({

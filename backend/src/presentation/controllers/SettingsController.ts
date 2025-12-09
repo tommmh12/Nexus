@@ -15,3 +15,25 @@ export const getTaskSettings = async (req: Request, res: Response) => {
     });
   }
 };
+
+import { dbPool } from "../../infrastructure/database/connection.js";
+import { RowDataPacket } from "mysql2";
+
+export const getDepartments = async (req: Request, res: Response) => {
+  try {
+    const [rows] = await dbPool.query<RowDataPacket[]>(`
+      SELECT id, name, code, description
+      FROM departments
+      WHERE deleted_at IS NULL
+      ORDER BY name
+    `);
+
+    res.json({ success: true, data: rows });
+  } catch (error: any) {
+    console.error("Error getting departments:", error);
+    res.status(500).json({
+      success: false,
+      message: "Lỗi khi lấy danh sách phòng ban",
+    });
+  }
+};

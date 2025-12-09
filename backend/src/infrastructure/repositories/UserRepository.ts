@@ -1,6 +1,7 @@
 import { RowDataPacket, ResultSetHeader } from "mysql2/promise";
 import { dbPool } from "../database/connection.js";
 import { User, UserWithDepartment } from "../../domain/entities/User.js";
+import { randomUUID } from "crypto";
 
 export class UserRepository {
   async findByEmail(email: string): Promise<UserWithDepartment | null> {
@@ -47,7 +48,7 @@ export class UserRepository {
     token: string,
     expiresAt: Date
   ): Promise<string> {
-    const sessionId = crypto.randomUUID();
+    const sessionId = randomUUID();
 
     await dbPool.query<ResultSetHeader>(
       `INSERT INTO user_sessions (id, user_id, token, expires_at) 

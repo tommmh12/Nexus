@@ -1,9 +1,11 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
+import { getJwtSecret } from "../../infrastructure/config/jwt.config.js";
 
 interface JwtPayload {
   userId: string;
   email: string;
+  role?: string;
 }
 
 declare global {
@@ -30,9 +32,7 @@ export const authMiddleware = async (
     }
 
     const token = authHeader.substring(7);
-    const jwtSecret =
-      process.env.JWT_SECRET ||
-      "nexus_super_secret_key_change_in_production_2024";
+    const jwtSecret = getJwtSecret();
 
     const decoded = jwt.verify(token, jwtSecret) as JwtPayload;
     req.user = decoded;

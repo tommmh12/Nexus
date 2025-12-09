@@ -15,7 +15,7 @@ import { Button } from "./system/ui/Button";
 import { AuthStatus } from "../../../types";
 
 interface LoginFormProps {
-  onLogin: (email: string, password: string) => Promise<void>;
+  onLogin: (email: string, password: string, rememberMe?: boolean) => Promise<void>;
   status: AuthStatus;
   errorMessage: string | null;
 }
@@ -36,14 +36,14 @@ export const LoginForm: React.FC<LoginFormProps> = ({
     e.preventDefault();
     setLocalError(null);
 
-    // Validation
-    if (!email.endsWith("@nexus.com")) {
-      setLocalError("Vui lòng sử dụng email doanh nghiệp (@nexus.com)");
+    // Validation - chỉ kiểm tra email và password không rỗng
+    if (!email || !password) {
+      setLocalError("Vui lòng nhập đầy đủ email và mật khẩu");
       return;
     }
 
     if (email && password) {
-      await onLogin(email, password);
+      await onLogin(email, password, rememberMe);
     }
   };
 
@@ -76,15 +76,15 @@ export const LoginForm: React.FC<LoginFormProps> = ({
             Quên mật khẩu?
           </h1>
           <p className="text-slate-500 text-sm">
-            Nhập email doanh nghiệp của bạn, hệ thống sẽ gửi liên kết để đặt lại
+            Nhập email của bạn, hệ thống sẽ gửi liên kết để đặt lại
             mật khẩu mới.
           </p>
         </div>
         <form onSubmit={handleForgotPassword} className="space-y-6">
           <Input
-            label="Email doanh nghiệp"
+            label="Email"
             type="email"
-            placeholder="name@nexus.com"
+            placeholder="your.email@example.com"
             value={email}
             onChange={(e) => {
               setEmail(e.target.value);
@@ -143,9 +143,9 @@ export const LoginForm: React.FC<LoginFormProps> = ({
 
       <form onSubmit={handleSubmit} className="space-y-5">
         <Input
-          label="Email công ty"
+          label="Email"
           type="email"
-          placeholder="name@nexus.com"
+          placeholder="your.email@example.com"
           value={email}
           onChange={(e) => {
             setEmail(e.target.value);
