@@ -11,6 +11,7 @@ import reportRoutes from "./routes/report.routes.js";
 import workflowRoutes from "./routes/workflow.routes.js";
 import settingsRoutes from "./routes/settings.routes.js";
 import departmentRoutes from "./routes/departmentRoutes.js";
+import userRoutes from "./routes/user.routes.js";
 
 dotenv.config();
 
@@ -47,6 +48,7 @@ app.use("/api/reports", reportRoutes);
 app.use("/api/workflows", workflowRoutes);
 app.use("/api/settings", settingsRoutes);
 app.use("/api/departments", departmentRoutes);
+app.use("/api/users", userRoutes);
 
 // 404 Handler
 app.use((req: Request, res: Response) => {

@@ -4,6 +4,7 @@ import { EmployeeProfile, ActivityLog, ActivityType, Department } from "../../ty
 import { Button } from "../../../components/system/ui/Button";
 import { Input } from "../../../components/system/ui/Input";
 import { departmentService } from "../../../services/departmentService";
+import { userService } from "../../../services/userService";
 import {
   Plus,
   Edit2,
@@ -34,7 +35,7 @@ export const UserManager = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [departments, setDepartments] = useState<Department[]>([]);
 
-  // Load departments on mount
+  // Load departments and users on mount
   useEffect(() => {
     const loadDepartments = async () => {
       try {
@@ -44,7 +45,33 @@ export const UserManager = () => {
         console.error("Error loading departments:", error);
       }
     };
+
+    const loadUsers = async () => {
+      try {
+        const usersList = await userService.getAllUsers();
+        // Map backend data to frontend format
+        const mappedUsers = usersList.map((u: any) => ({
+          id: u.id,
+          fullName: u.full_name,
+          email: u.email,
+          phone: u.phone || "",
+          employeeId: u.employee_id,
+          position: u.position || "",
+          department: u.department_name || "",
+          role: u.role,
+          status: u.status,
+          joinDate: u.join_date ? new Date(u.join_date).toLocaleDateString('vi-VN') : "",
+          avatarUrl: u.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.full_name)}`,
+          linkedAccounts: [],
+        }));
+        setUsers(mappedUsers);
+      } catch (error) {
+        console.error("Error loading users:", error);
+      }
+    };
+
     loadDepartments();
+    loadUsers();
   }, []);
 
   const handleViewDetail = (user: EmployeeProfile) => {
@@ -64,21 +91,91 @@ export const UserManager = () => {
     setView("form");
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (
       window.confirm(
         "Bạn có chắc chắn muốn xóa nhân sự này không? Hành động này không thể hoàn tác."
       )
     ) {
-      setUsers(users.filter((u) => u.id !== id));
-      if (selectedUser?.id === id) setView("list");
+      try {
+        await userService.deleteUser(id);
+        setUsers(users.filter((u) => u.id !== id));
+        if (selectedUser?.id === id) setView("list");
+        alert("Xóa nhân sự thành công!");
+      } catch (error: any) {
+        console.error("Error deleting user:", error);
+        alert(error.response?.data?.error || error.message || "Không thể xóa nhân sự. Vui lòng thử lại.");
+      }
     }
   };
 
-  const handleSaveUser = (e: React.FormEvent) => {
-    e.preventDefault();
-    alert("Đã lưu thông tin nhân sự thành công!");
-    setView("list");
+  const handleSaveUser = async (formDataState: typeof formData) => {
+    // Validation
+    if (!formDataState.fullName || !formDataState.email || !formDataState.employeeId || !formDataState.department) {
+      alert("Vui lòng điền đầy đủ thông tin bắt buộc: Họ tên, Email, Mã nhân viên, và Phòng ban");
+      return;
+    }
+
+    try {
+      // Find department_id from department name
+      const selectedDept = departments.find(d => d.name === formDataState.department);
+      if (!selectedDept) {
+        alert("Không tìm thấy phòng ban đã chọn");
+        return;
+      }
+
+      if (isEditing && selectedUser) {
+        // Update existing user
+        await userService.updateUser(selectedUser.id, {
+          employee_id: formDataState.employeeId,
+          email: formDataState.email,
+          full_name: formDataState.fullName,
+          phone: formDataState.phone || undefined,
+          position: formDataState.position || undefined,
+          department_id: selectedDept.id.toString(),
+          role: formDataState.role as "Admin" | "Manager" | "Employee",
+          status: formDataState.status as "Active" | "Blocked" | "Pending",
+        });
+        alert("Cập nhật nhân sự thành công!");
+      } else {
+        // Create new user
+        const newUser = await userService.createUser({
+          employee_id: formDataState.employeeId,
+          email: formDataState.email,
+          full_name: formDataState.fullName,
+          phone: formDataState.phone || undefined,
+          position: formDataState.position || undefined,
+          department_id: selectedDept.id.toString(),
+          role: formDataState.role as "Admin" | "Manager" | "Employee",
+          status: formDataState.status as "Active" | "Blocked" | "Pending",
+          join_date: formDataState.joinDate || undefined,
+        });
+        alert(`Tạo nhân sự thành công! Mật khẩu tạm thời đã được tạo tự động.`);
+      }
+
+      // Reload users list
+      const usersList = await userService.getAllUsers();
+      const mappedUsers = usersList.map((u: any) => ({
+        id: u.id,
+        fullName: u.full_name,
+        email: u.email,
+        phone: u.phone || "",
+        employeeId: u.employee_id,
+        position: u.position || "",
+        department: u.department_name || "",
+        role: u.role,
+        status: u.status,
+        joinDate: u.join_date ? new Date(u.join_date).toLocaleDateString('vi-VN') : "",
+        avatarUrl: u.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.full_name)}`,
+        linkedAccounts: [],
+      }));
+      setUsers(mappedUsers);
+      
+      setView("list");
+    } catch (error: any) {
+      console.error("Error saving user:", error);
+      alert(error.response?.data?.error || error.message || "Không thể lưu nhân sự. Vui lòng thử lại.");
+    }
   };
 
   // --- Sub-component: User List ---
@@ -696,7 +793,10 @@ export const UserManager = () => {
         </div>
 
         <form
-          onSubmit={handleSaveUser}
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSaveUser(formData);
+          }}
           className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden"
         >
           <div className="p-8 space-y-8">
