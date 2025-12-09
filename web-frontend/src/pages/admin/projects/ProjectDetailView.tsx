@@ -1127,7 +1127,9 @@ export const ProjectDetailView = ({
                 </div>
                 <div>
                   <p className="font-bold text-slate-900 text-sm">
-                    {localProject.managerName || localProject.manager || "Chưa có"}
+                    {localProject.managerName ||
+                      localProject.manager ||
+                      "Chưa có"}
                   </p>
                   <p className="text-xs text-slate-500">Project Manager</p>
                 </div>

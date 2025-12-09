@@ -76,4 +76,76 @@ export class UserRepository {
       [token]
     );
   }
+
+  async searchUsers(
+    searchTerm: string,
+    currentUserId: string,
+    limit = 20
+  ): Promise<RowDataPacket[]> {
+    const [rows] = await dbPool.query<RowDataPacket[]>(
+      `SELECT 
+        u.id,
+        u.full_name,
+        u.email,
+        u.role,
+        d.name as department_name,
+        COALESCE(s.status, 'offline') as status
+      FROM users u
+      LEFT JOIN departments d ON u.department_id = d.id
+      LEFT JOIN user_online_status s ON u.id = s.user_id
+      WHERE u.id != ? 
+        AND u.deleted_at IS NULL
+        AND (
+          u.full_name LIKE ? 
+          OR u.email LIKE ?
+          OR d.name LIKE ?
+        )
+      ORDER BY u.full_name
+      LIMIT ?`,
+      [
+        currentUserId,
+        `%${searchTerm}%`,
+        `%${searchTerm}%`,
+        `%${searchTerm}%`,
+        limit,
+      ]
+    );
+
+    return rows;
+  }
+
+  async getAllUsers(currentUserId?: string): Promise<RowDataPacket[]> {
+    const query = currentUserId
+      ? `SELECT 
+          u.id,
+          u.full_name,
+          u.email,
+          u.role,
+          d.name as department_name,
+          COALESCE(s.status, 'offline') as status
+        FROM users u
+        LEFT JOIN departments d ON u.department_id = d.id
+        LEFT JOIN user_online_status s ON u.id = s.user_id
+        WHERE u.id != ? AND u.deleted_at IS NULL
+        ORDER BY u.full_name`
+      : `SELECT 
+          u.id,
+          u.full_name,
+          u.email,
+          u.role,
+          d.name as department_name,
+          COALESCE(s.status, 'offline') as status
+        FROM users u
+        LEFT JOIN departments d ON u.department_id = d.id
+        LEFT JOIN user_online_status s ON u.id = s.user_id
+        WHERE u.deleted_at IS NULL
+        ORDER BY u.full_name`;
+
+    const [rows] = await dbPool.query<RowDataPacket[]>(
+      query,
+      currentUserId ? [currentUserId] : []
+    );
+
+    return rows;
+  }
 }

@@ -36,7 +36,10 @@ export class ProjectService {
         if (!dept) continue;
 
         // Support both formats: string[] (UUID) or {departmentId, role}[]
-        const deptId = typeof dept === "string" ? dept : (dept.departmentId || dept.department_id);
+        const deptId =
+          typeof dept === "string"
+            ? dept
+            : dept.departmentId || dept.department_id;
         const role =
           typeof dept === "string" ? "member" : dept.role || "member";
 
