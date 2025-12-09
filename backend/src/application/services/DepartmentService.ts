@@ -8,7 +8,7 @@ export class DepartmentService {
     return this.departmentRepository.findAll();
   }
 
-  async getDepartmentById(id: number): Promise<Department | null> {
+  async getDepartmentById(id: string): Promise<Department | null> {
     return this.departmentRepository.findById(id);
   }
 
@@ -24,7 +24,7 @@ export class DepartmentService {
   }
 
   async updateDepartment(
-    id: number,
+    id: string,
     departmentData: Partial<Department>
   ): Promise<void> {
     const existing = await this.departmentRepository.findById(id);
@@ -35,7 +35,7 @@ export class DepartmentService {
     await this.departmentRepository.update(id, departmentData);
   }
 
-  async deleteDepartment(id: number): Promise<void> {
+  async deleteDepartment(id: string): Promise<void> {
     const existing = await this.departmentRepository.findById(id);
     if (!existing) {
       throw new Error("Department not found");

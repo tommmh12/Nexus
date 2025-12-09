@@ -4,6 +4,7 @@ import { Department, EmployeeProfile } from "../../types";
 import { Button } from "../../../components/system/ui/Button";
 import { Input } from "../../../components/system/ui/Input";
 import { departmentService } from "../../../services/departmentService";
+import { userService } from "../../../services/userService";
 import {
   Plus,
   MoreHorizontal,
@@ -21,6 +22,8 @@ import {
   Save,
   Search,
   Check,
+  ChevronDown,
+  User as UserIcon,
 } from "lucide-react";
 
 // --- Types & Interfaces for Local Use ---
@@ -45,7 +48,154 @@ interface AddMemberModalProps {
   onCancel: () => void;
 }
 
+interface SelectManagerModalProps {
+  users: EmployeeProfile[];
+  currentManagerName?: string;
+  onSelect: (user: EmployeeProfile | null) => void;
+  onCancel: () => void;
+}
+
 // --- Modals ---
+
+const SelectManagerModal = ({
+  users,
+  currentManagerName,
+  onSelect,
+  onCancel,
+}: SelectManagerModalProps) => {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedUser, setSelectedUser] = useState<EmployeeProfile | null>(
+    users.find((u) => u.fullName === currentManagerName) || null
+  );
+
+  const filteredUsers = users.filter(
+    (u) =>
+      u.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      u.email.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const handleSelect = (user: EmployeeProfile) => {
+    setSelectedUser(user);
+  };
+
+  const handleConfirm = () => {
+    onSelect(selectedUser);
+  };
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fadeIn" onClick={onCancel}>
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6 flex flex-col max-h-[80vh]" onClick={(e) => e.stopPropagation()}>
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-bold text-slate-900">
+            Chọn trưởng phòng
+          </h3>
+          <button onClick={onCancel}>
+            <X size={20} className="text-slate-400 hover:text-slate-600" />
+          </button>
+        </div>
+
+        <div className="relative mb-4">
+          <Search
+            size={16}
+            className="absolute left-3 top-2.5 text-slate-400"
+          />
+          <input
+            type="text"
+            placeholder="Tìm kiếm nhân viên..."
+            className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-4 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+
+        <div className="flex-1 overflow-y-auto border border-slate-100 rounded-lg mb-4 p-2 space-y-1 custom-scrollbar">
+          {/* Option to clear selection */}
+          <div
+            onClick={() => setSelectedUser(null)}
+            className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors ${
+              selectedUser === null
+                ? "bg-brand-50 border border-brand-200"
+                : "hover:bg-slate-50 border border-transparent"
+            }`}
+          >
+            <div
+              className={`w-5 h-5 rounded border flex items-center justify-center ${
+                selectedUser === null
+                  ? "bg-brand-600 border-brand-600"
+                  : "bg-white border-slate-300"
+              }`}
+            >
+              {selectedUser === null && (
+                <Check size={14} className="text-white" />
+              )}
+            </div>
+            <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center">
+              <UserIcon size={16} className="text-slate-500" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-slate-900">
+                Không có trưởng phòng
+              </p>
+              <p className="text-xs text-slate-500">Bỏ chọn trưởng phòng</p>
+            </div>
+          </div>
+
+          {filteredUsers.length > 0 ? (
+            filteredUsers.map((u) => (
+              <div
+                key={u.id}
+                onClick={() => handleSelect(u)}
+                className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors ${
+                  selectedUser?.id === u.id
+                    ? "bg-brand-50 border border-brand-200"
+                    : "hover:bg-slate-50 border border-transparent"
+                }`}
+              >
+                <div
+                  className={`w-5 h-5 rounded border flex items-center justify-center ${
+                    selectedUser?.id === u.id
+                      ? "bg-brand-600 border-brand-600"
+                      : "bg-white border-slate-300"
+                  }`}
+                >
+                  {selectedUser?.id === u.id && (
+                    <Check size={14} className="text-white" />
+                  )}
+                </div>
+                <img
+                  src={u.avatarUrl}
+                  className="w-8 h-8 rounded-full"
+                  alt=""
+                />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-slate-900">
+                    {u.fullName}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {u.email} {u.department ? `• ${u.department}` : ""}
+                  </p>
+                </div>
+              </div>
+            ))
+          ) : (
+            <p className="text-center text-sm text-slate-500 py-4">
+              Không tìm thấy nhân sự phù hợp.
+            </p>
+          )}
+        </div>
+
+        <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+          <Button variant="ghost" onClick={onCancel}>
+            Hủy
+          </Button>
+          <Button onClick={handleConfirm}>
+            Xác nhận
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const DepartmentFormModal = ({
   department,
@@ -65,32 +215,55 @@ const DepartmentFormModal = ({
       memberCount: 0,
     }
   );
+  const [isManagerModalOpen, setIsManagerModalOpen] = useState(false);
+  const [selectedManager, setSelectedManager] = useState<EmployeeProfile | null>(
+    department ? users.find((u) => u.fullName === department.managerName) || null : null
+  );
+
+  const handleSelectManager = (user: EmployeeProfile | null) => {
+    setSelectedManager(user);
+    setFormData({
+      ...formData,
+      managerId: user ? user.id : undefined,
+      managerName: user ? user.fullName : "",
+      managerAvatar: user ? user.avatarUrl : undefined,
+    });
+    setIsManagerModalOpen(false);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // If manager selected, find avatar
-    const manager = users.find((u) => u.fullName === formData.managerName);
-    const managerAvatar = manager
-      ? manager.avatarUrl
+    // If manager selected, use selected manager data
+    const managerAvatar = selectedManager
+      ? selectedManager.avatarUrl
       : formData.managerAvatar || "https://ui-avatars.com/api/?name=" + (formData.managerName || "Department");
 
     onSave({ ...formData, managerAvatar } as Department);
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="text-lg font-bold text-slate-900">
-            {isEditMode ? "Chỉnh sửa Phòng ban" : "Thêm Phòng ban mới"}
-          </h3>
-          <button
-            onClick={onCancel}
-            className="text-slate-400 hover:text-slate-600"
-          >
-            <X size={20} />
-          </button>
-        </div>
+    <>
+      {isManagerModalOpen && (
+        <SelectManagerModal
+          users={users}
+          currentManagerName={formData.managerName}
+          onSelect={handleSelectManager}
+          onCancel={() => setIsManagerModalOpen(false)}
+        />
+      )}
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fadeIn">
+        <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-lg font-bold text-slate-900">
+              {isEditMode ? "Chỉnh sửa Phòng ban" : "Thêm Phòng ban mới"}
+            </h3>
+            <button
+              onClick={onCancel}
+              className="text-slate-400 hover:text-slate-600"
+            >
+              <X size={20} />
+            </button>
+          </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input
             label="Tên phòng ban"
@@ -112,20 +285,31 @@ const DepartmentFormModal = ({
                 <label className="block text-sm font-semibold text-slate-700 mb-2">
                   Trưởng phòng
                 </label>
-                <select
-                  className="w-full bg-slate-50 border border-slate-200 rounded-md p-2.5 text-sm outline-none focus:ring-2 focus:ring-brand-500"
-                  value={formData.managerName}
-                  onChange={(e) =>
-                    setFormData({ ...formData, managerName: e.target.value })
-                  }
+                <div
+                  onClick={() => setIsManagerModalOpen(true)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-md p-2.5 text-sm cursor-pointer hover:border-brand-300 transition-colors flex items-center justify-between"
                 >
-                  <option value="">Chọn trưởng phòng...</option>
-                  {users.map((u) => (
-                    <option key={u.id} value={u.fullName}>
-                      {u.fullName} ({u.email})
-                    </option>
-                  ))}
-                </select>
+                  {selectedManager ? (
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={selectedManager.avatarUrl}
+                        className="w-8 h-8 rounded-full"
+                        alt=""
+                      />
+                      <div>
+                        <p className="text-sm font-medium text-slate-900">
+                          {selectedManager.fullName}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          {selectedManager.email}
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <span className="text-slate-500">Chọn trưởng phòng...</span>
+                  )}
+                  <ChevronDown size={16} className="text-slate-400" />
+                </div>
               </div>
 
               <div>
@@ -178,8 +362,9 @@ const DepartmentFormModal = ({
             </Button>
           </div>
         </form>
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 
@@ -728,7 +913,7 @@ export const DepartmentManager = () => {
   const [editingDept, setEditingDept] = useState<Department | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Load departments from API
+  // Load departments and users from API
   useEffect(() => {
     const loadDepartments = async () => {
       try {
@@ -755,7 +940,33 @@ export const DepartmentManager = () => {
         setIsLoading(false);
       }
     };
+
+    const loadUsers = async () => {
+      try {
+        const usersList = await userService.getAllUsers();
+        // Map backend data to frontend format
+        const mappedUsers = usersList.map((u: any) => ({
+          id: u.id,
+          fullName: u.full_name,
+          email: u.email,
+          phone: u.phone || "",
+          employeeId: u.employee_id,
+          position: u.position || "",
+          department: u.department_name || "", // Use department_name from API
+          role: u.role,
+          status: u.status,
+          joinDate: u.join_date ? new Date(u.join_date).toLocaleDateString('vi-VN') : "",
+          avatarUrl: u.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.full_name)}`,
+          linkedAccounts: [],
+        }));
+        setUsers(mappedUsers);
+      } catch (error) {
+        console.error("Error loading users:", error);
+      }
+    };
+
     loadDepartments();
+    loadUsers();
   }, []);
 
   const handleViewDetail = (dept: Department) => {
@@ -795,19 +1006,18 @@ export const DepartmentManager = () => {
   const handleSaveDept = async (dept: Department) => {
     try {
       setIsLoading(true);
-      // Find managerId from managerName if provided
-      let managerId: number | undefined = undefined;
-      if (dept.managerName && dept.managerName !== "Chưa có") {
+      // Use managerId directly from formData, or find from managerName as fallback
+      let managerId: string | undefined = dept.managerId;
+      if (!managerId && dept.managerName && dept.managerName !== "Chưa có") {
         const manager = users.find((u) => u.fullName === dept.managerName);
         if (manager) {
-          // Try to get managerId from user - might need to adjust based on user structure
-          managerId = parseInt(manager.id) || undefined;
+          managerId = manager.id;
         }
       }
       
       if (editingDept) {
         // Update existing department
-        const updated = await departmentService.updateDepartment(parseInt(dept.id), {
+        await departmentService.updateDepartment(dept.id, {
           name: dept.name,
           code: dept.code,
           description: dept.description,
@@ -835,7 +1045,7 @@ export const DepartmentManager = () => {
         alert("Cập nhật phòng ban thành công!");
       } else {
         // Create new department
-        const newDept = await departmentService.createDepartment({
+        await departmentService.createDepartment({
           name: dept.name,
           code: dept.code,
           description: dept.description || "",
@@ -867,41 +1077,119 @@ export const DepartmentManager = () => {
     }
   };
 
-  const handleTransferUser = (userId: string, targetDeptName: string) => {
-    setUsers((prev) =>
-      prev.map((u) =>
-        u.id === userId ? { ...u, department: targetDeptName } : u
-      )
-    );
+  const handleTransferUser = async (userId: string, targetDeptName: string) => {
+    try {
+      // Find target department
+      const targetDept = departments.find(d => d.name === targetDeptName);
+      if (!targetDept) {
+        alert("Không tìm thấy phòng ban đích");
+        return;
+      }
 
-    // Update counts (Mock logic)
-    const oldDeptName = users.find((u) => u.id === userId)?.department;
-    setDepartments((prev) =>
-      prev.map((d) => {
-        if (d.name === targetDeptName)
-          return { ...d, memberCount: d.memberCount + 1 };
-        if (d.name === oldDeptName)
-          return { ...d, memberCount: Math.max(0, d.memberCount - 1) };
-        return d;
-      })
-    );
+      // Update user's department via API
+      await userService.updateUser(userId, {
+        department_id: targetDept.id,
+      });
+
+      // Reload users to get updated data
+      const usersList = await userService.getAllUsers();
+      const mappedUsers = usersList.map((u: any) => ({
+        id: u.id,
+        fullName: u.full_name,
+        email: u.email,
+        phone: u.phone || "",
+        employeeId: u.employee_id,
+        position: u.position || "",
+        department: u.department_name || "",
+        role: u.role,
+        status: u.status,
+        joinDate: u.join_date ? new Date(u.join_date).toLocaleDateString('vi-VN') : "",
+        avatarUrl: u.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.full_name)}`,
+        linkedAccounts: [],
+      }));
+      setUsers(mappedUsers);
+
+      // Reload departments to update member counts
+      const depts = await departmentService.getAllDepartments();
+      const mappedDepts = depts.map((d: any) => ({
+        id: d.id.toString(),
+        name: d.name,
+        code: d.code || "",
+        description: d.description || "",
+        managerName: d.managerName || "Chưa có",
+        managerAvatar: d.managerAvatar || "https://ui-avatars.com/api/?name=" + (d.name || "Department"),
+        memberCount: d.memberCount || 0,
+        budget: d.budget || "---",
+        kpiStatus: d.kpiStatus || "On Track",
+        parentDeptId: d.parentDeptId,
+      }));
+      setDepartments(mappedDepts);
+      
+      if (selectedDept) {
+        const updatedDept = mappedDepts.find((d) => d.id === selectedDept.id);
+        if (updatedDept) setSelectedDept(updatedDept);
+      }
+
+      alert("Điều chuyển nhân sự thành công!");
+    } catch (error: any) {
+      console.error("Error transferring user:", error);
+      alert(error.response?.data?.error || "Không thể điều chuyển nhân sự. Vui lòng thử lại.");
+    }
   };
 
-  const handleAddMembers = (userIds: string[]) => {
+  const handleAddMembers = async (userIds: string[]) => {
     if (!selectedDept) return;
-    setUsers((prev) =>
-      prev.map((u) =>
-        userIds.includes(u.id) ? { ...u, department: selectedDept.name } : u
-      )
-    );
+    
+    try {
+      // Update each user's department via API
+      for (const userId of userIds) {
+        await userService.updateUser(userId, {
+          department_id: selectedDept.id,
+        });
+      }
 
-    setDepartments((prev) =>
-      prev.map((d) =>
-        d.id === selectedDept.id
-          ? { ...d, memberCount: d.memberCount + userIds.length }
-          : d
-      )
-    );
+      // Reload users to get updated data
+      const usersList = await userService.getAllUsers();
+      const mappedUsers = usersList.map((u: any) => ({
+        id: u.id,
+        fullName: u.full_name,
+        email: u.email,
+        phone: u.phone || "",
+        employeeId: u.employee_id,
+        position: u.position || "",
+        department: u.department_name || "",
+        role: u.role,
+        status: u.status,
+        joinDate: u.join_date ? new Date(u.join_date).toLocaleDateString('vi-VN') : "",
+        avatarUrl: u.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.full_name)}`,
+        linkedAccounts: [],
+      }));
+      setUsers(mappedUsers);
+
+      // Reload departments to update member counts
+      const depts = await departmentService.getAllDepartments();
+      const mappedDepts = depts.map((d: any) => ({
+        id: d.id.toString(),
+        name: d.name,
+        code: d.code || "",
+        description: d.description || "",
+        managerName: d.managerName || "Chưa có",
+        managerAvatar: d.managerAvatar || "https://ui-avatars.com/api/?name=" + (d.name || "Department"),
+        memberCount: d.memberCount || 0,
+        budget: d.budget || "---",
+        kpiStatus: d.kpiStatus || "On Track",
+        parentDeptId: d.parentDeptId,
+      }));
+      setDepartments(mappedDepts);
+      
+      const updatedDept = mappedDepts.find((d) => d.id === selectedDept.id);
+      if (updatedDept) setSelectedDept(updatedDept);
+
+      alert(`Đã thêm ${userIds.length} nhân sự vào phòng ban thành công!`);
+    } catch (error: any) {
+      console.error("Error adding members:", error);
+      alert(error.response?.data?.error || "Không thể thêm nhân sự. Vui lòng thử lại.");
+    }
   };
 
   if (view === "detail" && selectedDept) {

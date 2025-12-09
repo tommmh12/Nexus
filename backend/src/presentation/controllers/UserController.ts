@@ -1,12 +1,24 @@
 import { Request, Response } from "express";
 import { UserService } from "../../application/services/UserService.js";
 import { UserRepository } from "../../infrastructure/repositories/UserRepository.js";
+import { auditLogger } from "../../utils/auditLogger.js";
 
 const userRepository = new UserRepository();
 const userService = new UserService(userRepository);
 
+// Helper to get IP address from request
+const getIpAddress = (req: Request): string => {
+  return (req.headers["x-forwarded-for"] as string)?.split(",")[0] || 
+         (req.headers["x-real-ip"] as string) || 
+         req.socket.remoteAddress || 
+         "unknown";
+};
+
 export const createUser = async (req: Request, res: Response) => {
   try {
+    const userId = (req as any).user?.userId || null;
+    const ipAddress = getIpAddress(req);
+    
     // Generate random password if not provided
     const password = req.body.password || Math.random().toString(36).slice(-12) + "A1!";
     
@@ -22,6 +34,9 @@ export const createUser = async (req: Request, res: Response) => {
       status: req.body.status || "Active",
       join_date: req.body.join_date ? new Date(req.body.join_date) : undefined,
     });
+
+    // Log audit trail
+    await auditLogger.logUserCreate(userId, user.id, user.full_name, ipAddress);
 
     res.status(201).json({
       success: true,
@@ -64,7 +79,27 @@ export const getUserById = async (req: Request, res: Response) => {
 
 export const updateUser = async (req: Request, res: Response) => {
   try {
-    await userService.updateUser(req.params.id, req.body);
+    const userId = (req as any).user?.userId || null;
+    const ipAddress = getIpAddress(req);
+    const targetUserId = req.params.id;
+    
+    // Get user info before update for logging
+    const existingUser = await userService.getUserById(targetUserId);
+    if (!existingUser) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    await userService.updateUser(targetUserId, req.body);
+    
+    // Log audit trail
+    await auditLogger.logUserUpdate(
+      userId,
+      targetUserId,
+      existingUser.full_name,
+      req.body, // changes
+      ipAddress
+    );
+
     res.json({ success: true, message: "User updated successfully" });
   } catch (error: any) {
     console.error("Error updating user:", error);
@@ -74,7 +109,26 @@ export const updateUser = async (req: Request, res: Response) => {
 
 export const deleteUser = async (req: Request, res: Response) => {
   try {
-    await userService.deleteUser(req.params.id);
+    const userId = (req as any).user?.userId || null;
+    const ipAddress = getIpAddress(req);
+    const targetUserId = req.params.id;
+    
+    // Get user info before delete for logging
+    const existingUser = await userService.getUserById(targetUserId);
+    if (!existingUser) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    await userService.deleteUser(targetUserId);
+    
+    // Log audit trail
+    await auditLogger.logUserDelete(
+      userId,
+      targetUserId,
+      existingUser.full_name,
+      ipAddress
+    );
+
     res.json({ success: true, message: "User deleted successfully" });
   } catch (error: any) {
     console.error("Error deleting user:", error);

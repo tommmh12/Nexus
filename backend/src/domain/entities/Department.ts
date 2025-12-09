@@ -1,9 +1,9 @@
 export interface Department {
-  id: number;
+  id: string;
   name: string;
   code?: string;
   description?: string;
-  managerId?: number;
+  managerId?: string;
   managerName?: string;
   memberCount?: number;
   createdAt?: Date;

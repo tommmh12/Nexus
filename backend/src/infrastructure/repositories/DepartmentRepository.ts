@@ -23,7 +23,7 @@ export class DepartmentRepository {
     return rows as Department[];
   }
 
-  async findById(id: number): Promise<Department | null> {
+  async findById(id: string): Promise<Department | null> {
     const [rows] = await this.db.query(
       `
       SELECT 
@@ -47,24 +47,24 @@ export class DepartmentRepository {
   }
 
   async create(department: Partial<Department>): Promise<Department> {
-    const [result] = await this.db.query(
-      "INSERT INTO departments (name, code, description, manager_id) VALUES (?, ?, ?, ?)",
-      [department.name, department.code || null, department.description || null, department.managerId || null]
+    const deptId = crypto.randomUUID();
+    await this.db.query(
+      "INSERT INTO departments (id, name, code, description, manager_id) VALUES (?, ?, ?, ?, ?)",
+      [deptId, department.name, department.code || null, department.description || null, department.managerId || null]
     );
-    const insertResult = result as any;
-    const created = await this.findById(insertResult.insertId);
+    const created = await this.findById(deptId);
     if (!created) throw new Error("Failed to create department");
     return created;
   }
 
-  async update(id: number, department: Partial<Department>): Promise<void> {
+  async update(id: string, department: Partial<Department>): Promise<void> {
     await this.db.query(
       "UPDATE departments SET name = ?, code = ?, description = ?, manager_id = ? WHERE id = ?",
       [department.name, department.code || null, department.description || null, department.managerId || null, id]
     );
   }
 
-  async delete(id: number): Promise<void> {
+  async delete(id: string): Promise<void> {
     await this.db.query("DELETE FROM departments WHERE id = ?", [id]);
   }
 }
