@@ -5,7 +5,7 @@ const resetAdminPassword = async () => {
     const connection = await mysql.createConnection({
         host: 'localhost',
         user: 'root',
-        password: '123456',
+        password: 'MiHoang151199@',
         database: 'nexus_db'
     });
 

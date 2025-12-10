@@ -11,6 +11,9 @@ export { OrgChart } from "./organization/OrgChart";
 export { UserManager, UserTableWidget } from "./organization/UserManager";
 export { MeetingAdmin } from "./workspace/MeetingAdmin";
 export { EventManager } from "./workspace/EventManager";
+export { BookingModule } from "./booking/BookingModule";
+export { BookingApproval } from "./booking/BookingApproval";
+export { FloorManagement } from "./booking/FloorManagement";
 export { ForumModule } from "./forum/ForumModule";
 export { ForumManager } from "./forum/ForumManager";
 export { NewsModule, NewsManager } from "./news/NewsModule";
@@ -18,3 +21,4 @@ export { ChatManager } from "./communication/ChatManager";
 export { AuditLogManager } from "./system/AuditLogManager";
 export { AlertManager } from "./system/AlertManager";
 export { GeneralSettings } from "./system/GeneralSettings";
+

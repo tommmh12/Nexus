@@ -121,18 +121,16 @@ const SelectManagerModal = ({
           {/* Option to clear selection */}
           <div
             onClick={() => setSelectedUser(null)}
-            className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors ${
-              selectedUser === null
-                ? "bg-brand-50 border border-brand-200"
-                : "hover:bg-slate-50 border border-transparent"
-            }`}
+            className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors ${selectedUser === null
+              ? "bg-brand-50 border border-brand-200"
+              : "hover:bg-slate-50 border border-transparent"
+              }`}
           >
             <div
-              className={`w-5 h-5 rounded border flex items-center justify-center ${
-                selectedUser === null
-                  ? "bg-brand-600 border-brand-600"
-                  : "bg-white border-slate-300"
-              }`}
+              className={`w-5 h-5 rounded border flex items-center justify-center ${selectedUser === null
+                ? "bg-brand-600 border-brand-600"
+                : "bg-white border-slate-300"
+                }`}
             >
               {selectedUser === null && (
                 <Check size={14} className="text-white" />
@@ -154,18 +152,16 @@ const SelectManagerModal = ({
               <div
                 key={u.id}
                 onClick={() => handleSelect(u)}
-                className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors ${
-                  selectedUser?.id === u.id
-                    ? "bg-brand-50 border border-brand-200"
-                    : "hover:bg-slate-50 border border-transparent"
-                }`}
+                className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors ${selectedUser?.id === u.id
+                  ? "bg-brand-50 border border-brand-200"
+                  : "hover:bg-slate-50 border border-transparent"
+                  }`}
               >
                 <div
-                  className={`w-5 h-5 rounded border flex items-center justify-center ${
-                    selectedUser?.id === u.id
-                      ? "bg-brand-600 border-brand-600"
-                      : "bg-white border-slate-300"
-                  }`}
+                  className={`w-5 h-5 rounded border flex items-center justify-center ${selectedUser?.id === u.id
+                    ? "bg-brand-600 border-brand-600"
+                    : "bg-white border-slate-300"
+                    }`}
                 >
                   {selectedUser?.id === u.id && (
                     <Check size={14} className="text-white" />
@@ -247,8 +243,8 @@ const DepartmentFormModal = ({
     const managerAvatar = selectedManager
       ? selectedManager.avatarUrl
       : formData.managerAvatar ||
-        "https://ui-avatars.com/api/?name=" +
-          (formData.managerName || "Department");
+      "https://ui-avatars.com/api/?name=" +
+      (formData.managerName || "Department");
 
     onSave({ ...formData, managerAvatar } as Department);
   };
@@ -504,18 +500,16 @@ const AddMemberModal = ({
               <div
                 key={u.id}
                 onClick={() => toggleUser(u.id)}
-                className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors ${
-                  selectedIds.includes(u.id)
-                    ? "bg-brand-50 border border-brand-200"
-                    : "hover:bg-slate-50 border border-transparent"
-                }`}
+                className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors ${selectedIds.includes(u.id)
+                  ? "bg-brand-50 border border-brand-200"
+                  : "hover:bg-slate-50 border border-transparent"
+                  }`}
               >
                 <div
-                  className={`w-5 h-5 rounded border flex items-center justify-center ${
-                    selectedIds.includes(u.id)
-                      ? "bg-brand-600 border-brand-600"
-                      : "bg-white border-slate-300"
-                  }`}
+                  className={`w-5 h-5 rounded border flex items-center justify-center ${selectedIds.includes(u.id)
+                    ? "bg-brand-600 border-brand-600"
+                    : "bg-white border-slate-300"
+                    }`}
                 >
                   {selectedIds.includes(u.id) && (
                     <Check size={14} className="text-white" />
@@ -594,17 +588,20 @@ const DepartmentDetailView = ({
   );
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
-  // Filter Data
+  // Filter Data - Include manager in member list even if their department_id differs
+  const managerId = department.managerId;
   const deptMembers = allUsers.filter(
     (u) =>
       u.department === department.name ||
+      u.id === managerId || // ← Include manager in member list
       (department.id === "tech" && u.department === "Software Development") // Handle mock data discrepancy
   );
 
-  // Users available to add (not in current dept)
+  // Users available to add (not in current dept and not the current manager)
   const availableToAdd = allUsers.filter(
     (u) =>
       u.department !== department.name &&
+      u.id !== managerId &&
       !(department.id === "tech" && u.department === "Software Development")
   );
 
@@ -714,13 +711,12 @@ const DepartmentDetailView = ({
                 <div className="self-center">
                   <p className="text-xs text-slate-500">Trạng thái KPI</p>
                   <span
-                    className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold mt-1 ${
-                      department.kpiStatus === "On Track"
-                        ? "bg-green-100 text-green-700"
-                        : department.kpiStatus === "At Risk"
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold mt-1 ${department.kpiStatus === "On Track"
+                      ? "bg-green-100 text-green-700"
+                      : department.kpiStatus === "At Risk"
                         ? "bg-yellow-100 text-yellow-700"
                         : "bg-red-100 text-red-700"
-                    }`}
+                      }`}
                   >
                     <Target size={12} />
                     {department.kpiStatus}
@@ -742,11 +738,10 @@ const DepartmentDetailView = ({
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id as any)}
-            className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === tab.id
-                ? "border-brand-600 text-brand-600"
-                : "border-transparent text-slate-500 hover:text-slate-700"
-            }`}
+            className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === tab.id
+              ? "border-brand-600 text-brand-600"
+              : "border-transparent text-slate-500 hover:text-slate-700"
+              }`}
           >
             {tab.label}
           </button>
@@ -767,8 +762,8 @@ const DepartmentDetailView = ({
               <div className="text-3xl font-bold text-blue-900 mb-1">
                 {selectedDept.budget
                   ? `${parseFloat(selectedDept.budget).toLocaleString(
-                      "vi-VN"
-                    )} VNĐ`
+                    "vi-VN"
+                  )} VNĐ`
                   : "---"}
               </div>
               <p className="text-sm text-blue-700">
@@ -794,46 +789,42 @@ const DepartmentDetailView = ({
 
             {/* KPI Status Card */}
             <div
-              className={`bg-gradient-to-br p-6 rounded-xl border shadow-sm ${
-                selectedDept.kpiStatus === "On Track"
-                  ? "from-green-50 to-green-100 border-green-200"
-                  : selectedDept.kpiStatus === "At Risk"
+              className={`bg-gradient-to-br p-6 rounded-xl border shadow-sm ${selectedDept.kpiStatus === "On Track"
+                ? "from-green-50 to-green-100 border-green-200"
+                : selectedDept.kpiStatus === "At Risk"
                   ? "from-yellow-50 to-yellow-100 border-yellow-200"
                   : "from-red-50 to-red-100 border-red-200"
-              }`}
+                }`}
             >
               <div className="flex items-center justify-between mb-2">
                 <h3
-                  className={`font-bold flex items-center ${
-                    selectedDept.kpiStatus === "On Track"
-                      ? "text-green-900"
-                      : selectedDept.kpiStatus === "At Risk"
+                  className={`font-bold flex items-center ${selectedDept.kpiStatus === "On Track"
+                    ? "text-green-900"
+                    : selectedDept.kpiStatus === "At Risk"
                       ? "text-yellow-900"
                       : "text-red-900"
-                  }`}
+                    }`}
                 >
                   <TrendingUp size={20} className="mr-2" /> Trạng thái KPI
                 </h3>
               </div>
               <div
-                className={`text-2xl font-bold mb-1 ${
-                  selectedDept.kpiStatus === "On Track"
-                    ? "text-green-900"
-                    : selectedDept.kpiStatus === "At Risk"
+                className={`text-2xl font-bold mb-1 ${selectedDept.kpiStatus === "On Track"
+                  ? "text-green-900"
+                  : selectedDept.kpiStatus === "At Risk"
                     ? "text-yellow-900"
                     : "text-red-900"
-                }`}
+                  }`}
               >
                 {selectedDept.kpiStatus || "On Track"}
               </div>
               <p
-                className={`text-sm ${
-                  selectedDept.kpiStatus === "On Track"
-                    ? "text-green-700"
-                    : selectedDept.kpiStatus === "At Risk"
+                className={`text-sm ${selectedDept.kpiStatus === "On Track"
+                  ? "text-green-700"
+                  : selectedDept.kpiStatus === "At Risk"
                     ? "text-yellow-700"
                     : "text-red-700"
-                }`}
+                  }`}
               >
                 Tháng {new Date().getMonth() + 1}/{new Date().getFullYear()}
               </p>
@@ -922,8 +913,13 @@ const DepartmentDetailView = ({
                           alt=""
                         />
                         <div>
-                          <div className="font-medium text-slate-900">
+                          <div className="font-medium text-slate-900 flex items-center gap-2">
                             {u.fullName}
+                            {u.id === managerId && (
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-700 border border-amber-200">
+                                Trưởng phòng
+                              </span>
+                            )}
                           </div>
                           <div className="text-xs text-slate-500">
                             {u.email}
@@ -935,11 +931,10 @@ const DepartmentDetailView = ({
                       </td>
                       <td className="px-6 py-4">
                         <span
-                          className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                            u.status === "Active"
-                              ? "bg-green-100 text-green-700"
-                              : "bg-red-100 text-red-700"
-                          }`}
+                          className={`px-2 py-0.5 rounded-full text-xs font-medium ${u.status === "Active"
+                            ? "bg-green-100 text-green-700"
+                            : "bg-red-100 text-red-700"
+                            }`}
                         >
                           {u.status}
                         </span>
@@ -984,11 +979,10 @@ const DepartmentDetailView = ({
                       {p.code}
                     </span>
                     <span
-                      className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                        p.status === "Done"
-                          ? "bg-green-100 text-green-700"
-                          : "bg-blue-100 text-blue-700"
-                      }`}
+                      className={`text-xs px-2 py-0.5 rounded-full font-medium ${p.status === "Done"
+                        ? "bg-green-100 text-green-700"
+                        : "bg-blue-100 text-blue-700"
+                        }`}
                     >
                       {p.status}
                     </span>
@@ -1199,7 +1193,7 @@ export const DepartmentManager = () => {
       console.error("Error saving department:", error);
       alert(
         error.response?.data?.error ||
-          "Không thể lưu phòng ban. Vui lòng thử lại."
+        "Không thể lưu phòng ban. Vui lòng thử lại."
       );
     } finally {
       setIsLoading(false);
@@ -1270,7 +1264,7 @@ export const DepartmentManager = () => {
       console.error("Error transferring user:", error);
       alert(
         error.response?.data?.error ||
-          "Không thể điều chuyển nhân sự. Vui lòng thử lại."
+        "Không thể điều chuyển nhân sự. Vui lòng thử lại."
       );
     }
   };
@@ -1334,7 +1328,7 @@ export const DepartmentManager = () => {
       console.error("Error adding members:", error);
       alert(
         error.response?.data?.error ||
-          "Không thể thêm nhân sự. Vui lòng thử lại."
+        "Không thể thêm nhân sự. Vui lòng thử lại."
       );
     }
   };
@@ -1462,13 +1456,12 @@ export const DepartmentManager = () => {
                       <span className="text-xs">KPI Status</span>
                     </div>
                     <span
-                      className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                        dept.kpiStatus === "On Track"
-                          ? "bg-green-100 text-green-700"
-                          : dept.kpiStatus === "At Risk"
+                      className={`text-xs font-bold px-2 py-0.5 rounded-full ${dept.kpiStatus === "On Track"
+                        ? "bg-green-100 text-green-700"
+                        : dept.kpiStatus === "At Risk"
                           ? "bg-yellow-100 text-yellow-700"
                           : "bg-red-100 text-red-700"
-                      }`}
+                        }`}
                     >
                       {dept.kpiStatus}
                     </span>

@@ -653,6 +653,7 @@ export const ProjectModule = () => {
         const mappedProjects = projectList.map((p: any) => ({
           ...p,
           workflowName: p.workflowName || p.workflow_name,
+          workflowId: p.workflowId || p.workflow_id,
           managerName: p.managerName || p.manager_name,
           startDate: p.startDate || p.start_date,
           endDate: p.endDate || p.end_date,
@@ -711,7 +712,7 @@ export const ProjectModule = () => {
         name: formData.name,
         code: formData.code,
         description: formData.description,
-        workflowId: Number(formData.workflowId) || null,
+        workflowId: formData.workflowId, // Keep as string (UUID)
         priority: formData.priority,
         status: formData.status,
         startDate: formData.startDate || null,

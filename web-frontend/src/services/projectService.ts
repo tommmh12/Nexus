@@ -76,7 +76,7 @@ export const workflowService = {
     const response = await axios.get(`${API_URL}/workflows/${id}`, {
       headers: { Authorization: `Bearer ${getAccessToken()}` },
     });
-    return response.data;
+    return response.data.data || response.data;
   },
 
   async createWorkflow(workflowData: any) {

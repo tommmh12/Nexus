@@ -87,4 +87,47 @@ export class DepartmentRepository {
   async delete(id: string): Promise<void> {
     await this.db.query("DELETE FROM departments WHERE id = ?", [id]);
   }
+
+  // --- Manager Handling ---
+
+  /**
+   * Update user's department_id to the specified department
+   * This ensures the manager is also a member of the department
+   */
+  async updateUserDepartment(userId: string, departmentId: string): Promise<void> {
+    await this.db.query(
+      "UPDATE users SET department_id = ? WHERE id = ?",
+      [departmentId, userId]
+    );
+  }
+
+  /**
+   * Check if a user is a manager of any department (excluding a specific dept)
+   * Returns the department info if user is a manager elsewhere, null otherwise
+   */
+  async checkUserIsManagerElsewhere(userId: string, excludeDeptId?: string): Promise<{ id: string; name: string } | null> {
+    let query = `
+      SELECT id, name FROM departments 
+      WHERE manager_id = ?
+    `;
+    const params: any[] = [userId];
+
+    if (excludeDeptId) {
+      query += ` AND id != ?`;
+      params.push(excludeDeptId);
+    }
+
+    const [rows] = await this.db.query<any[]>(query, params);
+    return rows.length > 0 ? { id: rows[0].id, name: rows[0].name } : null;
+  }
+
+  /**
+   * Clear the manager of a department (set manager_id to null)
+   */
+  async clearDepartmentManager(departmentId: string): Promise<void> {
+    await this.db.query(
+      "UPDATE departments SET manager_id = NULL WHERE id = ?",
+      [departmentId]
+    );
+  }
 }

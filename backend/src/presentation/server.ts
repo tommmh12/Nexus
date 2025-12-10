@@ -19,6 +19,9 @@ import forumRoutes from "./routes/forum.routes.js";
 import notificationRoutes from "./routes/notification.routes.js";
 import commentRoutes from "./routes/comment.routes.js";
 import uploadRoutes from "./routes/upload.routes.js";
+import floorRoutes from "./routes/floor.routes.js";
+import roomRoutes from "./routes/room.routes.js";
+import bookingRoutes from "./routes/booking.routes.js";
 import { SocketManager } from "../infrastructure/socket/SocketManager.js";
 
 dotenv.config();
@@ -69,6 +72,9 @@ app.use("/api/forum", forumRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/comments", commentRoutes);
 app.use("/api/upload", uploadRoutes);
+app.use("/api/floors", floorRoutes);
+app.use("/api/rooms", roomRoutes);
+app.use("/api/bookings", bookingRoutes);
 
 // Serve uploaded files with CORS
 app.use(

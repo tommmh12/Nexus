@@ -8,9 +8,11 @@ const router = Router();
 router.use(authMiddleware);
 
 router.get("/", DepartmentController.getAllDepartments);
+router.get("/check-manager/:userId", DepartmentController.checkUserIsManager);
 router.get("/:id", DepartmentController.getDepartmentById);
 router.post("/", DepartmentController.createDepartment);
 router.put("/:id", DepartmentController.updateDepartment);
+router.delete("/:id/manager", DepartmentController.clearDepartmentManager);
 router.delete("/:id", DepartmentController.deleteDepartment);
 
 export default router;

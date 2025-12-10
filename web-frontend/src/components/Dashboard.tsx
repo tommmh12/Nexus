@@ -60,6 +60,9 @@ import {
 } from "../pages/admin/organization/UserManager";
 import { MeetingAdmin } from "../pages/admin/workspace/MeetingAdmin";
 import { EventManager } from "../pages/admin/workspace/EventManager";
+import { BookingModule } from "../pages/admin/booking/BookingModule";
+import { BookingApproval } from "../pages/admin/booking/BookingApproval";
+import { FloorManagement } from "../pages/admin/booking/FloorManagement";
 import { ForumModule } from "../pages/admin/forum/ForumModule";
 import { ForumManager } from "../pages/admin/forum/ForumManager";
 import { NewsModule, NewsManager } from "../pages/admin/news/NewsModule";
@@ -147,7 +150,10 @@ const MENU_ITEMS: MenuItem[] = [
     label: "Tiện ích Văn phòng",
     icon: Briefcase,
     children: [
-      { id: "meeting-admin", label: "Quản trị Phòng họp" },
+      { id: "room-booking", label: "Đặt phòng họp" },
+      { id: "booking-approval", label: "Duyệt đặt phòng", badge: 0 },
+      { id: "floor-management", label: "Quản lý Tầng/Phòng" },
+      { id: "meeting-admin", label: "Quản trị Phòng họp (cũ)" },
       { id: "event-manager", label: "Quản lý Sự kiện" },
     ],
   },
@@ -342,7 +348,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50 flex font-sans">
+    <div className="h-screen bg-slate-50 flex font-sans overflow-hidden">
       {/* Sidebar */}
       <aside
         className={`
@@ -689,6 +695,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
               <Route path="users" element={<UserManager />} />
 
               {/* Workspace Routes */}
+              <Route path="room-booking" element={<BookingModule />} />
+              <Route path="booking-approval" element={<BookingApproval />} />
+              <Route path="floor-management" element={<FloorManagement />} />
               <Route path="meeting-admin" element={<MeetingAdmin />} />
               <Route path="meeting-admin/:id" element={<MeetingAdmin />} />
               <Route path="event-manager" element={<EventManager />} />

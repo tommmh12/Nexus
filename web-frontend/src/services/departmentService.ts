@@ -58,4 +58,25 @@ export const departmentService = {
       headers: getAuthHeader(),
     });
   },
+
+  /**
+   * Check if a user is a manager of any department (excluding a specific dept)
+   * Returns { isManager: boolean, department: { id, name } | null }
+   */
+  checkUserIsManager: async (userId: string, excludeDeptId?: string): Promise<{ isManager: boolean; department: { id: string; name: string } | null }> => {
+    const params = excludeDeptId ? `?excludeDeptId=${excludeDeptId}` : '';
+    const response = await axios.get(`${API_URL}/departments/check-manager/${userId}${params}`, {
+      headers: getAuthHeader(),
+    });
+    return response.data;
+  },
+
+  /**
+   * Clear the manager of a specific department
+   */
+  clearDepartmentManager: async (deptId: string): Promise<void> => {
+    await axios.delete(`${API_URL}/departments/${deptId}/manager`, {
+      headers: getAuthHeader(),
+    });
+  },
 };
