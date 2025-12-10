@@ -218,7 +218,7 @@ export class ChatController {
       const message = await this.chatService.sendMessage({
         conversationId,
         senderId: userId,
-        messageText: messageText || null,  // Allow empty text for image-only messages
+        messageText: messageText || null, // Allow empty text for image-only messages
         messageType: file.mimetype.startsWith("image/") ? "image" : "file",
       });
 

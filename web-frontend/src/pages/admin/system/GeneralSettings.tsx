@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 // TODO: Replace with API call
 import { BackupFile, SystemConfig } from "../../types";
 import { Button } from "../../../components/system/ui/Button";
 import { Input } from "../../../components/system/ui/Input";
+import { settingsService } from "../../../services/settingsService";
 import {
   Save,
   Database,
@@ -20,11 +21,12 @@ import {
   Globe,
   AlertTriangle,
   RotateCcw,
+  Send,
 } from "lucide-react";
 
 export const GeneralSettings = () => {
   const [activeTab, setActiveTab] = useState<"general" | "services" | "backup">(
-    "general"
+    "services" // Default to services tab
   );
 
   // Config State - Fully Controlled
@@ -46,15 +48,81 @@ export const GeneralSettings = () => {
       host: "smtp.gmail.com",
       port: "587",
       user: "system@nexus.com",
-      isEnabled: true,
+      isEnabled: false,
     },
-    emailPassword: "password123", // Mock password state
+    emailPassword: "",
     smsService: {
       provider: "twilio",
       apiKey: "sk_test_****************",
       isEnabled: false,
     },
   });
+
+  const [loading, setLoading] = useState(false);
+  const [testEmail, setTestEmail] = useState("");
+
+  // Load email config on mount
+  useEffect(() => {
+    loadEmailConfig();
+  }, []);
+
+  const loadEmailConfig = async () => {
+    try {
+      const response = await settingsService.getEmailConfig();
+      if (response.success && response.data.config) {
+        setConfig((prev) => ({
+          ...prev,
+          emailService: {
+            ...prev.emailService,
+            host: response.data.config.host,
+            port: response.data.config.port.toString(),
+            user: response.data.config.user,
+            isEnabled: response.data.isEnabled,
+          },
+        }));
+      }
+    } catch (error) {
+      console.error("Failed to load email config:", error);
+    }
+  };
+
+  const handleSaveEmailConfig = async () => {
+    setLoading(true);
+    try {
+      await settingsService.updateEmailConfig({
+        host: config.emailService.host,
+        port: config.emailService.port,
+        user: config.emailService.user,
+        password: config.emailPassword,
+        enabled: config.emailService.isEnabled,
+      });
+      alert("✅ Đã lưu cấu hình email thành công!");
+      setConfig((prev) => ({ ...prev, emailPassword: "" })); // Clear password
+      await loadEmailConfig(); // Reload
+    } catch (error: any) {
+      alert("❌ Lỗi: " + (error.response?.data?.error || error.message));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleTestEmail = async () => {
+    if (!testEmail) {
+      alert("Vui lòng nhập email người nhận");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await settingsService.testEmail(testEmail);
+      alert("✅ Email test đã được gửi! Kiểm tra hộp thư.");
+      setTestEmail("");
+    } catch (error: any) {
+      alert("❌ Lỗi: " + (error.response?.data?.error || error.message));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Backup State
   const [backups, setBackups] = useState<BackupFile[]>([]);
@@ -334,6 +402,41 @@ export const GeneralSettings = () => {
                       }
                       placeholder="••••••••"
                     />
+                    <p className="text-xs text-slate-500 mt-1">
+                      Chỉ nhập nếu muốn thay đổi. Gmail cần App Password (không
+                      phải mật khẩu tài khoản).
+                    </p>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-3 mt-6 pt-4 border-t border-slate-200">
+                  <Button
+                    onClick={handleSaveEmailConfig}
+                    disabled={loading || !config.emailService.isEnabled}
+                    className="flex-1"
+                  >
+                    <Save size={18} className="mr-2" />
+                    {loading ? "Đang lưu..." : "Lưu cấu hình"}
+                  </Button>
+
+                  <div className="flex-1 flex gap-2">
+                    <Input
+                      placeholder="Email để test"
+                      value={testEmail}
+                      onChange={(e) => setTestEmail(e.target.value)}
+                      disabled={!config.emailService.isEnabled}
+                    />
+                    <Button
+                      onClick={handleTestEmail}
+                      disabled={
+                        loading || !config.emailService.isEnabled || !testEmail
+                      }
+                      variant="outline"
+                    >
+                      <Send size={18} className="mr-1" />
+                      Test
+                    </Button>
                   </div>
                 </div>
               </div>

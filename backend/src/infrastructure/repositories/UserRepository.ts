@@ -148,4 +148,114 @@ export class UserRepository {
 
     return rows;
   }
+
+  async create(userData: {
+    employee_id: string;
+    email: string;
+    password_hash: string;
+    full_name: string;
+    phone?: string;
+    avatar_url?: string;
+    position?: string;
+    department_id?: string;
+    role: "Admin" | "Manager" | "Employee";
+    status: "Active" | "Blocked" | "Pending";
+    join_date?: Date;
+  }): Promise<User> {
+    const userId = crypto.randomUUID();
+
+    await dbPool.query<ResultSetHeader>(
+      `INSERT INTO users (
+        id, employee_id, email, password_hash, full_name, phone,
+        avatar_url, position, department_id, role, status, join_date,
+        created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+      [
+        userId,
+        userData.employee_id,
+        userData.email,
+        userData.password_hash,
+        userData.full_name,
+        userData.phone || null,
+        userData.avatar_url || null,
+        userData.position || null,
+        userData.department_id || null,
+        userData.role,
+        userData.status,
+        userData.join_date || null,
+      ]
+    );
+
+    const created = await this.findById(userId);
+    if (!created) throw new Error("Failed to create user");
+    return created;
+  }
+
+  async findAll(): Promise<UserWithDepartment[]> {
+    const [rows] = await dbPool.query<RowDataPacket[]>(
+      `SELECT 
+        u.*,
+        d.name as department_name
+      FROM users u
+      LEFT JOIN departments d ON u.department_id = d.id
+      WHERE u.deleted_at IS NULL
+      ORDER BY u.created_at DESC`
+    );
+    return rows as UserWithDepartment[];
+  }
+
+  async update(id: string, userData: Partial<User>): Promise<void> {
+    const updates: string[] = [];
+    const values: any[] = [];
+
+    if (userData.email) {
+      updates.push("email = ?");
+      values.push(userData.email);
+    }
+    if (userData.full_name) {
+      updates.push("full_name = ?");
+      values.push(userData.full_name);
+    }
+    if (userData.phone !== undefined) {
+      updates.push("phone = ?");
+      values.push(userData.phone);
+    }
+    if (userData.position !== undefined) {
+      updates.push("position = ?");
+      values.push(userData.position);
+    }
+    if (userData.department_id !== undefined) {
+      updates.push("department_id = ?");
+      values.push(userData.department_id);
+    }
+    if (userData.role) {
+      updates.push("role = ?");
+      values.push(userData.role);
+    }
+    if (userData.status) {
+      updates.push("status = ?");
+      values.push(userData.status);
+    }
+    if (userData.employee_id) {
+      updates.push("employee_id = ?");
+      values.push(userData.employee_id);
+    }
+
+    if (updates.length === 0) return;
+
+    updates.push("updated_at = NOW()");
+    values.push(id);
+
+    await dbPool.query<ResultSetHeader>(
+      `UPDATE users SET ${updates.join(", ")} WHERE id = ?`,
+      values
+    );
+  }
+
+  async delete(id: string): Promise<void> {
+    await dbPool.query<ResultSetHeader>(
+      "UPDATE users SET deleted_at = NOW() WHERE id = ?",
+      [id]
+    );
+  }
 }

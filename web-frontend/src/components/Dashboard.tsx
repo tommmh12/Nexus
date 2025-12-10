@@ -217,7 +217,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
   );
 
   // Determine role-based prefix (case-insensitive)
-  const userRole = user.role?.toLowerCase();
+  const userRole = user?.role?.toLowerCase() || "employee";
   const rolePrefix =
     userRole === "admin"
       ? "/admin"

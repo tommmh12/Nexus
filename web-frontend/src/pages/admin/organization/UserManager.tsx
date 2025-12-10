@@ -1,8 +1,15 @@
-import React, { useState } from "react";
-import { EmployeeProfile, ActivityLog, ActivityType } from "../../types";
+import React, { useState, useEffect } from "react";
+import {
+  EmployeeProfile,
+  ActivityLog,
+  ActivityType,
+  Department,
+} from "../../types";
 // TODO: Replace with API call
 import { Button } from "../../../components/system/ui/Button";
 import { Input } from "../../../components/system/ui/Input";
+import { departmentService } from "../../../services/departmentService";
+import { userService } from "../../../services/userService";
 import {
   Plus,
   Edit2,
@@ -31,6 +38,52 @@ export const UserManager = () => {
     null
   );
   const [isEditing, setIsEditing] = useState(false);
+  const [departments, setDepartments] = useState<Department[]>([]);
+
+  // Load departments and users on mount
+  useEffect(() => {
+    const loadDepartments = async () => {
+      try {
+        const depts = await departmentService.getAllDepartments();
+        setDepartments(depts);
+      } catch (error) {
+        console.error("Error loading departments:", error);
+      }
+    };
+
+    const loadUsers = async () => {
+      try {
+        const usersList = await userService.getAllUsers();
+        // Map backend data to frontend format
+        const mappedUsers = usersList.map((u: any) => ({
+          id: u.id,
+          fullName: u.full_name,
+          email: u.email,
+          phone: u.phone || "",
+          employeeId: u.employee_id,
+          position: u.position || "",
+          department: u.department_name || "",
+          role: u.role,
+          status: u.status,
+          joinDate: u.join_date
+            ? new Date(u.join_date).toLocaleDateString("vi-VN")
+            : "",
+          avatarUrl:
+            u.avatar_url ||
+            `https://ui-avatars.com/api/?name=${encodeURIComponent(
+              u.full_name
+            )}`,
+          linkedAccounts: [],
+        }));
+        setUsers(mappedUsers);
+      } catch (error) {
+        console.error("Error loading users:", error);
+      }
+    };
+
+    loadDepartments();
+    loadUsers();
+  }, []);
 
   const handleViewDetail = (user: EmployeeProfile) => {
     setSelectedUser(user);
@@ -49,21 +102,130 @@ export const UserManager = () => {
     setView("form");
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (
       window.confirm(
         "Bạn có chắc chắn muốn xóa nhân sự này không? Hành động này không thể hoàn tác."
       )
     ) {
-      setUsers(users.filter((u) => u.id !== id));
-      if (selectedUser?.id === id) setView("list");
+      try {
+        await userService.deleteUser(id);
+        setUsers(users.filter((u) => u.id !== id));
+        if (selectedUser?.id === id) setView("list");
+        alert("Xóa nhân sự thành công!");
+      } catch (error: any) {
+        console.error("Error deleting user:", error);
+        alert(
+          error.response?.data?.error ||
+            error.message ||
+            "Không thể xóa nhân sự. Vui lòng thử lại."
+        );
+      }
     }
   };
 
-  const handleSaveUser = (e: React.FormEvent) => {
-    e.preventDefault();
-    alert("Đã lưu thông tin nhân sự thành công!");
-    setView("list");
+  const handleSaveUser = async (formDataState: typeof formData) => {
+    // Validation
+    console.log("Form data before validation:", formDataState);
+
+    const fullName = formDataState.fullName?.trim();
+    const email = formDataState.email?.trim();
+    let employeeId = formDataState.employeeId?.trim();
+    const department = formDataState.department?.trim();
+
+    if (!fullName || !email || !department) {
+      console.error("Validation failed:", { fullName, email, department });
+      alert(
+        "Vui lòng điền đầy đủ thông tin bắt buộc: Họ tên, Email, và Phòng ban"
+      );
+      return;
+    }
+
+    // Auto-generate employeeId if creating new user and not already set
+    if (!isEditing && !employeeId && department) {
+      const selectedDept = departments.find((d) => d.name === department);
+      if (selectedDept?.code) {
+        employeeId = generateEmployeeId(selectedDept.code);
+        console.log("Auto-generated employeeId:", employeeId);
+      } else {
+        alert("Không thể tạo mã nhân viên. Phòng ban chưa có mã.");
+        return;
+      }
+    }
+
+    if (!employeeId) {
+      alert("Mã nhân viên không hợp lệ");
+      return;
+    }
+
+    try {
+      // Find department_id from department name
+      const selectedDept = departments.find((d) => d.name === department);
+      if (!selectedDept) {
+        alert("Không tìm thấy phòng ban đã chọn");
+        return;
+      }
+
+      if (isEditing && selectedUser) {
+        // Update existing user
+        await userService.updateUser(selectedUser.id, {
+          employee_id: employeeId,
+          email: email,
+          full_name: fullName,
+          phone: formDataState.phone || undefined,
+          position: formDataState.position || undefined,
+          department_id: selectedDept.id.toString(),
+          role: formDataState.role as "Admin" | "Manager" | "Employee",
+          status: formDataState.status as "Active" | "Blocked" | "Pending",
+        });
+        alert("Cập nhật nhân sự thành công!");
+      } else {
+        // Create new user
+        const newUser = await userService.createUser({
+          employee_id: employeeId,
+          email: email,
+          full_name: fullName,
+          phone: formDataState.phone || undefined,
+          position: formDataState.position || undefined,
+          department_id: selectedDept.id.toString(),
+          role: formDataState.role as "Admin" | "Manager" | "Employee",
+          status: formDataState.status as "Active" | "Blocked" | "Pending",
+          join_date: formDataState.joinDate || undefined,
+        });
+        alert(`Tạo nhân sự thành công! Mật khẩu tạm thời đã được tạo tự động.`);
+      }
+
+      // Reload users list
+      const usersList = await userService.getAllUsers();
+      const mappedUsers = usersList.map((u: any) => ({
+        id: u.id,
+        fullName: u.full_name,
+        email: u.email,
+        phone: u.phone || "",
+        employeeId: u.employee_id,
+        position: u.position || "",
+        department: u.department_name || "",
+        role: u.role,
+        status: u.status,
+        joinDate: u.join_date
+          ? new Date(u.join_date).toLocaleDateString("vi-VN")
+          : "",
+        avatarUrl:
+          u.avatar_url ||
+          `https://ui-avatars.com/api/?name=${encodeURIComponent(u.full_name)}`,
+        linkedAccounts: [],
+      }));
+      setUsers(mappedUsers);
+
+      setView("list");
+    } catch (error: any) {
+      console.error("Error saving user:", error);
+      alert(
+        error.response?.data?.error ||
+          error.message ||
+          "Không thể lưu nhân sự. Vui lòng thử lại."
+      );
+    }
   };
 
   // --- Sub-component: User List ---
@@ -91,83 +253,103 @@ export const UserManager = () => {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-slate-200">
-            {users.map((u) => (
-              <tr
-                key={u.id}
-                className="hover:bg-slate-50 transition-colors cursor-pointer"
-                onClick={() => handleViewDetail(u)}
-              >
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center">
-                    <img
-                      className="h-10 w-10 rounded-full object-cover border border-slate-200"
-                      src={u.avatarUrl}
-                      alt=""
-                    />
-                    <div className="ml-4">
-                      <div className="text-sm font-medium text-slate-900">
-                        {u.fullName}
-                      </div>
-                      <div className="text-sm text-slate-500">{u.email}</div>
-                    </div>
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-slate-900 font-mono">
-                    {u.employeeId}
-                  </div>
-                  <div className="text-xs text-slate-500">{u.position}</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span
-                    className={`px-2 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full border ${
-                      u.role === "Admin"
-                        ? "bg-purple-50 text-purple-700 border-purple-200"
-                        : u.role === "Manager"
-                        ? "bg-blue-50 text-blue-700 border-blue-200"
-                        : "bg-slate-50 text-slate-700 border-slate-200"
-                    }`}
-                  >
-                    {u.role}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span
-                    className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      u.status === "Active"
-                        ? "bg-green-100 text-green-800"
-                        : "bg-red-100 text-red-800"
-                    }`}
-                  >
-                    <span
-                      className={`w-1.5 h-1.5 rounded-full ${
-                        u.status === "Active" ? "bg-green-600" : "bg-red-600"
-                      }`}
-                    ></span>
-                    {u.status}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <div
-                    className="flex justify-end gap-2"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <button
-                      onClick={() => handleEdit(u)}
-                      className="p-1.5 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded"
-                    >
-                      <Edit2 size={16} />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(u.id)}
-                      className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded"
-                    >
-                      <Trash2 size={16} />
-                    </button>
+            {users.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="px-6 py-12 text-center">
+                  <div className="flex flex-col items-center justify-center">
+                    <UserIcon size={48} className="text-slate-300 mb-4" />
+                    <p className="text-sm font-medium text-slate-500 mb-1">
+                      Chưa có nhân viên nào
+                    </p>
+                    <p className="text-xs text-slate-400 mb-4">
+                      Bắt đầu bằng cách thêm nhân viên mới vào hệ thống
+                    </p>
+                    <Button onClick={handleCreate} size="sm">
+                      <Plus size={16} className="mr-2" /> Thêm nhân viên đầu
+                      tiên
+                    </Button>
                   </div>
                 </td>
               </tr>
-            ))}
+            ) : (
+              users.map((u) => (
+                <tr
+                  key={u.id}
+                  className="hover:bg-slate-50 transition-colors cursor-pointer"
+                  onClick={() => handleViewDetail(u)}
+                >
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <img
+                        className="h-10 w-10 rounded-full object-cover border border-slate-200"
+                        src={u.avatarUrl}
+                        alt=""
+                      />
+                      <div className="ml-4">
+                        <div className="text-sm font-medium text-slate-900">
+                          {u.fullName}
+                        </div>
+                        <div className="text-sm text-slate-500">{u.email}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-slate-900 font-mono">
+                      {u.employeeId}
+                    </div>
+                    <div className="text-xs text-slate-500">{u.position}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span
+                      className={`px-2 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full border ${
+                        u.role === "Admin"
+                          ? "bg-purple-50 text-purple-700 border-purple-200"
+                          : u.role === "Manager"
+                          ? "bg-blue-50 text-blue-700 border-blue-200"
+                          : "bg-slate-50 text-slate-700 border-slate-200"
+                      }`}
+                    >
+                      {u.role}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        u.status === "Active"
+                          ? "bg-green-100 text-green-800"
+                          : "bg-red-100 text-red-800"
+                      }`}
+                    >
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full ${
+                          u.status === "Active" ? "bg-green-600" : "bg-red-600"
+                        }`}
+                      ></span>
+                      {u.status}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <div
+                      className="flex justify-end gap-2"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <button
+                        onClick={() => handleEdit(u)}
+                        className="p-1.5 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded"
+                      >
+                        <Edit2 size={16} />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(u.id)}
+                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
@@ -558,186 +740,326 @@ export const UserManager = () => {
     );
   };
 
+  // Hàm tạo mã nhân viên tự động
+  const generateEmployeeId = (deptCode: string): string => {
+    if (!deptCode) return "";
+
+    // Tạo 6 số random
+    const randomNumbers = Math.floor(
+      100000 + Math.random() * 900000
+    ).toString();
+
+    // Kiểm tra mã đã tồn tại chưa
+    let employeeId = `${deptCode}-${randomNumbers}`;
+    let attempts = 0;
+    const maxAttempts = 100;
+
+    while (
+      users.some((u) => u.employeeId === employeeId) &&
+      attempts < maxAttempts
+    ) {
+      const newRandomNumbers = Math.floor(
+        100000 + Math.random() * 900000
+      ).toString();
+      employeeId = `${deptCode}-${newRandomNumbers}`;
+      attempts++;
+    }
+
+    return employeeId;
+  };
+
   // --- Sub-component: User Form (Add/Edit) ---
-  const UserForm = () => (
-    <div className="animate-fadeIn max-w-3xl mx-auto">
-      <div className="mb-6 flex items-center gap-4">
-        <Button
-          variant="outline"
-          onClick={() => setView("list")}
-          className="p-2 h-10 w-10"
-        >
-          <ArrowLeft size={18} />
-        </Button>
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">
-            {isEditing ? "Chỉnh sửa nhân sự" : "Thêm nhân sự mới"}
-          </h1>
-          <p className="text-slate-500 text-sm">
-            Điền đầy đủ thông tin hồ sơ và thiết lập tài khoản.
-          </p>
+  const UserForm = () => {
+    const [formData, setFormData] = useState({
+      fullName: selectedUser?.fullName || "",
+      email: selectedUser?.email || "",
+      phone: selectedUser?.phone || "",
+      employeeId: selectedUser?.employeeId || "",
+      department: selectedUser?.department || "",
+      position: selectedUser?.position || "",
+      joinDate: selectedUser?.joinDate
+        ? new Date(selectedUser.joinDate.split("/").reverse().join("-"))
+            .toISOString()
+            .split("T")[0]
+        : "",
+      role: selectedUser?.role || "Employee",
+      status: selectedUser?.status || "Active",
+    });
+
+    // Cập nhật formData khi selectedUser hoặc isEditing thay đổi
+    useEffect(() => {
+      if (selectedUser) {
+        setFormData({
+          fullName: selectedUser.fullName || "",
+          email: selectedUser.email || "",
+          phone: selectedUser.phone || "",
+          employeeId: selectedUser.employeeId || "",
+          department: selectedUser.department || "",
+          position: selectedUser.position || "",
+          joinDate: selectedUser.joinDate
+            ? new Date(selectedUser.joinDate.split("/").reverse().join("-"))
+                .toISOString()
+                .split("T")[0]
+            : "",
+          role: selectedUser.role || "Employee",
+          status: selectedUser.status || "Active",
+        });
+      } else {
+        setFormData({
+          fullName: "",
+          email: "",
+          phone: "",
+          employeeId: "",
+          department: "",
+          position: "",
+          joinDate: "",
+          role: "Employee",
+          status: "Active",
+        });
+      }
+    }, [selectedUser, isEditing]);
+
+    // Tự động tạo mã nhân viên khi chọn phòng ban (chỉ khi thêm mới)
+    const handleDepartmentChange = (deptName: string) => {
+      if (!isEditing && deptName) {
+        const selectedDept = departments.find((d) => d.name === deptName);
+        if (selectedDept?.code) {
+          const newEmployeeId = generateEmployeeId(selectedDept.code);
+          setFormData((prev) => ({
+            ...prev,
+            department: deptName,
+            employeeId: newEmployeeId,
+          }));
+        } else {
+          setFormData((prev) => ({ ...prev, department: deptName }));
+        }
+      } else {
+        setFormData((prev) => ({ ...prev, department: deptName }));
+      }
+    };
+
+    return (
+      <div className="animate-fadeIn max-w-3xl mx-auto">
+        <div className="mb-6 flex items-center gap-4">
+          <Button
+            variant="outline"
+            onClick={() => setView("list")}
+            className="p-2 h-10 w-10"
+          >
+            <ArrowLeft size={18} />
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">
+              {isEditing ? "Chỉnh sửa nhân sự" : "Thêm nhân sự mới"}
+            </h1>
+            <p className="text-slate-500 text-sm">
+              Điền đầy đủ thông tin hồ sơ và thiết lập tài khoản.
+            </p>
+          </div>
         </div>
-      </div>
 
-      <form
-        onSubmit={handleSaveUser}
-        className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden"
-      >
-        <div className="p-8 space-y-8">
-          {/* Basic Info */}
-          <div>
-            <h3 className="font-bold text-slate-900 mb-4 pb-2 border-b border-slate-100">
-              Thông tin cá nhân & Liên hệ
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Input
-                label="Họ và tên"
-                defaultValue={selectedUser?.fullName}
-                required
-                placeholder="Ví dụ: Nguyễn Văn A"
-              />
-              <Input
-                label="Email công ty"
-                type="email"
-                defaultValue={selectedUser?.email}
-                required
-                placeholder="name@company.com"
-              />
-              <Input
-                label="Số điện thoại"
-                defaultValue={selectedUser?.phone}
-                placeholder="09xx..."
-              />
-              <Input
-                label="Mã nhân viên"
-                defaultValue={selectedUser?.employeeId}
-                placeholder="NEX-000"
-              />
-            </div>
-          </div>
-
-          {/* Job Info */}
-          <div>
-            <h3 className="font-bold text-slate-900 mb-4 pb-2 border-b border-slate-100">
-              Thông tin công việc
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
-                  Phòng ban
-                </label>
-                <select
-                  className="w-full bg-slate-50 border border-slate-200 rounded-md p-2.5 text-sm focus:ring-2 focus:ring-brand-500 outline-none"
-                  defaultValue={selectedUser?.department}
-                >
-                  <option>Marketing</option>
-                  <option>Engineering</option>
-                  <option>Sales</option>
-                  <option>HR</option>
-                  <option>Board of Directors</option>
-                </select>
-              </div>
-              <Input
-                label="Chức danh / Vị trí"
-                defaultValue={selectedUser?.position}
-                placeholder="Ví dụ: Senior Developer"
-              />
-              <Input
-                label="Ngày gia nhập"
-                type="date"
-                defaultValue={
-                  selectedUser?.joinDate
-                    ? new Date(
-                        selectedUser.joinDate.split("/").reverse().join("-")
-                      )
-                        .toISOString()
-                        .split("T")[0]
-                    : ""
-                }
-              />
-            </div>
-          </div>
-
-          {/* Account Settings */}
-          <div>
-            <h3 className="font-bold text-slate-900 mb-4 pb-2 border-b border-slate-100">
-              Thiết lập tài khoản
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
-                  Vai trò hệ thống (Role)
-                </label>
-                <select
-                  className="w-full bg-slate-50 border border-slate-200 rounded-md p-2.5 text-sm focus:ring-2 focus:ring-brand-500 outline-none"
-                  defaultValue={selectedUser?.role}
-                >
-                  <option value="Employee">Employee (Nhân viên)</option>
-                  <option value="Manager">Manager (Quản lý)</option>
-                  <option value="Admin">Admin (Quản trị viên)</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
-                  Trạng thái tài khoản
-                </label>
-                <div className="flex gap-4 mt-2">
-                  <label className="flex items-center cursor-pointer">
-                    <input
-                      type="radio"
-                      name="status"
-                      defaultChecked={
-                        !selectedUser || selectedUser.status === "Active"
-                      }
-                      className="mr-2 text-brand-600 focus:ring-brand-500"
-                    />
-                    <span className="text-sm text-slate-700">
-                      Active (Hoạt động)
-                    </span>
-                  </label>
-                  <label className="flex items-center cursor-pointer">
-                    <input
-                      type="radio"
-                      name="status"
-                      defaultChecked={selectedUser?.status === "Blocked"}
-                      className="mr-2 text-brand-600 focus:ring-brand-500"
-                    />
-                    <span className="text-sm text-slate-700">
-                      Blocked (Khóa)
-                    </span>
-                  </label>
-                </div>
-              </div>
-              {!isEditing && (
-                <div className="md:col-span-2 bg-blue-50 p-4 rounded-lg border border-blue-100 flex items-start gap-3">
-                  <Key size={18} className="text-blue-600 mt-0.5" />
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSaveUser(formData);
+          }}
+          className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden"
+        >
+          <div className="p-8 space-y-8">
+            {/* Basic Info */}
+            <div>
+              <h3 className="font-bold text-slate-900 mb-4 pb-2 border-b border-slate-100">
+                Thông tin cá nhân & Liên hệ
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Input
+                  label="Họ và tên"
+                  value={formData.fullName}
+                  onChange={(e) =>
+                    setFormData({ ...formData, fullName: e.target.value })
+                  }
+                  required
+                  placeholder="Ví dụ: Nguyễn Văn A"
+                />
+                <Input
+                  label="Email công ty"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) =>
+                    setFormData({ ...formData, email: e.target.value })
+                  }
+                  required
+                  placeholder="name@company.com"
+                />
+                <Input
+                  label="Số điện thoại"
+                  value={formData.phone}
+                  onChange={(e) =>
+                    setFormData({ ...formData, phone: e.target.value })
+                  }
+                  placeholder="09xx..."
+                />
+                {isEditing && (
+                  <Input
+                    label="Mã nhân viên"
+                    value={formData.employeeId}
+                    onChange={(e) =>
+                      setFormData({ ...formData, employeeId: e.target.value })
+                    }
+                    placeholder="DEPT-123456"
+                  />
+                )}
+                {!isEditing && formData.employeeId && (
                   <div>
-                    <p className="text-sm font-semibold text-blue-800">
-                      Mật khẩu mặc định
-                    </p>
-                    <p className="text-xs text-blue-600 mt-1">
-                      Mật khẩu ngẫu nhiên sẽ được gửi đến email của nhân sự sau
-                      khi tạo thành công.
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">
+                      Mã nhân viên (Tự động tạo)
+                    </label>
+                    <div className="w-full bg-slate-100 border border-slate-200 rounded-md p-2.5 text-sm text-slate-600 font-mono">
+                      {formData.employeeId}
+                    </div>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Mã nhân viên được tạo tự động dựa trên mã phòng ban
                     </p>
                   </div>
+                )}
+              </div>
+            </div>
+
+            {/* Job Info */}
+            <div>
+              <h3 className="font-bold text-slate-900 mb-4 pb-2 border-b border-slate-100">
+                Thông tin công việc
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    Phòng ban
+                  </label>
+                  <select
+                    className="w-full bg-slate-50 border border-slate-200 rounded-md p-2.5 text-sm focus:ring-2 focus:ring-brand-500 outline-none"
+                    value={formData.department}
+                    onChange={(e) => handleDepartmentChange(e.target.value)}
+                    required
+                  >
+                    <option value="">Chọn phòng ban...</option>
+                    {departments.map((dept) => (
+                      <option key={dept.id} value={dept.name}>
+                        {dept.name} {dept.code ? `(${dept.code})` : ""}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-              )}
+                <Input
+                  label="Chức danh / Vị trí"
+                  value={formData.position}
+                  onChange={(e) =>
+                    setFormData({ ...formData, position: e.target.value })
+                  }
+                  placeholder="Ví dụ: Senior Developer"
+                />
+                <Input
+                  label="Ngày gia nhập"
+                  type="date"
+                  value={formData.joinDate}
+                  onChange={(e) =>
+                    setFormData({ ...formData, joinDate: e.target.value })
+                  }
+                />
+              </div>
+            </div>
+
+            {/* Account Settings */}
+            <div>
+              <h3 className="font-bold text-slate-900 mb-4 pb-2 border-b border-slate-100">
+                Thiết lập tài khoản
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    Vai trò hệ thống (Role)
+                  </label>
+                  <select
+                    className="w-full bg-slate-50 border border-slate-200 rounded-md p-2.5 text-sm focus:ring-2 focus:ring-brand-500 outline-none"
+                    value={formData.role}
+                    onChange={(e) =>
+                      setFormData({ ...formData, role: e.target.value as any })
+                    }
+                  >
+                    <option value="Employee">Employee (Nhân viên)</option>
+                    <option value="Manager">Manager (Quản lý)</option>
+                    <option value="Admin">Admin (Quản trị viên)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    Trạng thái tài khoản
+                  </label>
+                  <div className="flex gap-4 mt-2">
+                    <label className="flex items-center cursor-pointer">
+                      <input
+                        type="radio"
+                        name="status"
+                        checked={formData.status === "Active"}
+                        onChange={() =>
+                          setFormData({ ...formData, status: "Active" })
+                        }
+                        className="mr-2 text-brand-600 focus:ring-brand-500"
+                      />
+                      <span className="text-sm text-slate-700">
+                        Active (Hoạt động)
+                      </span>
+                    </label>
+                    <label className="flex items-center cursor-pointer">
+                      <input
+                        type="radio"
+                        name="status"
+                        checked={formData.status === "Blocked"}
+                        onChange={() =>
+                          setFormData({ ...formData, status: "Blocked" })
+                        }
+                        className="mr-2 text-brand-600 focus:ring-brand-500"
+                      />
+                      <span className="text-sm text-slate-700">
+                        Blocked (Khóa)
+                      </span>
+                    </label>
+                  </div>
+                </div>
+                {!isEditing && (
+                  <div className="md:col-span-2 bg-blue-50 p-4 rounded-lg border border-blue-100 flex items-start gap-3">
+                    <Key size={18} className="text-blue-600 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-semibold text-blue-800">
+                        Mật khẩu mặc định
+                      </p>
+                      <p className="text-xs text-blue-600 mt-1">
+                        Mật khẩu ngẫu nhiên sẽ được gửi đến email của nhân sự
+                        sau khi tạo thành công.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="bg-slate-50 px-8 py-4 border-t border-slate-200 flex justify-end gap-3">
-          <Button type="button" variant="ghost" onClick={() => setView("list")}>
-            Hủy bỏ
-          </Button>
-          <Button type="submit">
-            <Save size={18} className="mr-2" />{" "}
-            {isEditing ? "Lưu thay đổi" : "Tạo nhân sự"}
-          </Button>
-        </div>
-      </form>
-    </div>
-  );
+          <div className="bg-slate-50 px-8 py-4 border-t border-slate-200 flex justify-end gap-3">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setView("list")}
+            >
+              Hủy bỏ
+            </Button>
+            <Button type="submit">
+              <Save size={18} className="mr-2" />{" "}
+              {isEditing ? "Lưu thay đổi" : "Tạo nhân sự"}
+            </Button>
+          </div>
+        </form>
+      </div>
+    );
+  };
 
   // Main Render Logic for Module
   return (

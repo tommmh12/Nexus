@@ -13,6 +13,7 @@ import workflowRoutes from "./routes/workflow.routes.js";
 import settingsRoutes from "./routes/settings.routes.js";
 import departmentRoutes from "./routes/departmentRoutes.js";
 import chatRoutes from "./routes/chat.routes.js";
+import userRoutes from "./routes/user.routes.js";
 import { SocketManager } from "../infrastructure/socket/SocketManager.js";
 
 dotenv.config();
@@ -22,10 +23,12 @@ const httpServer = createServer(app);
 const PORT = process.env.PORT || 5000;
 
 // Middleware
-app.use(helmet({
-  crossOriginResourcePolicy: { policy: "cross-origin" },
-  contentSecurityPolicy: false,
-}));
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    contentSecurityPolicy: false,
+  })
+);
 app.use(
   cors({
     origin: ["http://localhost:3000", "http://localhost:5173"],
@@ -55,12 +58,17 @@ app.use("/api/workflows", workflowRoutes);
 app.use("/api/settings", settingsRoutes);
 app.use("/api/departments", departmentRoutes);
 app.use("/api/chat", chatRoutes);
+app.use("/api/users", userRoutes);
 
 // Serve uploaded files with CORS
-app.use("/uploads", cors({
-  origin: ["http://localhost:3000", "http://localhost:5173"],
-  credentials: true,
-}), express.static("uploads"));
+app.use(
+  "/uploads",
+  cors({
+    origin: ["http://localhost:3000", "http://localhost:5173"],
+    credentials: true,
+  }),
+  express.static("uploads")
+);
 
 // 404 Handler
 app.use((req: Request, res: Response) => {

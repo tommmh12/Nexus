@@ -41,14 +41,14 @@ export const taskService = {
     const response = await axios.get(`${API_URL}/tasks/project/${projectId}`, {
       headers: getAuthHeader(),
     });
-    return response.data;
+    return response.data.data || response.data;
   },
 
   createTask: async (taskData: Partial<TaskDetail>): Promise<TaskDetail> => {
     const response = await axios.post(`${API_URL}/tasks`, taskData, {
       headers: getAuthHeader(),
     });
-    return response.data;
+    return response.data.data || response.data;
   },
 
   updateTask: async (

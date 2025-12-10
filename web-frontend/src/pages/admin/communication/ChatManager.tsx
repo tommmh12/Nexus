@@ -201,23 +201,25 @@ export const ChatManager: React.FC = () => {
       setLoading(true);
       const response = await chatService.getConversations();
       const groupsResponse = await chatService.getGroups();
-      
+
       if (response.success) {
         const conversations = response.data;
-        const groups = groupsResponse.success ? groupsResponse.data.map((g: any) => ({
-          id: g.id,
-          other_user_id: g.id,
-          other_user_name: g.name,
-          other_user_email: "",
-          other_user_status: "offline",
-          last_message_text: g.last_message,
-          last_message_time: g.last_message_time,
-          last_message_sender_id: "",
-          unread_count: g.unread_count || 0,
-          is_group: true,
-          member_count: g.member_count
-        })) : [];
-        
+        const groups = groupsResponse.success
+          ? groupsResponse.data.map((g: any) => ({
+              id: g.id,
+              other_user_id: g.id,
+              other_user_name: g.name,
+              other_user_email: "",
+              other_user_status: "offline",
+              last_message_text: g.last_message,
+              last_message_time: g.last_message_time,
+              last_message_sender_id: "",
+              unread_count: g.unread_count || 0,
+              is_group: true,
+              member_count: g.member_count,
+            }))
+          : [];
+
         setConversations([...conversations, ...groups]);
       }
     } catch (error) {
@@ -232,7 +234,10 @@ export const ChatManager: React.FC = () => {
       const response = await chatService.getMessages(conversationId);
       if (response.success) {
         console.log("📩 Messages loaded:", response.data);
-        console.log("📎 First message with attachment:", response.data.find((m: any) => m.attachment_id));
+        console.log(
+          "📎 First message with attachment:",
+          response.data.find((m: any) => m.attachment_id)
+        );
         setMessages(response.data);
         scrollToBottom();
         markAsRead(conversationId);
@@ -309,14 +314,14 @@ export const ChatManager: React.FC = () => {
     const date = new Date(timestamp);
     const now = new Date();
     const isToday = date.toDateString() === now.toDateString();
-    
+
     if (isToday) {
       return date.toLocaleTimeString("vi-VN", {
         hour: "2-digit",
         minute: "2-digit",
       });
     }
-    
+
     return date.toLocaleString("vi-VN", {
       day: "2-digit",
       month: "2-digit",
@@ -326,25 +331,31 @@ export const ChatManager: React.FC = () => {
     });
   };
 
-  const shouldShowTimestamp = (currentMsg: Message, previousMsg: Message | null) => {
+  const shouldShowTimestamp = (
+    currentMsg: Message,
+    previousMsg: Message | null
+  ) => {
     if (!previousMsg) return true;
-    
+
     const currentTime = new Date(currentMsg.created_at).getTime();
     const previousTime = new Date(previousMsg.created_at).getTime();
     const diff = currentTime - previousTime;
-    
+
     // Show timestamp if more than 10 minutes apart
     return diff > 10 * 60 * 1000;
   };
 
-  const shouldGroupMessages = (currentMsg: Message, previousMsg: Message | null) => {
+  const shouldGroupMessages = (
+    currentMsg: Message,
+    previousMsg: Message | null
+  ) => {
     if (!previousMsg) return false;
     if (currentMsg.sender_id !== previousMsg.sender_id) return false;
-    
+
     const currentTime = new Date(currentMsg.created_at).getTime();
     const previousTime = new Date(previousMsg.created_at).getTime();
     const diff = currentTime - previousTime;
-    
+
     // Group if less than 10 minutes apart
     return diff <= 10 * 60 * 1000;
   };
@@ -486,7 +497,7 @@ export const ChatManager: React.FC = () => {
       // Clear files after sending
       setSelectedFiles([]);
       setFilePreviewUrls([]);
-      
+
       // Reload messages and conversations
       await loadMessages(activeConversation.id);
       await loadConversations();
@@ -668,9 +679,16 @@ export const ChatManager: React.FC = () => {
                 </button>
                 <button
                   onClick={() => setShowUserInfo(!showUserInfo)}
-                  className={`p-2 hover:bg-slate-100 rounded-full ${showUserInfo ? "bg-brand-50" : ""}`}
+                  className={`p-2 hover:bg-slate-100 rounded-full ${
+                    showUserInfo ? "bg-brand-50" : ""
+                  }`}
                 >
-                  <Info size={18} className={showUserInfo ? "text-brand-600" : "text-slate-600"} />
+                  <Info
+                    size={18}
+                    className={
+                      showUserInfo ? "text-brand-600" : "text-slate-600"
+                    }
+                  />
                 </button>
               </div>
             </div>
@@ -692,29 +710,54 @@ export const ChatManager: React.FC = () => {
                       </div>
                     )}
                     <div
-                      className={`flex ${isMe ? "justify-end" : "justify-start"} group ${isGrouped ? "mt-0.5" : "mt-3"}`}
+                      className={`flex ${
+                        isMe ? "justify-end" : "justify-start"
+                      } group ${isGrouped ? "mt-0.5" : "mt-3"}`}
                     >
                       <div
-                        className={`max-w-lg ${isMe ? "items-end" : "items-start"} flex flex-col`}
+                        className={`max-w-lg ${
+                          isMe ? "items-end" : "items-start"
+                        } flex flex-col`}
                       >
                         {/* Render Image OUTSIDE bubble - standalone */}
-                        {msg.attachment_id && msg.file_path && msg.file_type === 'image' ? (
+                        {msg.attachment_id &&
+                        msg.file_path &&
+                        msg.file_type === "image" ? (
                           <div className="mb-1">
                             <img
-                              src={`http://localhost:5000/${msg.file_path.replace(/\\/g, '/')}`}
+                              src={`http://localhost:5000/${msg.file_path.replace(
+                                /\\/g,
+                                "/"
+                              )}`}
                               alt="Image"
                               className="max-w-sm rounded-xl shadow-md cursor-pointer hover:opacity-95 transition-opacity"
-                              onClick={() => window.open(`http://localhost:5000/${msg.file_path.replace(/\\/g, '/')}`, '_blank')}
+                              onClick={() =>
+                                window.open(
+                                  `http://localhost:5000/${msg.file_path.replace(
+                                    /\\/g,
+                                    "/"
+                                  )}`,
+                                  "_blank"
+                                )
+                              }
                             />
-                            <div className={`flex items-center gap-1 mt-1 px-1 ${isMe ? "justify-end" : "justify-start"}`}>
-                              <span className="text-[10px] text-slate-400">{formatTime(msg.created_at)}</span>
-                              {isMe && (
-                                msg.is_read ? (
-                                  <CheckCheck size={12} className="text-slate-400" />
+                            <div
+                              className={`flex items-center gap-1 mt-1 px-1 ${
+                                isMe ? "justify-end" : "justify-start"
+                              }`}
+                            >
+                              <span className="text-[10px] text-slate-400">
+                                {formatTime(msg.created_at)}
+                              </span>
+                              {isMe &&
+                                (msg.is_read ? (
+                                  <CheckCheck
+                                    size={12}
+                                    className="text-slate-400"
+                                  />
                                 ) : (
                                   <Check size={12} className="text-slate-400" />
-                                )
-                              )}
+                                ))}
                             </div>
                           </div>
                         ) : msg.message_text ? (
@@ -727,41 +770,81 @@ export const ChatManager: React.FC = () => {
                             }`}
                           >
                             {/* File attachment (non-image) */}
-                            {msg.attachment_id && msg.file_path && msg.file_type !== 'image' && (
-                              <div className="mb-2">
-                                <a
-                                  href={`http://localhost:5000/${msg.file_path.replace(/\\/g, '/')}`}
-                                  download={msg.file_name}
-                                  className={`flex items-center gap-2 p-2 rounded-lg border ${
-                                    isMe ? 'bg-blue-400/30 border-blue-300' : 'bg-slate-50 border-slate-200'
-                                  }`}
-                                >
-                                  <FileText size={20} className={isMe ? 'text-white' : 'text-slate-600'} />
-                                  <div className="flex-1 min-w-0">
-                                    <div className={`text-xs font-medium truncate ${isMe ? 'text-white' : 'text-slate-900'}`}>
-                                      {msg.file_name}
-                                    </div>
-                                    {msg.file_size && (
-                                      <div className={`text-[10px] ${isMe ? 'text-blue-100' : 'text-slate-500'}`}>
-                                        {(msg.file_size / 1024 / 1024).toFixed(2)} MB
+                            {msg.attachment_id &&
+                              msg.file_path &&
+                              msg.file_type !== "image" && (
+                                <div className="mb-2">
+                                  <a
+                                    href={`http://localhost:5000/${msg.file_path.replace(
+                                      /\\/g,
+                                      "/"
+                                    )}`}
+                                    download={msg.file_name}
+                                    className={`flex items-center gap-2 p-2 rounded-lg border ${
+                                      isMe
+                                        ? "bg-blue-400/30 border-blue-300"
+                                        : "bg-slate-50 border-slate-200"
+                                    }`}
+                                  >
+                                    <FileText
+                                      size={20}
+                                      className={
+                                        isMe ? "text-white" : "text-slate-600"
+                                      }
+                                    />
+                                    <div className="flex-1 min-w-0">
+                                      <div
+                                        className={`text-xs font-medium truncate ${
+                                          isMe ? "text-white" : "text-slate-900"
+                                        }`}
+                                      >
+                                        {msg.file_name}
                                       </div>
-                                    )}
-                                  </div>
-                                  <Download size={14} className={isMe ? 'text-white' : 'text-slate-400'} />
-                                </a>
-                              </div>
-                            )}
-                            
+                                      {msg.file_size && (
+                                        <div
+                                          className={`text-[10px] ${
+                                            isMe
+                                              ? "text-blue-100"
+                                              : "text-slate-500"
+                                          }`}
+                                        >
+                                          {(
+                                            msg.file_size /
+                                            1024 /
+                                            1024
+                                          ).toFixed(2)}{" "}
+                                          MB
+                                        </div>
+                                      )}
+                                    </div>
+                                    <Download
+                                      size={14}
+                                      className={
+                                        isMe ? "text-white" : "text-slate-400"
+                                      }
+                                    />
+                                  </a>
+                                </div>
+                              )}
+
                             <div className="mb-0.5">{msg.message_text}</div>
-                            <div className={`flex items-center gap-1 justify-end ${isMe ? "text-blue-100" : "text-slate-400"}`}>
-                              <span className="text-[10px]">{formatTime(msg.created_at)}</span>
-                              {isMe && (
-                                msg.is_read ? (
-                                  <CheckCheck size={12} className="text-blue-200" />
+                            <div
+                              className={`flex items-center gap-1 justify-end ${
+                                isMe ? "text-blue-100" : "text-slate-400"
+                              }`}
+                            >
+                              <span className="text-[10px]">
+                                {formatTime(msg.created_at)}
+                              </span>
+                              {isMe &&
+                                (msg.is_read ? (
+                                  <CheckCheck
+                                    size={12}
+                                    className="text-blue-200"
+                                  />
                                 ) : (
                                   <Check size={12} className="text-blue-200" />
-                                )
-                              )}
+                                ))}
                             </div>
                           </div>
                         ) : null}
@@ -796,10 +879,7 @@ export const ChatManager: React.FC = () => {
               <div className="px-4 py-2 bg-white border-t border-slate-200">
                 <div className="flex items-center gap-2 overflow-x-auto">
                   {selectedFiles.map((file, index) => (
-                    <div
-                      key={index}
-                      className="relative flex-shrink-0 group"
-                    >
+                    <div key={index} className="relative flex-shrink-0 group">
                       {file.type.startsWith("image/") ? (
                         <img
                           src={filePreviewUrls[index]}
@@ -1189,7 +1269,9 @@ export const ChatManager: React.FC = () => {
           </div>
 
           <div className="border-t border-slate-200 p-4">
-            <h4 className="text-sm font-bold text-slate-700 mb-3">Thông tin liên hệ</h4>
+            <h4 className="text-sm font-bold text-slate-700 mb-3">
+              Thông tin liên hệ
+            </h4>
             <div className="space-y-3">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center">
@@ -1197,7 +1279,9 @@ export const ChatManager: React.FC = () => {
                 </div>
                 <div>
                   <p className="text-xs text-slate-500">Email</p>
-                  <p className="text-sm text-slate-900">{activeConversation.other_user_email}</p>
+                  <p className="text-sm text-slate-900">
+                    {activeConversation.other_user_email}
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
@@ -1213,31 +1297,55 @@ export const ChatManager: React.FC = () => {
           </div>
 
           <div className="border-t border-slate-200 p-4">
-            <h4 className="text-sm font-bold text-slate-700 mb-3">Ảnh & Tập tin</h4>
+            <h4 className="text-sm font-bold text-slate-700 mb-3">
+              Ảnh & Tập tin
+            </h4>
             <div className="grid grid-cols-3 gap-2">
               {messages
-                .filter(m => m.attachment_id && m.file_type === 'image')
+                .filter((m) => m.attachment_id && m.file_type === "image")
                 .slice(0, 6)
                 .map((msg, idx) => (
-                  <div 
-                    key={idx} 
+                  <div
+                    key={idx}
                     className="aspect-square bg-slate-100 rounded-lg overflow-hidden cursor-pointer hover:opacity-90"
-                    onClick={() => window.open(`http://localhost:5000/${msg.file_path?.replace(/\\/g, '/')}`, '_blank')}
+                    onClick={() =>
+                      window.open(
+                        `http://localhost:5000/${msg.file_path?.replace(
+                          /\\/g,
+                          "/"
+                        )}`,
+                        "_blank"
+                      )
+                    }
                   >
-                    <img 
-                      src={`http://localhost:5000/${msg.file_path?.replace(/\\/g, '/')}`}
+                    <img
+                      src={`http://localhost:5000/${msg.file_path?.replace(
+                        /\\/g,
+                        "/"
+                      )}`}
                       alt="Image"
                       className="w-full h-full object-cover"
                     />
                   </div>
                 ))}
-              {messages.filter(m => m.attachment_id && m.file_type === 'image').length === 0 && (
-                <div className="col-span-3 text-center text-xs text-slate-400 py-4">Chưa có ảnh nào</div>
+              {messages.filter(
+                (m) => m.attachment_id && m.file_type === "image"
+              ).length === 0 && (
+                <div className="col-span-3 text-center text-xs text-slate-400 py-4">
+                  Chưa có ảnh nào
+                </div>
               )}
             </div>
-            {messages.filter(m => m.attachment_id && m.file_type === 'image').length > 6 && (
+            {messages.filter((m) => m.attachment_id && m.file_type === "image")
+              .length > 6 && (
               <button className="w-full mt-3 text-sm text-brand-600 hover:text-brand-700 font-medium">
-                Xem tất cả ({messages.filter(m => m.attachment_id && m.file_type === 'image').length})
+                Xem tất cả (
+                {
+                  messages.filter(
+                    (m) => m.attachment_id && m.file_type === "image"
+                  ).length
+                }
+                )
               </button>
             )}
           </div>

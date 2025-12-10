@@ -1,9 +1,18 @@
 import { Request, Response } from "express";
 import { DepartmentService } from "../../application/services/DepartmentService.js";
 import { DepartmentRepository } from "../../infrastructure/repositories/DepartmentRepository.js";
+import { auditLogger } from "../../utils/auditLogger.js";
 
 const departmentRepository = new DepartmentRepository();
 const departmentService = new DepartmentService(departmentRepository);
+
+// Helper to get IP address from request
+const getIpAddress = (req: Request): string => {
+  return (req.headers["x-forwarded-for"] as string)?.split(",")[0] || 
+         (req.headers["x-real-ip"] as string) || 
+         req.socket.remoteAddress || 
+         "unknown";
+};
 
 export const getAllDepartments = async (req: Request, res: Response) => {
   try {
@@ -17,7 +26,7 @@ export const getAllDepartments = async (req: Request, res: Response) => {
 
 export const getDepartmentById = async (req: Request, res: Response) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = req.params.id;
     const department = await departmentService.getDepartmentById(id);
 
     if (!department) {
@@ -33,7 +42,19 @@ export const getDepartmentById = async (req: Request, res: Response) => {
 
 export const createDepartment = async (req: Request, res: Response) => {
   try {
+    const userId = (req as any).user?.userId || null;
+    const ipAddress = getIpAddress(req);
+    
     const department = await departmentService.createDepartment(req.body);
+    
+    // Log audit trail
+    await auditLogger.logDepartmentCreate(
+      userId,
+      department.id.toString(),
+      department.name,
+      ipAddress
+    );
+    
     res.status(201).json(department);
   } catch (error: any) {
     console.error("Error creating department:", error);
@@ -43,8 +64,27 @@ export const createDepartment = async (req: Request, res: Response) => {
 
 export const updateDepartment = async (req: Request, res: Response) => {
   try {
-    const id = parseInt(req.params.id);
+    const userId = (req as any).user?.userId || null;
+    const ipAddress = getIpAddress(req);
+    const id = req.params.id;
+    
+    // Get department info before update for logging
+    const existingDept = await departmentService.getDepartmentById(id);
+    if (!existingDept) {
+      return res.status(404).json({ error: "Department not found" });
+    }
+
     await departmentService.updateDepartment(id, req.body);
+    
+    // Log audit trail
+    await auditLogger.logDepartmentUpdate(
+      userId,
+      id,
+      existingDept.name,
+      req.body, // changes
+      ipAddress
+    );
+    
     res.json({ message: "Department updated successfully" });
   } catch (error: any) {
     console.error("Error updating department:", error);
@@ -54,8 +94,26 @@ export const updateDepartment = async (req: Request, res: Response) => {
 
 export const deleteDepartment = async (req: Request, res: Response) => {
   try {
-    const id = parseInt(req.params.id);
+    const userId = (req as any).user?.userId || null;
+    const ipAddress = getIpAddress(req);
+    const id = req.params.id;
+    
+    // Get department info before delete for logging
+    const existingDept = await departmentService.getDepartmentById(id);
+    if (!existingDept) {
+      return res.status(404).json({ error: "Department not found" });
+    }
+
     await departmentService.deleteDepartment(id);
+    
+    // Log audit trail
+    await auditLogger.logDepartmentDelete(
+      userId,
+      id,
+      existingDept.name,
+      ipAddress
+    );
+    
     res.json({ message: "Department deleted successfully" });
   } catch (error: any) {
     console.error("Error deleting department:", error);

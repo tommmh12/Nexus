@@ -1,11 +1,13 @@
 export interface Department {
-  id: number;
+  id: string;
   name: string;
   code?: string;
   description?: string;
-  managerId?: number;
+  managerId?: string;
   managerName?: string;
   memberCount?: number;
+  budget?: number;
+  kpiStatus?: "On Track" | "At Risk" | "Behind";
   createdAt?: Date;
   updatedAt?: Date;
 }

@@ -11,12 +11,15 @@ export class DashboardService {
     const stats = await this.statsRepository.getDashboardStats();
     const recentActivities = await this.statsRepository.getRecentActivities(10);
     const projectsProgress = await this.statsRepository.getProjectsProgress(5);
+    const projectsByDepartment =
+      await this.statsRepository.getProjectsByDepartment();
     const tasksSummary = await this.statsRepository.getTasksSummary(10);
 
     return {
       stats,
       recentActivities,
       projectsProgress,
+      projectsByDepartment,
       tasksSummary,
     };
   }

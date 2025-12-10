@@ -9,7 +9,10 @@ export class DepartmentRepository {
       SELECT 
         d.id,
         d.name,
+        d.code,
         d.description,
+        d.budget,
+        d.kpi_status as kpiStatus,
         d.manager_id as managerId,
         u.full_name as managerName,
         (SELECT COUNT(*) FROM users WHERE department_id = d.id) as memberCount,
@@ -22,13 +25,16 @@ export class DepartmentRepository {
     return rows as Department[];
   }
 
-  async findById(id: number): Promise<Department | null> {
+  async findById(id: string): Promise<Department | null> {
     const [rows] = await this.db.query(
       `
       SELECT 
         d.id,
         d.name,
+        d.code,
         d.description,
+        d.budget,
+        d.kpi_status as kpiStatus,
         d.manager_id as managerId,
         u.full_name as managerName,
         (SELECT COUNT(*) FROM users WHERE department_id = d.id) as memberCount,
@@ -45,24 +51,40 @@ export class DepartmentRepository {
   }
 
   async create(department: Partial<Department>): Promise<Department> {
-    const [result] = await this.db.query(
-      "INSERT INTO departments (name, description, manager_id) VALUES (?, ?, ?)",
-      [department.name, department.description, department.managerId]
+    const deptId = crypto.randomUUID();
+    await this.db.query(
+      "INSERT INTO departments (id, name, code, description, budget, kpi_status, manager_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      [
+        deptId,
+        department.name,
+        department.code || null,
+        department.description || null,
+        department.budget || null,
+        department.kpiStatus || null,
+        department.managerId || null,
+      ]
     );
-    const insertResult = result as any;
-    const created = await this.findById(insertResult.insertId);
+    const created = await this.findById(deptId);
     if (!created) throw new Error("Failed to create department");
     return created;
   }
 
-  async update(id: number, department: Partial<Department>): Promise<void> {
+  async update(id: string, department: Partial<Department>): Promise<void> {
     await this.db.query(
-      "UPDATE departments SET name = ?, description = ?, manager_id = ? WHERE id = ?",
-      [department.name, department.description, department.managerId, id]
+      "UPDATE departments SET name = ?, code = ?, description = ?, budget = ?, kpi_status = ?, manager_id = ? WHERE id = ?",
+      [
+        department.name,
+        department.code || null,
+        department.description || null,
+        department.budget || null,
+        department.kpiStatus || null,
+        department.managerId || null,
+        id,
+      ]
     );
   }
 
-  async delete(id: number): Promise<void> {
+  async delete(id: string): Promise<void> {
     await this.db.query("DELETE FROM departments WHERE id = ?", [id]);
   }
 }

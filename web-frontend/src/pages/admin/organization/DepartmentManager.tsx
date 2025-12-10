@@ -1,8 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Department, EmployeeProfile } from "../../types";
 // TODO: Replace with API call
 import { Button } from "../../../components/system/ui/Button";
 import { Input } from "../../../components/system/ui/Input";
+import { departmentService } from "../../../services/departmentService";
+import { userService } from "../../../services/userService";
 import {
   Plus,
   MoreHorizontal,
@@ -20,6 +22,11 @@ import {
   Save,
   Search,
   Check,
+  ChevronDown,
+  User as UserIcon,
+  DollarSign,
+  UserCircle,
+  FileText,
 } from "lucide-react";
 
 // --- Types & Interfaces for Local Use ---
@@ -44,7 +51,158 @@ interface AddMemberModalProps {
   onCancel: () => void;
 }
 
+interface SelectManagerModalProps {
+  users: EmployeeProfile[];
+  currentManagerName?: string;
+  onSelect: (user: EmployeeProfile | null) => void;
+  onCancel: () => void;
+}
+
 // --- Modals ---
+
+const SelectManagerModal = ({
+  users,
+  currentManagerName,
+  onSelect,
+  onCancel,
+}: SelectManagerModalProps) => {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedUser, setSelectedUser] = useState<EmployeeProfile | null>(
+    users.find((u) => u.fullName === currentManagerName) || null
+  );
+
+  const filteredUsers = users.filter(
+    (u) =>
+      u.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      u.email.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const handleSelect = (user: EmployeeProfile) => {
+    setSelectedUser(user);
+  };
+
+  const handleConfirm = () => {
+    onSelect(selectedUser);
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fadeIn"
+      onClick={onCancel}
+    >
+      <div
+        className="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6 flex flex-col max-h-[80vh]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-bold text-slate-900">
+            Chọn trưởng phòng
+          </h3>
+          <button onClick={onCancel}>
+            <X size={20} className="text-slate-400 hover:text-slate-600" />
+          </button>
+        </div>
+
+        <div className="relative mb-4">
+          <Search
+            size={16}
+            className="absolute left-3 top-2.5 text-slate-400"
+          />
+          <input
+            type="text"
+            placeholder="Tìm kiếm nhân viên..."
+            className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-4 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+
+        <div className="flex-1 overflow-y-auto border border-slate-100 rounded-lg mb-4 p-2 space-y-1 custom-scrollbar">
+          {/* Option to clear selection */}
+          <div
+            onClick={() => setSelectedUser(null)}
+            className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors ${
+              selectedUser === null
+                ? "bg-brand-50 border border-brand-200"
+                : "hover:bg-slate-50 border border-transparent"
+            }`}
+          >
+            <div
+              className={`w-5 h-5 rounded border flex items-center justify-center ${
+                selectedUser === null
+                  ? "bg-brand-600 border-brand-600"
+                  : "bg-white border-slate-300"
+              }`}
+            >
+              {selectedUser === null && (
+                <Check size={14} className="text-white" />
+              )}
+            </div>
+            <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center">
+              <UserIcon size={16} className="text-slate-500" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-slate-900">
+                Không có trưởng phòng
+              </p>
+              <p className="text-xs text-slate-500">Bỏ chọn trưởng phòng</p>
+            </div>
+          </div>
+
+          {filteredUsers.length > 0 ? (
+            filteredUsers.map((u) => (
+              <div
+                key={u.id}
+                onClick={() => handleSelect(u)}
+                className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors ${
+                  selectedUser?.id === u.id
+                    ? "bg-brand-50 border border-brand-200"
+                    : "hover:bg-slate-50 border border-transparent"
+                }`}
+              >
+                <div
+                  className={`w-5 h-5 rounded border flex items-center justify-center ${
+                    selectedUser?.id === u.id
+                      ? "bg-brand-600 border-brand-600"
+                      : "bg-white border-slate-300"
+                  }`}
+                >
+                  {selectedUser?.id === u.id && (
+                    <Check size={14} className="text-white" />
+                  )}
+                </div>
+                <img
+                  src={u.avatarUrl}
+                  className="w-8 h-8 rounded-full"
+                  alt=""
+                />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-slate-900">
+                    {u.fullName}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {u.email} {u.department ? `• ${u.department}` : ""}
+                  </p>
+                </div>
+              </div>
+            ))
+          ) : (
+            <p className="text-center text-sm text-slate-500 py-4">
+              Không tìm thấy nhân sự phù hợp.
+            </p>
+          )}
+        </div>
+
+        <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+          <Button variant="ghost" onClick={onCancel}>
+            Hủy
+          </Button>
+          <Button onClick={handleConfirm}>Xác nhận</Button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const DepartmentFormModal = ({
   department,
@@ -52,9 +210,11 @@ const DepartmentFormModal = ({
   onCancel,
   users,
 }: DepartmentFormProps) => {
+  const isEditMode = !!department;
   const [formData, setFormData] = useState<Partial<Department>>(
     department || {
       name: "",
+      code: "",
       description: "",
       managerName: "",
       budget: "",
@@ -62,110 +222,170 @@ const DepartmentFormModal = ({
       memberCount: 0,
     }
   );
+  const [isManagerModalOpen, setIsManagerModalOpen] = useState(false);
+  const [selectedManager, setSelectedManager] =
+    useState<EmployeeProfile | null>(
+      department
+        ? users.find((u) => u.fullName === department.managerName) || null
+        : null
+    );
+
+  const handleSelectManager = (user: EmployeeProfile | null) => {
+    setSelectedManager(user);
+    setFormData({
+      ...formData,
+      managerId: user ? user.id : undefined,
+      managerName: user ? user.fullName : "",
+      managerAvatar: user ? user.avatarUrl : undefined,
+    });
+    setIsManagerModalOpen(false);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // If manager selected, find avatar
-    const manager = users.find((u) => u.fullName === formData.managerName);
-    const managerAvatar = manager
-      ? manager.avatarUrl
-      : "https://ui-avatars.com/api/?name=" + formData.managerName;
+    // If manager selected, use selected manager data
+    const managerAvatar = selectedManager
+      ? selectedManager.avatarUrl
+      : formData.managerAvatar ||
+        "https://ui-avatars.com/api/?name=" +
+          (formData.managerName || "Department");
 
     onSave({ ...formData, managerAvatar } as Department);
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="text-lg font-bold text-slate-900">
-            {department ? "Chỉnh sửa Phòng ban" : "Thêm Phòng ban mới"}
-          </h3>
-          <button
-            onClick={onCancel}
-            className="text-slate-400 hover:text-slate-600"
-          >
-            <X size={20} />
-          </button>
-        </div>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <Input
-            label="Tên phòng ban"
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            required
-          />
-
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-2">
-              Trưởng phòng
-            </label>
-            <select
-              className="w-full bg-slate-50 border border-slate-200 rounded-md p-2.5 text-sm outline-none focus:ring-2 focus:ring-brand-500"
-              value={formData.managerName}
-              onChange={(e) =>
-                setFormData({ ...formData, managerName: e.target.value })
-              }
+    <>
+      {isManagerModalOpen && (
+        <SelectManagerModal
+          users={users}
+          currentManagerName={formData.managerName}
+          onSelect={handleSelectManager}
+          onCancel={() => setIsManagerModalOpen(false)}
+        />
+      )}
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fadeIn">
+        <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-lg font-bold text-slate-900">
+              {isEditMode ? "Chỉnh sửa Phòng ban" : "Thêm Phòng ban mới"}
+            </h3>
+            <button
+              onClick={onCancel}
+              className="text-slate-400 hover:text-slate-600"
             >
-              <option value="">Chọn trưởng phòng...</option>
-              {users.map((u) => (
-                <option key={u.id} value={u.fullName}>
-                  {u.fullName} ({u.email})
-                </option>
-              ))}
-            </select>
+              <X size={20} />
+            </button>
           </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-2">
-              Mô tả nhiệm vụ
-            </label>
-            <textarea
-              className="w-full bg-slate-50 border border-slate-200 rounded-md p-3 text-sm focus:ring-2 focus:ring-brand-500 outline-none h-24 resize-none"
-              value={formData.description}
-              onChange={(e) =>
-                setFormData({ ...formData, description: e.target.value })
-              }
-            ></textarea>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <Input
-              label="Ngân sách (Budget)"
-              value={formData.budget}
+              label="Tên phòng ban"
+              value={formData.name}
               onChange={(e) =>
-                setFormData({ ...formData, budget: e.target.value })
+                setFormData({ ...formData, name: e.target.value })
               }
+              required
             />
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">
-                Trạng thái KPI
-              </label>
-              <select
-                className="w-full bg-slate-50 border border-slate-200 rounded-md p-2.5 text-sm outline-none focus:ring-2 focus:ring-brand-500"
-                value={formData.kpiStatus}
-                onChange={(e) =>
-                  setFormData({ ...formData, kpiStatus: e.target.value as any })
-                }
-              >
-                <option value="On Track">On Track (Đúng tiến độ)</option>
-                <option value="At Risk">At Risk (Rủi ro)</option>
-                <option value="Behind">Behind (Chậm trễ)</option>
-              </select>
-            </div>
-          </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
-            <Button type="button" variant="ghost" onClick={onCancel}>
-              Hủy
-            </Button>
-            <Button type="submit">
-              <Save size={16} className="mr-2" /> Lưu
-            </Button>
-          </div>
-        </form>
+            <Input
+              label="Mã phòng ban"
+              value={formData.code || ""}
+              onChange={(e) =>
+                setFormData({ ...formData, code: e.target.value })
+              }
+              required
+            />
+
+            {isEditMode && (
+              <>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    Trưởng phòng
+                  </label>
+                  <div
+                    onClick={() => setIsManagerModalOpen(true)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-md p-2.5 text-sm cursor-pointer hover:border-brand-300 transition-colors flex items-center justify-between"
+                  >
+                    {selectedManager ? (
+                      <div className="flex items-center gap-3">
+                        <img
+                          src={selectedManager.avatarUrl}
+                          className="w-8 h-8 rounded-full"
+                          alt=""
+                        />
+                        <div>
+                          <p className="text-sm font-medium text-slate-900">
+                            {selectedManager.fullName}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            {selectedManager.email}
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="text-slate-500">
+                        Chọn trưởng phòng...
+                      </span>
+                    )}
+                    <ChevronDown size={16} className="text-slate-400" />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    Mô tả nhiệm vụ
+                  </label>
+                  <textarea
+                    className="w-full bg-slate-50 border border-slate-200 rounded-md p-3 text-sm focus:ring-2 focus:ring-brand-500 outline-none h-24 resize-none"
+                    value={formData.description}
+                    onChange={(e) =>
+                      setFormData({ ...formData, description: e.target.value })
+                    }
+                  ></textarea>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <Input
+                    label="Ngân sách (Budget)"
+                    value={formData.budget}
+                    onChange={(e) =>
+                      setFormData({ ...formData, budget: e.target.value })
+                    }
+                  />
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">
+                      Trạng thái KPI
+                    </label>
+                    <select
+                      className="w-full bg-slate-50 border border-slate-200 rounded-md p-2.5 text-sm outline-none focus:ring-2 focus:ring-brand-500"
+                      value={formData.kpiStatus}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          kpiStatus: e.target.value as any,
+                        })
+                      }
+                    >
+                      <option value="On Track">On Track (Đúng tiến độ)</option>
+                      <option value="At Risk">At Risk (Rủi ro)</option>
+                      <option value="Behind">Behind (Chậm trễ)</option>
+                    </select>
+                  </div>
+                </div>
+              </>
+            )}
+
+            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+              <Button type="button" variant="ghost" onClick={onCancel}>
+                Hủy
+              </Button>
+              <Button type="submit">
+                <Save size={16} className="mr-2" /> Lưu
+              </Button>
+            </div>
+          </form>
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 
@@ -447,6 +667,11 @@ const DepartmentDetailView = ({
                   <h1 className="text-3xl font-bold text-slate-900 mb-2">
                     {department.name}
                   </h1>
+                  {department.code && (
+                    <p className="text-sm text-slate-400 mb-2">
+                      Mã phòng ban: {department.code}
+                    </p>
+                  )}
                   <p className="text-slate-500 max-w-2xl">
                     {department.description}
                   </p>
@@ -530,39 +755,130 @@ const DepartmentDetailView = ({
 
       {/* Content */}
       <div className="min-h-[400px]">
-        {activeTab === "overview" && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fadeIn">
-            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-              <h3 className="font-bold text-slate-900 mb-4 flex items-center">
-                <TrendingUp size={20} className="mr-2 text-brand-600" /> Hiệu
-                suất KPI
-              </h3>
-              <div className="space-y-4">
-                <div>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className="text-slate-600">Hoàn thành dự án</span>
-                    <span className="font-bold text-slate-900">85%</span>
-                  </div>
-                  <div className="w-full bg-slate-100 rounded-full h-2">
-                    <div
-                      className="bg-green-500 h-2 rounded-full"
-                      style={{ width: "85%" }}
-                    ></div>
-                  </div>
-                </div>
-                <div>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className="text-slate-600">Tuyển dụng</span>
-                    <span className="font-bold text-slate-900">60%</span>
-                  </div>
-                  <div className="w-full bg-slate-100 rounded-full h-2">
-                    <div
-                      className="bg-yellow-500 h-2 rounded-full"
-                      style={{ width: "60%" }}
-                    ></div>
-                  </div>
-                </div>
+        {activeTab === "overview" && selectedDept && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-fadeIn">
+            {/* Budget Card */}
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-xl border border-blue-200 shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="font-bold text-blue-900 flex items-center">
+                  <DollarSign size={20} className="mr-2" /> Ngân sách
+                </h3>
               </div>
+              <div className="text-3xl font-bold text-blue-900 mb-1">
+                {selectedDept.budget
+                  ? `${parseFloat(selectedDept.budget).toLocaleString(
+                      "vi-VN"
+                    )} VNĐ`
+                  : "---"}
+              </div>
+              <p className="text-sm text-blue-700">
+                Năm {new Date().getFullYear()}
+              </p>
+            </div>
+
+            {/* Members Card */}
+            <div className="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-xl border border-green-200 shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="font-bold text-green-900 flex items-center">
+                  <Users size={20} className="mr-2" /> Nhân sự
+                </h3>
+              </div>
+              <div className="text-3xl font-bold text-green-900 mb-1">
+                {deptMembers.length} người
+              </div>
+              <p className="text-sm text-green-700">
+                {deptMembers.filter((m) => m.status === "Active").length} đang
+                làm việc
+              </p>
+            </div>
+
+            {/* KPI Status Card */}
+            <div
+              className={`bg-gradient-to-br p-6 rounded-xl border shadow-sm ${
+                selectedDept.kpiStatus === "On Track"
+                  ? "from-green-50 to-green-100 border-green-200"
+                  : selectedDept.kpiStatus === "At Risk"
+                  ? "from-yellow-50 to-yellow-100 border-yellow-200"
+                  : "from-red-50 to-red-100 border-red-200"
+              }`}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <h3
+                  className={`font-bold flex items-center ${
+                    selectedDept.kpiStatus === "On Track"
+                      ? "text-green-900"
+                      : selectedDept.kpiStatus === "At Risk"
+                      ? "text-yellow-900"
+                      : "text-red-900"
+                  }`}
+                >
+                  <TrendingUp size={20} className="mr-2" /> Trạng thái KPI
+                </h3>
+              </div>
+              <div
+                className={`text-2xl font-bold mb-1 ${
+                  selectedDept.kpiStatus === "On Track"
+                    ? "text-green-900"
+                    : selectedDept.kpiStatus === "At Risk"
+                    ? "text-yellow-900"
+                    : "text-red-900"
+                }`}
+              >
+                {selectedDept.kpiStatus || "On Track"}
+              </div>
+              <p
+                className={`text-sm ${
+                  selectedDept.kpiStatus === "On Track"
+                    ? "text-green-700"
+                    : selectedDept.kpiStatus === "At Risk"
+                    ? "text-yellow-700"
+                    : "text-red-700"
+                }`}
+              >
+                Tháng {new Date().getMonth() + 1}/{new Date().getFullYear()}
+              </p>
+            </div>
+
+            {/* Manager Info */}
+            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm col-span-1 md:col-span-2">
+              <h3 className="font-bold text-slate-900 mb-4 flex items-center">
+                <UserCircle size={20} className="mr-2 text-brand-600" /> Trưởng
+                phòng
+              </h3>
+              {selectedDept.managerName ? (
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 rounded-full bg-brand-100 flex items-center justify-center text-brand-600 font-bold text-xl">
+                    {selectedDept.managerName?.split(" ").pop()?.charAt(0)}
+                  </div>
+                  <div>
+                    <p className="font-bold text-lg text-slate-900">
+                      {selectedDept.managerName}
+                    </p>
+                    <p className="text-sm text-slate-500">Quản lý phòng ban</p>
+                    <button className="text-sm text-brand-600 hover:underline mt-1">
+                      Thay đổi →
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-4 text-slate-400">
+                  <UserCircle size={48} className="mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">Chưa có trưởng phòng</p>
+                  <button className="text-sm text-brand-600 hover:underline mt-2">
+                    Chỉ định →
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Description */}
+            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+              <h3 className="font-bold text-slate-900 mb-3 flex items-center">
+                <FileText size={20} className="mr-2 text-brand-600" /> Mô tả
+              </h3>
+              <p className="text-sm text-slate-600 leading-relaxed">
+                {selectedDept.description || "Chưa có mô tả cho phòng ban này."}
+              </p>
             </div>
           </div>
         )}
@@ -709,6 +1025,71 @@ export const DepartmentManager = () => {
   const [selectedDept, setSelectedDept] = useState<Department | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingDept, setEditingDept] = useState<Department | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Load departments and users from API
+  useEffect(() => {
+    const loadDepartments = async () => {
+      try {
+        setIsLoading(true);
+        const depts = await departmentService.getAllDepartments();
+        // Map backend data to frontend format
+        const mappedDepts = depts.map((d: any) => ({
+          id: d.id.toString(),
+          name: d.name,
+          code: d.code || "",
+          description: d.description || "",
+          managerName: d.managerName || "Chưa có",
+          managerAvatar:
+            d.managerAvatar ||
+            "https://ui-avatars.com/api/?name=" + (d.name || "Department"),
+          memberCount: d.memberCount || 0,
+          budget: d.budget || "---",
+          kpiStatus: d.kpiStatus || "On Track",
+          parentDeptId: d.parentDeptId,
+        }));
+        setDepartments(mappedDepts);
+      } catch (error) {
+        console.error("Error loading departments:", error);
+        alert("Không thể tải danh sách phòng ban. Vui lòng thử lại.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    const loadUsers = async () => {
+      try {
+        const usersList = await userService.getAllUsers();
+        // Map backend data to frontend format
+        const mappedUsers = usersList.map((u: any) => ({
+          id: u.id,
+          fullName: u.full_name,
+          email: u.email,
+          phone: u.phone || "",
+          employeeId: u.employee_id,
+          position: u.position || "",
+          department: u.department_name || "", // Use department_name from API
+          role: u.role,
+          status: u.status,
+          joinDate: u.join_date
+            ? new Date(u.join_date).toLocaleDateString("vi-VN")
+            : "",
+          avatarUrl:
+            u.avatar_url ||
+            `https://ui-avatars.com/api/?name=${encodeURIComponent(
+              u.full_name
+            )}`,
+          linkedAccounts: [],
+        }));
+        setUsers(mappedUsers);
+      } catch (error) {
+        console.error("Error loading users:", error);
+      }
+    };
+
+    loadDepartments();
+    loadUsers();
+  }, []);
 
   const handleViewDetail = (dept: Department) => {
     setSelectedDept(dept);
@@ -726,59 +1107,236 @@ export const DepartmentManager = () => {
     setIsFormOpen(true);
   };
 
-  const handleDelete = (id: string, e: React.MouseEvent) => {
+  const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (window.confirm("Bạn có chắc chắn muốn xóa phòng ban này?")) {
-      setDepartments((prev) => prev.filter((d) => d.id !== id));
+      try {
+        await departmentService.deleteDepartment(parseInt(id));
+        setDepartments((prev) => prev.filter((d) => d.id !== id));
+        if (selectedDept?.id === id) {
+          setSelectedDept(null);
+          setView("list");
+        }
+        alert("Xóa phòng ban thành công!");
+      } catch (error) {
+        console.error("Error deleting department:", error);
+        alert("Không thể xóa phòng ban. Vui lòng thử lại.");
+      }
     }
   };
 
-  const handleSaveDept = (dept: Department) => {
-    if (editingDept) {
-      setDepartments((prev) => prev.map((d) => (d.id === dept.id ? dept : d)));
-      if (selectedDept && selectedDept.id === dept.id) setSelectedDept(dept);
-    } else {
-      const newDept = { ...dept, id: `dept-${Date.now()}` };
-      setDepartments((prev) => [...prev, newDept]);
+  const handleSaveDept = async (dept: Department) => {
+    try {
+      setIsLoading(true);
+      // Use managerId directly from formData, or find from managerName as fallback
+      let managerId: string | undefined = dept.managerId;
+      if (!managerId && dept.managerName && dept.managerName !== "Chưa có") {
+        const manager = users.find((u) => u.fullName === dept.managerName);
+        if (manager) {
+          managerId = manager.id;
+        }
+      }
+
+      if (editingDept) {
+        // Update existing department
+        await departmentService.updateDepartment(dept.id, {
+          name: dept.name,
+          code: dept.code,
+          description: dept.description,
+          managerId: managerId,
+        });
+        // Reload departments to get updated data
+        const depts = await departmentService.getAllDepartments();
+        const mappedDepts = depts.map((d: any) => ({
+          id: d.id.toString(),
+          name: d.name,
+          code: d.code || "",
+          description: d.description || "",
+          managerName: d.managerName || "Chưa có",
+          managerAvatar:
+            d.managerAvatar ||
+            "https://ui-avatars.com/api/?name=" + (d.name || "Department"),
+          memberCount: d.memberCount || 0,
+          budget: d.budget || "---",
+          kpiStatus: d.kpiStatus || "On Track",
+          parentDeptId: d.parentDeptId,
+        }));
+        setDepartments(mappedDepts);
+        if (selectedDept && selectedDept.id === dept.id) {
+          const updatedDept = mappedDepts.find((d) => d.id === dept.id);
+          if (updatedDept) setSelectedDept(updatedDept);
+        }
+        alert("Cập nhật phòng ban thành công!");
+      } else {
+        // Create new department
+        await departmentService.createDepartment({
+          name: dept.name,
+          code: dept.code,
+          description: dept.description || "",
+          managerId: managerId,
+        });
+        // Reload departments to get the new one with all fields
+        const depts = await departmentService.getAllDepartments();
+        const mappedDepts = depts.map((d: any) => ({
+          id: d.id.toString(),
+          name: d.name,
+          code: d.code || "",
+          description: d.description || "",
+          managerName: d.managerName || "Chưa có",
+          managerAvatar:
+            d.managerAvatar ||
+            "https://ui-avatars.com/api/?name=" + (d.name || "Department"),
+          memberCount: d.memberCount || 0,
+          budget: d.budget || "---",
+          kpiStatus: d.kpiStatus || "On Track",
+          parentDeptId: d.parentDeptId,
+        }));
+        setDepartments(mappedDepts);
+        alert("Tạo phòng ban thành công!");
+      }
+      setIsFormOpen(false);
+    } catch (error: any) {
+      console.error("Error saving department:", error);
+      alert(
+        error.response?.data?.error ||
+          "Không thể lưu phòng ban. Vui lòng thử lại."
+      );
+    } finally {
+      setIsLoading(false);
     }
-    setIsFormOpen(false);
   };
 
-  const handleTransferUser = (userId: string, targetDeptName: string) => {
-    setUsers((prev) =>
-      prev.map((u) =>
-        u.id === userId ? { ...u, department: targetDeptName } : u
-      )
-    );
+  const handleTransferUser = async (userId: string, targetDeptName: string) => {
+    try {
+      // Find target department
+      const targetDept = departments.find((d) => d.name === targetDeptName);
+      if (!targetDept) {
+        alert("Không tìm thấy phòng ban đích");
+        return;
+      }
 
-    // Update counts (Mock logic)
-    const oldDeptName = users.find((u) => u.id === userId)?.department;
-    setDepartments((prev) =>
-      prev.map((d) => {
-        if (d.name === targetDeptName)
-          return { ...d, memberCount: d.memberCount + 1 };
-        if (d.name === oldDeptName)
-          return { ...d, memberCount: Math.max(0, d.memberCount - 1) };
-        return d;
-      })
-    );
+      // Update user's department via API
+      await userService.updateUser(userId, {
+        department_id: targetDept.id,
+      });
+
+      // Reload users to get updated data
+      const usersList = await userService.getAllUsers();
+      const mappedUsers = usersList.map((u: any) => ({
+        id: u.id,
+        fullName: u.full_name,
+        email: u.email,
+        phone: u.phone || "",
+        employeeId: u.employee_id,
+        position: u.position || "",
+        department: u.department_name || "",
+        role: u.role,
+        status: u.status,
+        joinDate: u.join_date
+          ? new Date(u.join_date).toLocaleDateString("vi-VN")
+          : "",
+        avatarUrl:
+          u.avatar_url ||
+          `https://ui-avatars.com/api/?name=${encodeURIComponent(u.full_name)}`,
+        linkedAccounts: [],
+      }));
+      setUsers(mappedUsers);
+
+      // Reload departments to update member counts
+      const depts = await departmentService.getAllDepartments();
+      const mappedDepts = depts.map((d: any) => ({
+        id: d.id.toString(),
+        name: d.name,
+        code: d.code || "",
+        description: d.description || "",
+        managerName: d.managerName || "Chưa có",
+        managerAvatar:
+          d.managerAvatar ||
+          "https://ui-avatars.com/api/?name=" + (d.name || "Department"),
+        memberCount: d.memberCount || 0,
+        budget: d.budget || "---",
+        kpiStatus: d.kpiStatus || "On Track",
+        parentDeptId: d.parentDeptId,
+      }));
+      setDepartments(mappedDepts);
+
+      if (selectedDept) {
+        const updatedDept = mappedDepts.find((d) => d.id === selectedDept.id);
+        if (updatedDept) setSelectedDept(updatedDept);
+      }
+
+      alert("Điều chuyển nhân sự thành công!");
+    } catch (error: any) {
+      console.error("Error transferring user:", error);
+      alert(
+        error.response?.data?.error ||
+          "Không thể điều chuyển nhân sự. Vui lòng thử lại."
+      );
+    }
   };
 
-  const handleAddMembers = (userIds: string[]) => {
+  const handleAddMembers = async (userIds: string[]) => {
     if (!selectedDept) return;
-    setUsers((prev) =>
-      prev.map((u) =>
-        userIds.includes(u.id) ? { ...u, department: selectedDept.name } : u
-      )
-    );
 
-    setDepartments((prev) =>
-      prev.map((d) =>
-        d.id === selectedDept.id
-          ? { ...d, memberCount: d.memberCount + userIds.length }
-          : d
-      )
-    );
+    try {
+      // Update each user's department via API
+      for (const userId of userIds) {
+        await userService.updateUser(userId, {
+          department_id: selectedDept.id,
+        });
+      }
+
+      // Reload users to get updated data
+      const usersList = await userService.getAllUsers();
+      const mappedUsers = usersList.map((u: any) => ({
+        id: u.id,
+        fullName: u.full_name,
+        email: u.email,
+        phone: u.phone || "",
+        employeeId: u.employee_id,
+        position: u.position || "",
+        department: u.department_name || "",
+        role: u.role,
+        status: u.status,
+        joinDate: u.join_date
+          ? new Date(u.join_date).toLocaleDateString("vi-VN")
+          : "",
+        avatarUrl:
+          u.avatar_url ||
+          `https://ui-avatars.com/api/?name=${encodeURIComponent(u.full_name)}`,
+        linkedAccounts: [],
+      }));
+      setUsers(mappedUsers);
+
+      // Reload departments to update member counts
+      const depts = await departmentService.getAllDepartments();
+      const mappedDepts = depts.map((d: any) => ({
+        id: d.id.toString(),
+        name: d.name,
+        code: d.code || "",
+        description: d.description || "",
+        managerName: d.managerName || "Chưa có",
+        managerAvatar:
+          d.managerAvatar ||
+          "https://ui-avatars.com/api/?name=" + (d.name || "Department"),
+        memberCount: d.memberCount || 0,
+        budget: d.budget || "---",
+        kpiStatus: d.kpiStatus || "On Track",
+        parentDeptId: d.parentDeptId,
+      }));
+      setDepartments(mappedDepts);
+
+      const updatedDept = mappedDepts.find((d) => d.id === selectedDept.id);
+      if (updatedDept) setSelectedDept(updatedDept);
+
+      alert(`Đã thêm ${userIds.length} nhân sự vào phòng ban thành công!`);
+    } catch (error: any) {
+      console.error("Error adding members:", error);
+      alert(
+        error.response?.data?.error ||
+          "Không thể thêm nhân sự. Vui lòng thử lại."
+      );
+    }
   };
 
   if (view === "detail" && selectedDept) {
@@ -860,9 +1418,16 @@ export const DepartmentManager = () => {
                   </div>
                 </div>
 
-                <h3 className="text-lg font-bold text-slate-900 mb-2">
-                  {dept.name}
-                </h3>
+                <div className="mb-2">
+                  <h3 className="text-lg font-bold text-slate-900">
+                    {dept.name}
+                  </h3>
+                  {dept.code && (
+                    <p className="text-xs text-slate-400 mt-1">
+                      Mã: {dept.code}
+                    </p>
+                  )}
+                </div>
                 <p className="text-sm text-slate-500 mb-6 line-clamp-2 min-h-[40px]">
                   {dept.description}
                 </p>
