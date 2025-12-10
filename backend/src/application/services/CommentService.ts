@@ -1,8 +1,8 @@
-import { CommentRepository } from "../infrastructure/repositories/CommentRepository.js";
-import { ProjectRepository } from "../infrastructure/repositories/ProjectRepository.js";
-import { UserRepository } from "../infrastructure/repositories/UserRepository.js";
+import { CommentRepository } from "../../infrastructure/repositories/CommentRepository.js";
+import { ProjectRepository } from "../../infrastructure/repositories/ProjectRepository.js";
+import { UserRepository } from "../../infrastructure/repositories/UserRepository.js";
 import { NotificationService } from "./NotificationService.js";
-import type { Comment, CreateCommentDto, ReactionType } from "../domain/entities/Comment.js";
+import type { Comment, CreateCommentDto, ReactionType } from "../../domain/entities/Comment.js";
 
 export class CommentService {
     private commentRepo = new CommentRepository();
@@ -171,19 +171,20 @@ export class CommentService {
 
         if (type === 'task') {
             // Task: only project members can access
-            const task = await this.commentRepo.findById(id);
-            if (!task) return false;
-
             // Lấy project_id từ task
-            // Note: cần query task để lấy project_id
             const [taskData] = await this.commentRepo['db'].query(
                 'SELECT project_id FROM tasks WHERE id = ?',
                 [id]
             ) as any;
 
-            if (!taskData || taskData.length === 0) return false;
+            if (!taskData || taskData.length === 0) return false; // Task not found
 
             const projectId = taskData[0].project_id;
+
+            // Check if user is project member OR admin/manager
+            const user = await this.userRepo.findById(userId);
+            if (user && ['Admin', 'Manager'].includes(user.role)) return true;
+
             const isMember = await this.projectRepo.isMember(projectId, userId);
             return isMember;
         }

@@ -192,6 +192,71 @@ export class TaskRepository {
     ]);
   }
 
+  /**
+   * Update task status by status_id or status name (workflow-based)
+   * Also updates the legacy status field with the status name
+   */
+  async updateTaskStatusById(taskId: string, statusIdOrName: string) {
+    let statusId: string | null = null;
+    let statusName: string;
+
+    // Check if it looks like a UUID (contains dashes and is 36 chars)
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(statusIdOrName);
+
+    if (isUUID) {
+      // Get status name from workflow_statuses by ID
+      const [statusRows] = await this.db.query<RowDataPacket[]>(
+        "SELECT id, name FROM workflow_statuses WHERE id = ?",
+        [statusIdOrName]
+      );
+
+      if (statusRows[0]) {
+        statusId = statusRows[0].id;
+        statusName = statusRows[0].name;
+      } else {
+        throw new Error("Status not found");
+      }
+    } else {
+      // Treat it as a status name (for fallback statuses)
+      // Try to find matching workflow_status by name for this task's project
+      const [taskRows] = await this.db.query<RowDataPacket[]>(
+        `SELECT p.workflow_id FROM tasks t 
+         JOIN projects p ON t.project_id = p.id 
+         WHERE t.id = ?`,
+        [taskId]
+      );
+
+      if (taskRows[0]?.workflow_id) {
+        const [statusRows] = await this.db.query<RowDataPacket[]>(
+          "SELECT id, name FROM workflow_statuses WHERE workflow_id = ? AND name = ?",
+          [taskRows[0].workflow_id, statusIdOrName]
+        );
+
+        if (statusRows[0]) {
+          statusId = statusRows[0].id;
+          statusName = statusRows[0].name;
+        } else {
+          // No matching workflow status, just use the name directly (legacy mode)
+          statusName = statusIdOrName;
+        }
+      } else {
+        // No workflow_id, just use the name directly (legacy mode)
+        statusName = statusIdOrName;
+      }
+    }
+
+    const completedAt = statusName.toLowerCase() === 'done' ? new Date() : null;
+
+    await this.db.query(
+      `UPDATE tasks 
+       SET status_id = ?, status = ?, completed_at = ?, updated_at = NOW() 
+       WHERE id = ? AND deleted_at IS NULL`,
+      [statusId, statusName, completedAt, taskId]
+    );
+
+    return { statusId, statusName };
+  }
+
   // --- Checklist Management ---
 
   async getTaskByChecklistId(itemId: string) {

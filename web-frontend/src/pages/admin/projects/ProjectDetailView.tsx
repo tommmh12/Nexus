@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "../../../components/system/ui/Button";
 import { Input } from "../../../components/system/ui/Input";
@@ -36,7 +37,9 @@ import {
 } from "lucide-react";
 import { taskService, TaskDetail } from "../../../services/taskService";
 import { reportService, ProjectReport } from "../../../services/reportService";
-import { projectService } from "../../../services/projectService";
+import { projectService, workflowService } from "../../../services/projectService";
+import { authService } from "../../../services/authService";
+import { CommentThread } from "../../../components/comments/CommentThread";
 import {
   departmentService,
   Department,
@@ -50,7 +53,10 @@ interface Project {
   name: string;
   description?: string;
   managerName?: string;
+  manager_id?: string;
+  workflow_id?: string;
   workflowName?: string;
+  workflowStatuses?: { id: string; name: string; color?: string; order: number }[];
   status: string;
   priority: string;
   progress: number;
@@ -608,6 +614,7 @@ const TaskDetailPanel = ({
   onDelete: (taskId: string) => void;
 }) => {
   const [checklistText, setChecklistText] = useState("");
+  const currentUser = authService.getStoredUser();
 
   // Edit State
   const [isEditing, setIsEditing] = useState(false);
@@ -975,37 +982,12 @@ const TaskDetailPanel = ({
             <MessageCircle size={16} className="text-slate-400" /> Thảo luận
           </h3>
 
-          <div className="space-y-4 mb-4">
-            {task.comments?.map((c) => (
-              <div key={c.id} className="flex gap-3">
-                <img
-                  src={c.userAvatar}
-                  className="w-8 h-8 rounded-full flex-shrink-0"
-                  alt=""
-                />
-                <div>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-sm font-bold text-slate-900">
-                      {c.userName}
-                    </span>
-                    <span className="text-xs text-slate-400">{c.timestamp}</span>
-                  </div>
-                  <p className="text-sm text-slate-700">{c.text}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Viết bình luận..."
-              className="w-full pl-4 pr-10 py-3 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none shadow-sm"
-            />
-            <button className="absolute right-2 top-2 p-1 text-brand-600 hover:bg-brand-50 rounded">
-              <Send size={16} />
-            </button>
-          </div>
+          <CommentThread
+            type="task"
+            id={task.id}
+            currentUserId={currentUser?.id}
+            canComment={true}
+          />
         </div>
       </div>
 
@@ -1180,6 +1162,54 @@ export const ProjectDetailView = ({
     }
   };
 
+  // ==================== ADMIN PERMISSION CHECK ====================
+  // Check if current user is admin or project manager
+  const currentUser = authService.getStoredUser();
+  const isAdmin = currentUser && (
+    currentUser.role === 'Admin' ||
+    currentUser.role === 'Manager' ||
+    localProject.manager_id === currentUser.id
+  );
+
+  // ==================== DRAG & DROP HANDLER ====================
+  const handleDragEnd = async (result: DropResult) => {
+    if (!result.destination) return;
+
+    const { draggableId, source, destination } = result;
+
+    // If dropped in the same column, do nothing (reordering within column not implemented)
+    if (source.droppableId === destination.droppableId) return;
+
+    const taskId = draggableId;
+    const newStatusId = destination.droppableId;
+
+    // Find status name for optimistic update
+    const workflowStatuses = localProject.workflowStatuses || [];
+    const newStatus = workflowStatuses.find(s => s.id === newStatusId || s.name === newStatusId);
+    const newStatusName = newStatus?.name || newStatusId;
+
+    // Optimistic update - immediately update UI
+    setTasks(prevTasks =>
+      prevTasks.map(t =>
+        t.id === taskId
+          ? { ...t, status: newStatusName }
+          : t
+      )
+    );
+
+    // Call API to persist change
+    try {
+      await taskService.updateTaskStatus(taskId, newStatusId);
+      // Reload project to get updated progress
+      await loadProjectData(true);
+    } catch (error) {
+      console.error("Failed to update task status:", error);
+      // Revert on error
+      await loadProjectData(true);
+      alert("Không thể cập nhật trạng thái task. Vui lòng thử lại.");
+    }
+  };
+
   const loadProjectData = async (isBackground = false) => {
     try {
       if (!isBackground) setLoading(true);
@@ -1196,14 +1226,35 @@ export const ProjectDetailView = ({
 
         // Update local project with fresh data including dates
         // Convert snake_case from backend to camelCase for frontend
-        setLocalProject({
+        const updatedProject: Project = {
           ...localProject,
           ...projectData,
           managerName: projectData.managerName || projectData.manager,
+          manager_id: projectData.manager_id,
+          workflow_id: projectData.workflow_id,
           startDate: projectData.start_date || projectData.startDate,
           endDate: projectData.end_date || projectData.endDate,
           workflowName: projectData.workflowName || projectData.workflow_name,
-        });
+        };
+
+        // Load workflow statuses if project has workflow_id
+        if (projectData.workflow_id) {
+          try {
+            const workflowData = await workflowService.getWorkflowById(projectData.workflow_id);
+            if (workflowData && workflowData.statuses) {
+              updatedProject.workflowStatuses = workflowData.statuses.map((s: any) => ({
+                id: s.id,
+                name: s.name,
+                color: s.color,
+                order: s.order
+              }));
+            }
+          } catch (error) {
+            console.warn("Could not load workflow statuses:", error);
+          }
+        }
+
+        setLocalProject(updatedProject);
 
         // Map department IDs to full department objects
         if (projectData.members) {
@@ -1820,65 +1871,91 @@ export const ProjectDetailView = ({
                   </tbody>
                 </table>
               ) : (
-                // Kanban View
-                <div className="flex gap-4 h-full overflow-x-auto pb-2">
-                  {["To Do", "In Progress", "Done"].map((status) => (
-                    <div
-                      key={status}
-                      className="min-w-[280px] w-[300px] bg-slate-100 rounded-lg flex flex-col"
-                    >
-                      <div className="p-3 font-bold text-slate-700 border-b border-slate-200 flex justify-between">
-                        {status}
-                        <span className="bg-white text-xs px-2 py-0.5 rounded-full">
-                          {tasks.filter((t) => t.status === status).length}
-                        </span>
-                      </div>
-                      <div className="p-2 space-y-2 overflow-y-auto flex-1 custom-scrollbar">
-                        {tasks
-                          .filter((t) => t.status === status)
-                          .map((task) => (
-                            <div
-                              key={task.id}
-                              onClick={() => handleOpenTaskDetail(task)}
-                              className="bg-white p-3 rounded shadow-sm border border-slate-200 cursor-pointer hover:shadow-md transition-all"
-                            >
-                              <p className="text-sm font-medium text-slate-900 mb-2">
-                                {task.title}
-                              </p>
-
-                              {/* Assignee & Dept Badge */}
-                              <div className="flex items-center gap-2 mb-2 bg-slate-50 p-1.5 rounded">
-                                <Building
-                                  size={12}
-                                  className="text-slate-400"
-                                />
-                                <div className="overflow-hidden">
-                                  <p className="text-xs font-medium text-slate-700 truncate">
-                                    {task.assigneeDepartment}
-                                  </p>
-                                </div>
+                // Kanban View with Drag-Drop
+                <DragDropContext onDragEnd={handleDragEnd}>
+                  <div className="flex gap-4 h-full overflow-x-auto pb-2">
+                    {/* Dynamic columns based on project workflow or fallback */}
+                    {(localProject.workflowStatuses && localProject.workflowStatuses.length > 0
+                      ? localProject.workflowStatuses
+                      : [{ id: 'todo', name: "To Do", color: "bg-slate-500" }, { id: 'inprogress', name: "In Progress", color: "bg-blue-500" }, { id: 'done', name: "Done", color: "bg-green-500" }]
+                    ).map((wfStatus: any) => (
+                      <Droppable key={wfStatus.id || wfStatus.name} droppableId={wfStatus.id || wfStatus.name} isDropDisabled={!isAdmin}>
+                        {(provided, snapshot) => (
+                          <div
+                            ref={provided.innerRef}
+                            {...provided.droppableProps}
+                            className={`min-w-[280px] w-[300px] bg-slate-100 rounded-lg flex flex-col transition-colors ${snapshot.isDraggingOver ? 'bg-blue-50 ring-2 ring-blue-300' : ''
+                              }`}
+                          >
+                            <div className="p-3 font-bold text-slate-700 border-b border-slate-200 flex justify-between items-center">
+                              <div className="flex items-center gap-2">
+                                <div className={`w-2 h-2 rounded-full ${wfStatus.color || 'bg-slate-500'}`}></div>
+                                {wfStatus.name}
                               </div>
-
-                              <div className="flex justify-between items-center mt-2">
-                                <span
-                                  className={`text-[10px] px-1.5 py-0.5 rounded ${task.priority === "High" ||
-                                    task.priority === "Critical"
-                                    ? "bg-orange-100 text-orange-700"
-                                    : "bg-slate-100 text-slate-600"
-                                    }`}
-                                >
-                                  {task.priority}
-                                </span>
-                                <span className="text-[10px] text-slate-400">
-                                  {task.dueDate}
-                                </span>
-                              </div>
+                              <span className="bg-white text-xs px-2 py-0.5 rounded-full">
+                                {tasks.filter((t) => t.status === wfStatus.name).length}
+                              </span>
                             </div>
-                          ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                            <div className="p-2 space-y-2 flex-1 min-h-[100px]">
+                              {tasks
+                                .filter((t) => t.status === wfStatus.name)
+                                .map((task, index) => (
+                                  <Draggable
+                                    key={task.id}
+                                    draggableId={task.id}
+                                    index={index}
+                                    isDragDisabled={!isAdmin}
+                                  >
+                                    {(dragProvided, dragSnapshot) => (
+                                      <div
+                                        ref={dragProvided.innerRef}
+                                        {...dragProvided.draggableProps}
+                                        {...dragProvided.dragHandleProps}
+                                        onClick={() => handleOpenTaskDetail(task)}
+                                        className={`bg-white p-3 rounded shadow-sm border cursor-pointer transition-all ${dragSnapshot.isDragging
+                                          ? 'shadow-lg border-blue-300 rotate-2'
+                                          : 'border-slate-200 hover:shadow-md'
+                                          } ${!isAdmin ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'}`}
+                                      >
+                                        <p className="text-sm font-medium text-slate-900 mb-2">
+                                          {task.title}
+                                        </p>
+
+                                        {/* Assignee & Dept Badge */}
+                                        <div className="flex items-center gap-2 mb-2 bg-slate-50 p-1.5 rounded">
+                                          <Building size={12} className="text-slate-400" />
+                                          <div className="overflow-hidden">
+                                            <p className="text-xs font-medium text-slate-700 truncate">
+                                              {task.assigneeDepartment}
+                                            </p>
+                                          </div>
+                                        </div>
+
+                                        <div className="flex justify-between items-center mt-2">
+                                          <span
+                                            className={`text-[10px] px-1.5 py-0.5 rounded ${task.priority === "High" || task.priority === "Critical"
+                                              ? "bg-orange-100 text-orange-700"
+                                              : "bg-slate-100 text-slate-600"
+                                              }`}
+                                          >
+                                            {task.priority}
+                                          </span>
+                                          <span className="text-[10px] text-slate-400">
+                                            {task.dueDate}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </Draggable>
+                                ))}
+                              {provided.placeholder}
+                            </div>
+                          </div>
+                        )}
+                      </Droppable>
+                    ))}
+                  </div>
+                </DragDropContext>
               )}
             </div>
           </div>

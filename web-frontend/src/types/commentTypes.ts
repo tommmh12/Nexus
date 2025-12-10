@@ -8,20 +8,25 @@ export interface Comment {
     original_content: string | null;
     is_edited: boolean;
     is_retracted: boolean;
-    reply_count?: number; // Optional - not always returned
-    created_at: Date;
-    updated_at: Date;
-    retracted_at: Date | null;
-    deleted_at: Date | null;
+    reply_count: number;
+    created_at: string;
+    updated_at: string;
+    retracted_at: string | null;
+    deleted_at: string | null;
 
-    // Populated fields (joins)
+    // Flat author fields from backend
+    author_name: string;
+    author_avatar: string | null;
+
+    // Optional nested for backward compat
     author?: {
         id: string;
         full_name: string;
         avatar_url: string;
     };
+
     replies?: Comment[];
-    reactions?: ReactionSummary;
+    reactions: ReactionSummary;
     user_reaction?: string | null;
 }
 
@@ -41,15 +46,8 @@ export interface CommentEditHistory {
     comment_id: string;
     old_content: string;
     edited_by: string;
-    edited_at: Date;
-    editor?: {
+    edited_at: string;
+    editor: {
         full_name: string;
     };
-}
-
-export interface CreateCommentDto {
-    commentable_type: 'forum_post' | 'task';
-    commentable_id: string;
-    parent_id?: string;
-    content: string;
 }

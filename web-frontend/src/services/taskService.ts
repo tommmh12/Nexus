@@ -111,4 +111,17 @@ export const taskService = {
     });
     return response.data;
   },
+
+  /**
+   * Update task status using workflow status_id
+   * Used for drag-drop in task board
+   */
+  updateTaskStatus: async (taskId: string, statusId: string) => {
+    const response = await axios.patch(
+      `${API_URL}/tasks/${taskId}/status`,
+      { statusId },
+      { headers: getAuthHeader() }
+    );
+    return response.data;
+  },
 };

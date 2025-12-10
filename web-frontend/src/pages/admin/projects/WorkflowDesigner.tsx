@@ -202,8 +202,15 @@ export const WorkflowDesigner = () => {
     try {
       setLoading(true);
       const response = await workflowService.getWorkflows();
-      if (response.success) {
+      // Handle both formats: direct array or {success, data} wrapper
+      if (Array.isArray(response)) {
+        setWorkflows(response);
+      } else if (response.success && response.data) {
         setWorkflows(response.data);
+      } else if (response.data) {
+        setWorkflows(response.data);
+      } else {
+        setWorkflows([]);
       }
     } catch (err: any) {
       console.error("Lỗi khi tải quy trình:", err);

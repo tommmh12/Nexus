@@ -17,6 +17,8 @@ import userRoutes from "./routes/user.routes.js";
 import newsRoutes from "./routes/news.routes.js";
 import forumRoutes from "./routes/forum.routes.js";
 import notificationRoutes from "./routes/notification.routes.js";
+import commentRoutes from "./routes/comment.routes.js";
+import uploadRoutes from "./routes/upload.routes.js";
 import { SocketManager } from "../infrastructure/socket/SocketManager.js";
 
 dotenv.config();
@@ -65,6 +67,8 @@ app.use("/api/users", userRoutes);
 app.use("/api/news", newsRoutes);
 app.use("/api/forum", forumRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/comments", commentRoutes);
+app.use("/api/upload", uploadRoutes);
 
 // Serve uploaded files with CORS
 app.use(

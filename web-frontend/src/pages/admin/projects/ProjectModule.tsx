@@ -390,14 +390,25 @@ const EditProjectModal = ({
   onCancel: () => void;
   onSave: (data: any) => void;
 }) => {
+  const formatDateForInput = (dateString: string | undefined) => {
+    if (!dateString) return "";
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return "";
+      return date.toISOString().split("T")[0];
+    } catch {
+      return "";
+    }
+  };
+
   const [formData, setFormData] = useState({
     name: project.name || "",
     code: project.code || "",
     description: project.description || "",
     priority: project.priority || "Medium",
     status: project.status || "Planning",
-    startDate: project.startDate || "",
-    endDate: project.endDate || "",
+    startDate: formatDateForInput(project.startDate),
+    endDate: formatDateForInput(project.endDate),
     budget: project.budget?.toString() || "",
     workflowId: project.workflowId || "",
   });

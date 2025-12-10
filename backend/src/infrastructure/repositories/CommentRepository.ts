@@ -71,7 +71,23 @@ export class CommentRepository {
         const reactions = await this.getReactionsBatch(commentIds);
 
         return rows.map(row => ({
-            ...row,
+            id: row.id,
+            commentable_type: row.commentable_type,
+            commentable_id: row.commentable_id,
+            parent_id: row.parent_id,
+            author_id: row.author_id,
+            content: row.content,
+            original_content: row.original_content,
+            is_edited: row.is_edited,
+            is_retracted: row.is_retracted,
+            created_at: row.created_at,
+            updated_at: row.updated_at,
+            retracted_at: row.retracted_at,
+            deleted_at: row.deleted_at,
+            // Explicit author fields (flat)
+            author_name: row.author_name,
+            author_avatar: row.author_avatar,
+            // Nested author object for compatibility
             author: {
                 id: row.author_id,
                 full_name: row.author_name,

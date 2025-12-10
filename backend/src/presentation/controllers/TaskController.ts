@@ -109,3 +109,35 @@ export const deleteChecklistItem = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, message: "Lỗi xóa checklist" });
   }
 };
+
+/**
+ * Update task status (for workflow drag-drop)
+ * Requires admin or project manager permission
+ */
+export const updateTaskStatus = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { statusId } = req.body;
+
+    if (!statusId) {
+      res.status(400).json({
+        success: false,
+        message: "Thiếu statusId",
+      });
+      return;
+    }
+
+    const result = await taskService.updateTaskStatus(id, statusId);
+    res.json({
+      success: true,
+      data: result,
+      message: `Task đã chuyển sang "${result.statusName}"`,
+    });
+  } catch (error: any) {
+    console.error("Error updating task status:", error);
+    res.status(400).json({
+      success: false,
+      message: error.message || "Lỗi khi cập nhật trạng thái task",
+    });
+  }
+};

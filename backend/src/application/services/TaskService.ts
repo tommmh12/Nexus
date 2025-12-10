@@ -141,4 +141,22 @@ export class TaskService {
       await this.projectRepo.recalculateProgress(task.project_id);
     }
   }
+
+  /**
+   * Update task status using workflow status_id
+   * Used for drag-drop in task board
+   */
+  async updateTaskStatus(taskId: string, statusId: string) {
+    const task = await this.taskRepo.getTaskById(taskId);
+    if (!task) {
+      throw new Error("Không tìm thấy task");
+    }
+
+    const result = await this.taskRepo.updateTaskStatusById(taskId, statusId);
+
+    // Recalculate project progress
+    await this.projectRepo.recalculateProgress(task.project_id);
+
+    return result;
+  }
 }

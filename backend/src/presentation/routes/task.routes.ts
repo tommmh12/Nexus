@@ -17,4 +17,7 @@ router.post("/:id/checklist", TaskController.addChecklistItem);
 router.put("/checklist/:itemId", TaskController.updateChecklistItem);
 router.delete("/checklist/:itemId", TaskController.deleteChecklistItem);
 
+// Update task status (for workflow drag-drop)
+router.patch("/:id/status", TaskController.updateTaskStatus);
+
 export default router;
