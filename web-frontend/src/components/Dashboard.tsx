@@ -60,7 +60,8 @@ import {
 } from "../pages/admin/organization/UserManager";
 import { MeetingAdmin } from "../pages/admin/workspace/MeetingAdmin";
 import { EventManager } from "../pages/admin/workspace/EventManager";
-import { ForumModule, ForumManager } from "../pages/admin/forum/ForumModule";
+import { ForumModule } from "../pages/admin/forum/ForumModule";
+import { ForumManager } from "../pages/admin/forum/ForumManager";
 import { NewsModule, NewsManager } from "../pages/admin/news/NewsModule";
 import { ChatManager } from "../pages/admin/communication/ChatManager";
 import { AuditLogManager } from "../pages/admin/system/AuditLogManager";

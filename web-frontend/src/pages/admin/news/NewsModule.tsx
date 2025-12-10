@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
-// TODO: Replace with API call
-import { NewsArticle } from "../../types";
+import { NewsArticle } from "../../../types";
 import { Button } from "../../../components/system/ui/Button";
 import { Input } from "../../../components/system/ui/Input";
+import { newsService, NewsArticle as NewsArticleAPI } from "../../../services/newsService";
 import {
   ArrowLeft,
   Calendar,
@@ -28,6 +28,14 @@ import {
   Grid,
   List as ListIcon,
   AlertCircle,
+  TrendingUp,
+  MessageSquare,
+  Heart,
+  BarChart3,
+  Shield,
+  ShieldCheck,
+  ShieldX,
+  Users,
 } from "lucide-react";
 
 // --- Sub-component: News Detail (Reader View) ---
@@ -430,31 +438,94 @@ export const NewsEditorModal = ({
 
 // --- News Manager (ADMIN COMPONENT) ---
 export const NewsManager = () => {
-  const [news, setNews] = useState<NewsArticle[]>([]);
+  const [news, setNews] = useState<NewsArticleAPI[]>([]);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
-  const [editingArticle, setEditingArticle] = useState<NewsArticle | null>(
+  const [editingArticle, setEditingArticle] = useState<NewsArticleAPI | null>(
     null
   );
   const [filterStatus, setFilterStatus] = useState<
-    "All" | "Published" | "Draft"
+    "All" | "Published" | "Draft" | "Archived"
+  >("All");
+  const [filterModeration, setFilterModeration] = useState<
+    "All" | "Pending" | "Approved" | "Rejected"
   >("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleDelete = (id: string) => {
-    if (window.confirm("Bạn có chắc chắn muốn xóa bài viết này?")) {
-      setNews((prev) => prev.filter((a) => a.id !== id));
+  // Load news from API
+  useEffect(() => {
+    loadNews();
+  }, [filterStatus, filterModeration]);
+
+  const loadNews = async () => {
+    try {
+      setIsLoading(true);
+      const articles = await newsService.getAllArticles({
+        status: filterStatus !== "All" ? filterStatus : undefined,
+        moderationStatus: filterModeration !== "All" ? filterModeration : undefined,
+      });
+      setNews(articles);
+    } catch (error) {
+      console.error("Error loading news:", error);
+      alert("Không thể tải danh sách bài viết. Vui lòng thử lại.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleSave = (article: NewsArticle) => {
-    if (editingArticle) {
-      setNews((prev) => prev.map((a) => (a.id === article.id ? article : a)));
-    } else {
-      const newArticle = { ...article, id: `news-${Date.now()}` };
-      setNews((prev) => [newArticle, ...prev]);
+  const handleDelete = async (id: string) => {
+    if (window.confirm("Bạn có chắc chắn muốn xóa bài viết này?")) {
+      try {
+        await newsService.deleteArticle(id);
+        await loadNews();
+        alert("Xóa bài viết thành công!");
+      } catch (error: any) {
+        console.error("Error deleting article:", error);
+        alert(error.response?.data?.error || "Không thể xóa bài viết. Vui lòng thử lại.");
+      }
     }
-    setIsEditorOpen(false);
+  };
+
+  const handleSave = async (article: NewsArticle) => {
+    // Validate required fields
+    if (!article.title || !article.title.trim()) {
+      alert("Vui lòng nhập tiêu đề bài viết!");
+      return;
+    }
+    if (!article.content || !article.content.trim()) {
+      alert("Vui lòng nhập nội dung bài viết!");
+      return;
+    }
+    if (!article.category) {
+      alert("Vui lòng chọn danh mục!");
+      return;
+    }
+
+    try {
+      if (editingArticle) {
+        await newsService.updateArticle(editingArticle.id, article as any);
+      } else {
+        await newsService.createArticle(article as any);
+      }
+      await loadNews();
+      setIsEditorOpen(false);
+      alert(editingArticle ? "Cập nhật bài viết thành công!" : "Tạo bài viết thành công!");
+    } catch (error: any) {
+      console.error("Error saving article:", error);
+      alert(error.response?.data?.error || "Không thể lưu bài viết. Vui lòng thử lại.");
+    }
+  };
+
+  const handleModerate = async (id: string, status: "Approved" | "Rejected", notes?: string) => {
+    try {
+      await newsService.moderateArticle(id, status, notes);
+      await loadNews();
+      alert(`${status === "Approved" ? "Duyệt" : "Từ chối"} bài viết thành công!`);
+    } catch (error: any) {
+      console.error("Error moderating article:", error);
+      alert(error.response?.data?.error || "Không thể kiểm duyệt bài viết. Vui lòng thử lại.");
+    }
   };
 
   const handleCreate = () => {
@@ -462,7 +533,7 @@ export const NewsManager = () => {
     setIsEditorOpen(true);
   };
 
-  const handleEdit = (article: NewsArticle) => {
+  const handleEdit = (article: NewsArticleAPI) => {
     setEditingArticle(article);
     setIsEditorOpen(true);
   };
@@ -470,10 +541,12 @@ export const NewsManager = () => {
   const filteredNews = news.filter((item) => {
     const matchesStatus =
       filterStatus === "All" || item.status === filterStatus;
+    const matchesModeration =
+      filterModeration === "All" || item.moderationStatus === filterModeration;
     const matchesSearch = item.title
       .toLowerCase()
       .includes(searchQuery.toLowerCase());
-    return matchesStatus && matchesSearch;
+    return matchesStatus && matchesModeration && matchesSearch;
   });
 
   return (
@@ -487,23 +560,80 @@ export const NewsManager = () => {
         />
       )}
 
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h2 className="text-xl font-bold text-slate-900">Quản lý Tin tức</h2>
-          <p className="text-slate-500 mt-1">
-            CMS - Hệ thống quản trị nội dung bản tin.
-          </p>
+      {/* Header with Stats */}
+      <div className="mb-6">
+        <div className="flex justify-between items-start mb-6">
+          <div>
+            <h2 className="text-2xl font-bold text-slate-900">Quản lý Bản tin Công ty</h2>
+            <p className="text-slate-500 mt-1">
+              Hệ thống quản trị nội dung và kiểm duyệt bản tin
+            </p>
+          </div>
+          <Button onClick={handleCreate} className="bg-brand-600 hover:bg-brand-700 shadow-md">
+            <Plus size={18} className="mr-2" /> Viết bài mới
+          </Button>
         </div>
-        <Button onClick={handleCreate}>
-          <Plus size={18} className="mr-2" /> Viết bài mới
-        </Button>
+
+        {/* Statistics Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <div className="bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-4 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-blue-700 mb-1">Tổng bài viết</p>
+                <p className="text-2xl font-bold text-blue-900">{news.length}</p>
+              </div>
+              <div className="w-12 h-12 bg-blue-200 rounded-lg flex items-center justify-center">
+                <FileText size={24} className="text-blue-600" />
+              </div>
+            </div>
+          </div>
+          <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 border border-yellow-200 rounded-xl p-4 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-yellow-700 mb-1">Chờ duyệt</p>
+                <p className="text-2xl font-bold text-yellow-900">
+                  {news.filter((n) => n.moderationStatus === "Pending").length}
+                </p>
+              </div>
+              <div className="w-12 h-12 bg-yellow-200 rounded-lg flex items-center justify-center">
+                <Clock size={24} className="text-yellow-600" />
+              </div>
+            </div>
+          </div>
+          <div className="bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-xl p-4 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-green-700 mb-1">Đã xuất bản</p>
+                <p className="text-2xl font-bold text-green-900">
+                  {news.filter((n) => n.status === "Published" && n.moderationStatus === "Approved").length}
+                </p>
+              </div>
+              <div className="w-12 h-12 bg-green-200 rounded-lg flex items-center justify-center">
+                <CheckCircle size={24} className="text-green-600" />
+              </div>
+            </div>
+          </div>
+          <div className="bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200 rounded-xl p-4 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-purple-700 mb-1">Tổng lượt xem</p>
+                <p className="text-2xl font-bold text-purple-900">
+                  {news.reduce((sum, n) => sum + (n.viewCount || 0), 0).toLocaleString()}
+                </p>
+              </div>
+              <div className="w-12 h-12 bg-purple-200 rounded-lg flex items-center justify-center">
+                <Eye size={24} className="text-purple-600" />
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Toolbar */}
       <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm mb-6 flex flex-col md:flex-row gap-4 justify-between items-center">
-        <div className="flex items-center gap-4 w-full md:w-auto">
+        <div className="flex items-center gap-4 w-full md:w-auto flex-wrap">
           <div className="flex bg-slate-100 p-1 rounded-lg">
-            {["All", "Published", "Draft"].map((status) => (
+            {["All", "Published", "Draft", "Archived"].map((status) => (
               <button
                 key={status}
                 onClick={() => setFilterStatus(status as any)}
@@ -514,6 +644,21 @@ export const NewsManager = () => {
                 }`}
               >
                 {status === "All" ? "Tất cả" : status}
+              </button>
+            ))}
+          </div>
+          <div className="flex bg-slate-100 p-1 rounded-lg">
+            {["All", "Pending", "Approved", "Rejected"].map((mod) => (
+              <button
+                key={mod}
+                onClick={() => setFilterModeration(mod as any)}
+                className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
+                  filterModeration === mod
+                    ? "bg-white text-slate-900 shadow-sm"
+                    : "text-slate-500 hover:text-slate-700"
+                }`}
+              >
+                {mod === "All" ? "Tất cả" : mod === "Pending" ? "Chờ duyệt" : mod === "Approved" ? "Đã duyệt" : "Từ chối"}
               </button>
             ))}
           </div>
@@ -559,7 +704,15 @@ export const NewsManager = () => {
       </div>
 
       {/* Content Area */}
-      {viewMode === "list" ? (
+      {isLoading ? (
+        <div className="flex items-center justify-center h-64 bg-white rounded-xl border border-slate-200">
+          <div className="text-slate-500">Đang tải...</div>
+        </div>
+      ) : filteredNews.length === 0 ? (
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-12 text-center">
+          <p className="text-slate-500">Không có bài viết nào.</p>
+        </div>
+      ) : viewMode === "list" ? (
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1">
           <table className="min-w-full divide-y divide-slate-200">
             <thead className="bg-slate-50">
@@ -572,6 +725,12 @@ export const NewsManager = () => {
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
                   Trạng thái
+                </th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  Kiểm duyệt
+                </th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  Tương tác
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
                   Chuyên mục
@@ -604,9 +763,13 @@ export const NewsManager = () => {
                           {item.title}
                         </div>
                         <div className="flex items-center gap-2 text-xs text-slate-500">
-                          <Clock size={12} /> {item.publishDate}
+                          <Clock size={12} /> {item.publishedAt ? new Date(item.publishedAt).toLocaleDateString('vi-VN') : 'Chưa xuất bản'}
                           <span>•</span>
-                          <Eye size={12} /> 1,234 views
+                          <Eye size={12} /> {item.viewCount || 0} lượt xem
+                          <span>•</span>
+                          <span>❤️ {item.likeCount || 0}</span>
+                          <span>•</span>
+                          <span>💬 {item.commentCount || 0}</span>
                         </div>
                       </div>
                     </div>
@@ -646,9 +809,74 @@ export const NewsManager = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    <span className="text-xs font-mono bg-slate-100 text-slate-600 px-2 py-1 rounded border border-slate-200">
-                      {item.category}
-                    </span>
+                    <div className="flex flex-col gap-1">
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${
+                          item.moderationStatus === "Approved"
+                            ? "bg-green-50 text-green-700 border-green-100"
+                            : item.moderationStatus === "Pending"
+                            ? "bg-yellow-50 text-yellow-700 border-yellow-100"
+                            : "bg-red-50 text-red-700 border-red-100"
+                        }`}
+                      >
+                        <div
+                          className={`w-1.5 h-1.5 rounded-full ${
+                            item.moderationStatus === "Approved"
+                              ? "bg-green-500"
+                              : item.moderationStatus === "Pending"
+                              ? "bg-yellow-500"
+                              : "bg-red-500"
+                          }`}
+                        ></div>
+                        {item.moderationStatus === "Approved" ? "Đã duyệt" : item.moderationStatus === "Pending" ? "Chờ duyệt" : "Từ chối"}
+                      </span>
+                      {item.moderationStatus === "Pending" && (
+                        <div className="flex gap-1">
+                          <button
+                            onClick={() => handleModerate(item.id, "Approved")}
+                            className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded hover:bg-green-200"
+                            title="Duyệt bài"
+                          >
+                            ✓ Duyệt
+                          </button>
+                          <button
+                            onClick={() => {
+                              const notes = prompt("Lý do từ chối:");
+                              if (notes) handleModerate(item.id, "Rejected", notes);
+                            }}
+                            className="text-xs px-2 py-0.5 bg-red-100 text-red-700 rounded hover:bg-red-200"
+                            title="Từ chối"
+                          >
+                            ✗ Từ chối
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex flex-col gap-1 text-xs text-slate-600">
+                      <div className="flex items-center gap-1">
+                        <Eye size={12} /> {item.viewCount || 0}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span>❤️</span> {item.likeCount || 0}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span>💬</span> {item.commentCount || 0}
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-xs font-mono bg-slate-100 text-slate-600 px-2 py-1 rounded border border-slate-200">
+                        {item.category}
+                      </span>
+                      {item.isPublic ? (
+                        <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">Public</span>
+                      ) : (
+                        <span className="text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded">Internal</span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex justify-end gap-2">
@@ -742,6 +970,30 @@ export const NewsModule = () => {
   const [selectedArticle, setSelectedArticle] = useState<NewsArticle | null>(
     null
   );
+  const [news, setNews] = useState<NewsArticle[]>([]);
+
+  // TODO: Load news from API
+  useEffect(() => {
+    // Mock data for now - replace with API call
+    const mockNews: NewsArticle[] = [
+      {
+        id: "1",
+        title: "Chào mừng đến với Nexus Corp",
+        summary: "Khởi đầu mới cho một hành trình phát triển",
+        content: "<p>Nội dung bài viết...</p>",
+        coverImage: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=800",
+        category: "Announcement",
+        authorName: "Admin",
+        authorAvatar: "https://ui-avatars.com/api/?name=Admin",
+        publishDate: "2024-01-15",
+        readTime: "5 phút đọc",
+        isFeatured: true,
+        status: "Published",
+        tags: ["announcement", "welcome"],
+      },
+    ];
+    setNews(mockNews);
+  }, []);
 
   const handleArticleClick = (article: NewsArticle) => {
     setSelectedArticle(article);

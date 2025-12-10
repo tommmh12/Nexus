@@ -12,6 +12,8 @@ import workflowRoutes from "./routes/workflow.routes.js";
 import settingsRoutes from "./routes/settings.routes.js";
 import departmentRoutes from "./routes/departmentRoutes.js";
 import userRoutes from "./routes/user.routes.js";
+import newsRoutes from "./routes/news.routes.js";
+import forumRoutes from "./routes/forum.routes.js";
 
 dotenv.config();
 
@@ -49,6 +51,8 @@ app.use("/api/workflows", workflowRoutes);
 app.use("/api/settings", settingsRoutes);
 app.use("/api/departments", departmentRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/news", newsRoutes);
+app.use("/api/forum", forumRoutes);
 
 // 404 Handler
 app.use((req: Request, res: Response) => {
