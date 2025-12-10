@@ -9,28 +9,28 @@ export const projectService = {
     const response = await axios.get(`${API_URL}/projects`, {
       headers: { Authorization: `Bearer ${getAccessToken()}` },
     });
-    return response.data;
+    return response.data.data || response.data;
   },
 
   async getProjectById(id: string) {
     const response = await axios.get(`${API_URL}/projects/${id}`, {
       headers: { Authorization: `Bearer ${getAccessToken()}` },
     });
-    return response.data;
+    return response.data.data || response.data;
   },
 
   async createProject(projectData: any) {
     const response = await axios.post(`${API_URL}/projects`, projectData, {
       headers: { Authorization: `Bearer ${getAccessToken()}` },
     });
-    return response.data;
+    return response.data.data || response.data;
   },
 
   async updateProject(id: string, projectData: any) {
     const response = await axios.put(`${API_URL}/projects/${id}`, projectData, {
       headers: { Authorization: `Bearer ${getAccessToken()}` },
     });
-    return response.data;
+    return response.data.data || response.data;
   },
 
   async deleteProject(id: string) {
@@ -39,6 +39,29 @@ export const projectService = {
     });
     return response.data;
   },
+
+  // --- Members ---
+  async addMember(projectId: string, userId: string, role: string = 'Member') {
+    const response = await axios.post(`${API_URL}/projects/${projectId}/members`, { userId, role }, {
+      headers: { Authorization: `Bearer ${getAccessToken()}` },
+    });
+    return response.data.data || response.data;
+  },
+
+
+  async removeMember(projectId: string, userId: string) {
+    await axios.delete(`${API_URL}/projects/${projectId}/members/${userId}`, {
+      headers: { Authorization: `Bearer ${getAccessToken()}` },
+    });
+    return this.getProjectById(projectId).then(p => p.members || []);
+  },
+
+  async generateProjectCode() {
+    const response = await axios.get(`${API_URL}/projects/generate-code`, {
+      headers: { Authorization: `Bearer ${getAccessToken()}` },
+    });
+    return response.data.code;
+  },
 };
 
 export const workflowService = {
@@ -46,7 +69,7 @@ export const workflowService = {
     const response = await axios.get(`${API_URL}/workflows`, {
       headers: { Authorization: `Bearer ${getAccessToken()}` },
     });
-    return response.data;
+    return response.data.data || response.data;
   },
 
   async getWorkflowById(id: string) {

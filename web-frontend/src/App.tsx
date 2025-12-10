@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { LoginScreen } from "./web-frontend/src/components/LoginScreen";
-import { AppRouter } from "./web-frontend/src/routes/AppRouter";
+import { LoginScreen } from "./components/LoginScreen";
+import { AppRouter } from "./routes/AppRouter";
 import { AuthState, AuthStatus, User, UserRole } from "./types";
-import { authService } from "./web-frontend/src/services/authService";
+import { authService } from "./services/authService";
 
 const App: React.FC = () => {
   console.log("App component rendering");
@@ -85,7 +85,7 @@ const App: React.FC = () => {
           avatarUrl:
             userData.avatar_url ||
             "https://api.dicebear.com/7.x/avataaars/svg?seed=" +
-              userData.employee_id,
+            userData.employee_id,
           department: userData.department_name || "N/A",
           role: userData.role as UserRole,
         },

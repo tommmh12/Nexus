@@ -10,7 +10,8 @@
     "start": "node dist/presentation/server.js",
     "seed": "tsx src/infrastructure/database/seed.ts",
     "seed:full": "tsx src/infrastructure/database/seed-full-data.ts",
-    "migrate:chat": "tsx src/scripts/migrate-chat.ts"
+    "migrate:chat": "tsx src/scripts/migrate-chat.ts",
+    "migrate:project-members": "tsx src/scripts/migrate-project-members.ts"
   },
   "keywords": [
     "nexus",

@@ -1,6 +1,6 @@
 import React from "react";
 import { LoginForm } from "./LoginForm";
-import { AuthStatus } from "../../../types";
+import { AuthStatus } from "../types";
 import { MessageSquare, Users, Zap, ShieldCheck } from "lucide-react";
 
 interface LoginScreenProps {

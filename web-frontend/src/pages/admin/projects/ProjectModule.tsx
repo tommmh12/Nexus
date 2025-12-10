@@ -14,6 +14,7 @@ import {
   Users,
   Edit2,
   Trash2,
+  X,
 } from "lucide-react";
 import {
   projectService,
@@ -77,6 +78,18 @@ const CreateProjectWizard = ({
     departmentIds: [] as string[],
   });
 
+  useEffect(() => {
+    const fetchCode = async () => {
+      try {
+        const code = await projectService.generateProjectCode();
+        setFormData(prev => ({ ...prev, code }));
+      } catch (err) {
+        console.error("Failed to generate code", err);
+      }
+    };
+    fetchCode();
+  }, []);
+
   const handleDeptToggle = (deptId: string) => {
     const current = formData.departmentIds;
     if (current.includes(deptId)) {
@@ -89,7 +102,15 @@ const CreateProjectWizard = ({
     }
   };
 
-  const nextStep = () => setStep(step + 1);
+  const nextStep = () => {
+    if (step === 1) {
+      if (!formData.code || !formData.name) {
+        alert("Vui lòng nhập Mã và Tên dự án!");
+        return;
+      }
+    }
+    setStep(step + 1);
+  };
   const prevStep = () => setStep(step - 1);
 
   return (
@@ -108,8 +129,8 @@ const CreateProjectWizard = ({
             {step === 1
               ? "Thông tin cơ bản"
               : step === 2
-              ? "Cấu hình & Nguồn lực"
-              : "Tài liệu khởi tạo"}
+                ? "Cấu hình & Nguồn lực"
+                : "Tài liệu khởi tạo"}
           </p>
         </div>
       </div>
@@ -139,12 +160,10 @@ const CreateProjectWizard = ({
                   required
                 />
                 <Input
-                  label="Mã dự án (Prefix)"
-                  placeholder="Ví dụ: CRM-2024"
+                  label="Mã dự án (Tự động)"
                   value={formData.code}
-                  onChange={(e) =>
-                    setFormData({ ...formData, code: e.target.value })
-                  }
+                  readOnly
+                  className="bg-slate-100 text-slate-500 cursor-not-allowed"
                 />
                 <div className="md:col-span-2">
                   <label className="block text-sm font-semibold text-slate-700 mb-2">
@@ -223,11 +242,10 @@ const CreateProjectWizard = ({
                   {workflows.map((wf) => (
                     <label
                       key={wf.id}
-                      className={`cursor-pointer border rounded-lg p-4 flex items-start gap-3 transition-all ${
-                        formData.workflowId === wf.id
-                          ? "bg-white border-blue-500 ring-2 ring-blue-200"
-                          : "bg-white/50 border-blue-200 hover:bg-white"
-                      }`}
+                      className={`cursor-pointer border rounded-lg p-4 flex items-start gap-3 transition-all ${formData.workflowId === wf.id
+                        ? "bg-white border-blue-500 ring-2 ring-blue-200"
+                        : "bg-white/50 border-blue-200 hover:bg-white"
+                        }`}
                     >
                       <input
                         type="radio"
@@ -259,25 +277,23 @@ const CreateProjectWizard = ({
                   <Users size={20} /> Phòng ban tham gia
                 </h3>
                 <p className="text-sm text-slate-600 mb-4">
-                  Chọn các phòng ban sẽ tham gia dự án. Chỉ nhân viên thuộc các
-                  phòng ban này mới được gán công việc.
+                  Chọn các phòng ban sẽ tham gia dự án.
+                  <span className="font-semibold text-blue-600"> Tất cả nhân viên</span> thuộc phòng ban đã chọn sẽ được thêm vào dự án.
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-60 overflow-y-auto p-1">
                   {departments.map((dept) => (
                     <label
                       key={dept.id}
-                      className={`cursor-pointer border rounded-lg p-3 flex items-center gap-3 hover:bg-slate-50 transition-colors ${
-                        formData.departmentIds.includes(String(dept.id))
-                          ? "border-blue-500 bg-blue-50"
-                          : "border-slate-200"
-                      }`}
+                      className={`cursor-pointer border rounded-lg p-3 flex items-center gap-3 hover:bg-slate-50 transition-colors ${formData.departmentIds.includes(String(dept.id))
+                        ? "border-blue-500 bg-blue-50"
+                        : "border-slate-200"
+                        }`}
                     >
                       <div
-                        className={`w-5 h-5 rounded border flex items-center justify-center flex-shrink-0 ${
-                          formData.departmentIds.includes(String(dept.id))
-                            ? "bg-blue-600 border-blue-600"
-                            : "bg-white border-slate-300"
-                        }`}
+                        className={`w-5 h-5 rounded border flex items-center justify-center flex-shrink-0 ${formData.departmentIds.includes(String(dept.id))
+                          ? "bg-blue-600 border-blue-600"
+                          : "bg-white border-slate-300"
+                          }`}
                       >
                         {formData.departmentIds.includes(String(dept.id)) && (
                           <Check size={14} className="text-white" />
@@ -618,9 +634,12 @@ export const ProjectModule = () => {
         workflowService.getWorkflows(),
       ]);
 
-      if (projectsRes.success) {
+      if (Array.isArray(projectsRes) || (projectsRes as any).success) {
+        // Handle both wrapped and unwrapped for safety
+        const projectList = Array.isArray(projectsRes) ? projectsRes : (projectsRes as any).data;
+
         // Map snake_case from backend to camelCase for frontend
-        const mappedProjects = projectsRes.data.map((p: any) => ({
+        const mappedProjects = projectList.map((p: any) => ({
           ...p,
           workflowName: p.workflowName || p.workflow_name,
           managerName: p.managerName || p.manager_name,
@@ -630,7 +649,10 @@ export const ProjectModule = () => {
         setProjects(mappedProjects);
       }
       setDepartments(deptsData);
-      if (workflowsRes.success) setWorkflows(workflowsRes.data);
+
+      if (Array.isArray(workflowsRes) || (workflowsRes as any).success) {
+        setWorkflows(Array.isArray(workflowsRes) ? workflowsRes : (workflowsRes as any).data);
+      }
     } catch (err: any) {
       console.error("Lỗi tải dữ liệu:", err);
       setError("Không thể tải dữ liệu. Vui lòng thử lại.");
@@ -648,16 +670,16 @@ export const ProjectModule = () => {
         name: formData.name,
         code: formData.code,
         description: formData.description,
-        workflowId: Number(formData.workflowId),
+        workflowId: formData.workflowId, // Keep as string (UUID)
         priority: formData.priority,
         startDate: formData.startDate,
         endDate: formData.endDate,
         budget: Number(formData.budget) || 0,
         managerId: currentUser?.id, // Set creator as manager
-        departments: formData.departmentIds.map((id: string) => Number(id)),
+        departments: formData.departmentIds, // Keep as string array (UUIDs)
       });
 
-      if (response.success) {
+      if (response && (response.id || response.success)) {
         await loadData();
         setView("list");
         alert("✅ Tạo dự án thành công!");
@@ -686,7 +708,7 @@ export const ProjectModule = () => {
         budget: Number(formData.budget) || null,
       });
 
-      if (response.success) {
+      if (response && (response.id || response.success)) {
         await loadData();
         setEditingProject(null);
         alert("✅ Cập nhật dự án thành công!");
@@ -929,9 +951,8 @@ export const ProjectModule = () => {
                 </div>
                 <div className="w-full bg-slate-100 rounded-full h-2">
                   <div
-                    className={`h-2 rounded-full transition-all ${
-                      project.status === "Done" ? "bg-green-500" : "bg-blue-600"
-                    }`}
+                    className={`h-2 rounded-full transition-all ${project.status === "Done" ? "bg-green-500" : "bg-blue-600"
+                      }`}
                     style={{ width: `${project.progress}%` }}
                   ></div>
                 </div>

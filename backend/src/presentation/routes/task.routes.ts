@@ -13,4 +13,8 @@ router.post("/", TaskController.createTask);
 router.put("/:id", TaskController.updateTask);
 router.delete("/:id", TaskController.deleteTask);
 
+router.post("/:id/checklist", TaskController.addChecklistItem);
+router.put("/checklist/:itemId", TaskController.updateChecklistItem);
+router.delete("/checklist/:itemId", TaskController.deleteChecklistItem);
+
 export default router;

@@ -15,7 +15,9 @@ export class AuthService {
 
   constructor() {
     this.userRepository = new UserRepository();
-    this.jwtSecret = process.env.JWT_SECRET || "nexus_super_secret_key";
+    this.jwtSecret =
+      process.env.JWT_SECRET ||
+      "nexus_super_secret_key_change_in_production_2024";
     this.jwtExpiresIn = process.env.JWT_EXPIRES_IN || "7d";
     this.jwtRefreshExpiresIn = process.env.JWT_REFRESH_EXPIRES_IN || "30d";
   }

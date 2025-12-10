@@ -14,12 +14,10 @@ import settingsRoutes from "./routes/settings.routes.js";
 import departmentRoutes from "./routes/departmentRoutes.js";
 import chatRoutes from "./routes/chat.routes.js";
 import userRoutes from "./routes/user.routes.js";
-<<<<<<< HEAD
 import newsRoutes from "./routes/news.routes.js";
 import forumRoutes from "./routes/forum.routes.js";
-=======
+import notificationRoutes from "./routes/notification.routes.js";
 import { SocketManager } from "../infrastructure/socket/SocketManager.js";
->>>>>>> e3b77463526fe5e17772e6d70980037e0fe6ab34
 
 dotenv.config();
 
@@ -66,6 +64,7 @@ app.use("/api/chat", chatRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/news", newsRoutes);
 app.use("/api/forum", forumRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 // Serve uploaded files with CORS
 app.use(

@@ -1,7 +1,7 @@
 import React from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Dashboard } from "../components/Dashboard";
-import { UserRole } from "../../../types";
+import { UserRole } from "../types";
 
 interface AppRouterProps {
   user: {

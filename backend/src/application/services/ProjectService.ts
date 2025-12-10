@@ -14,10 +14,12 @@ export class ProjectService {
     }
 
     const departments = await this.projectRepo.getProjectDepartments(id);
+    const members = await this.projectRepo.getProjectMembers(id);
 
     return {
       ...project,
       departments,
+      members,
     };
   }
 
@@ -91,5 +93,41 @@ export class ProjectService {
 
   async deleteProject(id: string) {
     await this.projectRepo.deleteProject(id);
+  }
+
+  // --- Member Management ---
+
+  async getMembers(projectId: string) {
+    return await this.projectRepo.getProjectMembers(projectId);
+  }
+
+  async addMember(projectId: string, userId: string, role: string = 'Member') {
+    await this.projectRepo.addProjectMember(projectId, userId, role);
+    return await this.getMembers(projectId);
+  }
+
+  async removeMember(projectId: string, userId: string) {
+    await this.projectRepo.removeProjectMember(projectId, userId);
+    return await this.getMembers(projectId);
+  }
+
+  async recalculateProgress(projectId: string) {
+    return await this.projectRepo.recalculateProgress(projectId);
+  }
+
+  async generateProjectCode(): Promise<string> {
+    const lastCode = await this.projectRepo.getLatestProjectCode();
+    if (!lastCode) {
+      return "WEB-001";
+    }
+
+    // Extract number part
+    const match = lastCode.match(/-(\d+)$/);
+    if (match) {
+      const number = parseInt(match[1]);
+      return `WEB-${(number + 1).toString().padStart(3, "0")}`;
+    }
+
+    return `WEB-${Date.now().toString().slice(-4)}`; // Fallback
   }
 }

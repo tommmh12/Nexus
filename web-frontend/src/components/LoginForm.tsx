@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { Input } from "./system/ui/Input";
 import { Button } from "./system/ui/Button";
-import { AuthStatus } from "../../../types";
+import { AuthStatus } from "../types";
 
 interface LoginFormProps {
   onLogin: (email: string, password: string) => Promise<void>;
@@ -35,12 +35,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLocalError(null);
-
-    // Validation
-    if (!email.endsWith("@nexus.com")) {
-      setLocalError("Vui lòng sử dụng email doanh nghiệp (@nexus.com)");
-      return;
-    }
 
     if (email && password) {
       await onLogin(email, password);

@@ -55,32 +55,93 @@ export class ProjectRepository {
     return rows;
   }
 
+  async getLatestProjectCode(): Promise<string | null> {
+    const query = `SELECT code FROM projects ORDER BY created_at DESC LIMIT 1`;
+    const [rows] = await this.db.query<RowDataPacket[]>(query);
+    return rows.length > 0 ? rows[0].code : null;
+  }
+
   async createProject(projectData: any) {
-    // Generate UUID for the project
-    const projectId = crypto.randomUUID();
+    const connection = await this.db.getConnection();
+    await connection.beginTransaction();
 
-    const query = `
-      INSERT INTO projects (
-        id, code, name, description, manager_id, workflow_id, 
-        status, priority, budget, start_date, end_date
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
+    try {
+      // Generate UUID for the project
+      const projectId = crypto.randomUUID();
 
-    await this.db.query(query, [
-      projectId,
-      projectData.code,
-      projectData.name,
-      projectData.description || null,
-      projectData.managerId || null,
-      projectData.workflowId || null,
-      projectData.status || "Planning",
-      projectData.priority || "Medium",
-      projectData.budget || null,
-      projectData.startDate || null,
-      projectData.endDate || null,
-    ]);
+      const query = `
+        INSERT INTO projects (
+          id, code, name, description, manager_id, workflow_id, 
+          status, priority, budget, start_date, end_date
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `;
 
-    return projectId;
+      await connection.query(query, [
+        projectId,
+        projectData.code,
+        projectData.name,
+        projectData.description || null,
+        projectData.managerId || null,
+        projectData.workflowId || null,
+        projectData.status || "Planning",
+        projectData.priority || "Medium",
+        projectData.budget || null,
+        projectData.startDate || null,
+        projectData.endDate || null,
+      ]);
+
+      // Invite members from departments if provided
+      if (projectData.departments && projectData.departments.length > 0) {
+        // Fetch all users from these departments
+        const deptIds = projectData.departments; // Assumed to be string[] of UUIDs
+        if (deptIds.length > 0) {
+          const userQuery = `
+             SELECT id FROM users 
+             WHERE department_id IN (?) AND deleted_at IS NULL
+           `;
+          const [users] = await connection.query<RowDataPacket[]>(userQuery, [deptIds]);
+
+          if (users.length > 0) {
+            const memberValues = users.map(u => [projectId, u.id, 'Member']);
+            // Add Manager as 'Manager' role if not already added
+            if (projectData.managerId) {
+              const managerExists = users.some(u => u.id === projectData.managerId);
+              if (!managerExists) {
+                memberValues.push([projectId, projectData.managerId, 'Manager']);
+              } else {
+                // Update the manager's role in the values if they were in the department
+                const mgrIndex = memberValues.findIndex(m => m[1] === projectData.managerId);
+                if (mgrIndex >= 0) memberValues[mgrIndex][2] = 'Manager';
+              }
+            }
+
+            const memberQuery = `
+               INSERT IGNORE INTO project_members (project_id, user_id, role) VALUES ?
+             `;
+            await connection.query(memberQuery, [memberValues]);
+          } else if (projectData.managerId) {
+            // Only manager exists
+            await connection.query(
+              `INSERT IGNORE INTO project_members (project_id, user_id, role) VALUES (?, ?, ?)`,
+              [projectId, projectData.managerId, 'Manager']
+            );
+          }
+        }
+      } else if (projectData.managerId) {
+        await connection.query(
+          `INSERT IGNORE INTO project_members (project_id, user_id, role) VALUES (?, ?, ?)`,
+          [projectId, projectData.managerId, 'Manager']
+        );
+      }
+
+      await connection.commit();
+      return projectId;
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
   }
 
   async updateProject(id: string, projectData: any) {
@@ -173,5 +234,89 @@ export class ProjectRepository {
       "DELETE FROM project_departments WHERE project_id = ? AND department_id = ?",
       [projectId, departmentId]
     );
+  }
+
+  // --- Project Members ---
+
+  async getProjectMembers(projectId: string) {
+    const query = `
+      SELECT 
+        pm.*,
+        u.full_name as userName,
+        u.email,
+        u.avatar_url,
+        u.department_id,
+        d.name as departmentName
+      FROM project_members pm
+      JOIN users u ON pm.user_id = u.id
+      LEFT JOIN departments d ON u.department_id = d.id
+      WHERE pm.project_id = ?
+      ORDER BY pm.joined_at
+    `;
+    const [rows] = await this.db.query<RowDataPacket[]>(query, [projectId]);
+    return rows;
+  }
+
+  async addProjectMember(projectId: string, userId: string, role: string = 'Member') {
+    const query = `
+      INSERT INTO project_members (project_id, user_id, role)
+      VALUES (?, ?, ?)
+      ON DUPLICATE KEY UPDATE role = ?
+    `;
+    await this.db.query(query, [projectId, userId, role, role]);
+  }
+
+  async removeProjectMember(projectId: string, userId: string) {
+    await this.db.query(
+      "DELETE FROM project_members WHERE project_id = ? AND user_id = ?",
+      [projectId, userId]
+    );
+  }
+
+  // --- Progress Internal Calculation ---
+
+  async recalculateProgress(projectId: string) {
+    // 1. Get Task Stats
+    // Count total tasks (excluding deleted)
+    const [taskRows] = await this.db.query<RowDataPacket[]>(`
+        SELECT 
+            COUNT(*) as totalTasks,
+            SUM(CASE WHEN status = 'Done' THEN 1 ELSE 0 END) as completedTasks
+        FROM tasks 
+        WHERE project_id = ? AND deleted_at IS NULL
+    `, [projectId]);
+
+    const { totalTasks, completedTasks } = taskRows[0];
+
+    // 2. Get Checklist Item Stats
+    // We need all checklist items for tasks in this project
+    const [checklistRows] = await this.db.query<RowDataPacket[]>(`
+        SELECT 
+            COUNT(*) as totalItems,
+            SUM(CASE WHEN is_completed = 1 THEN 1 ELSE 0 END) as completedItems
+        FROM task_checklist_items tci
+        JOIN tasks t ON tci.task_id = t.id
+        WHERE t.project_id = ? AND t.deleted_at IS NULL
+    `, [projectId]);
+
+    const { totalItems, completedItems } = checklistRows[0];
+
+    // 3. Calculate Weighted Progress
+    // Logic: (Completed Tasks + Completed Items) / (Total Tasks + Total Items)
+    const totalPoints = (parseInt(totalTasks) || 0) + (parseInt(totalItems) || 0);
+    const earnedPoints = (parseInt(completedTasks) || 0) + (parseInt(completedItems) || 0);
+
+    let progress = 0;
+    if (totalPoints > 0) {
+      progress = Math.round((earnedPoints / totalPoints) * 100);
+    }
+
+    // 4. Update Project
+    await this.db.query(
+      "UPDATE projects SET progress = ? WHERE id = ?",
+      [progress, projectId]
+    );
+
+    return progress;
   }
 }

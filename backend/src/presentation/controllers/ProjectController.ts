@@ -71,3 +71,50 @@ export const deleteProject = async (req: Request, res: Response) => {
     });
   }
 };
+
+export const addMember = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { userId, role } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({ success: false, message: "User ID is required" });
+    }
+
+    const members = await projectService.addMember(id, userId, role);
+    res.json({ success: true, data: members });
+  } catch (error: any) {
+    console.error("Error adding member:", error);
+    res.status(500).json({
+      success: false,
+      message: "Lỗi khi thêm thành viên",
+    });
+  }
+};
+
+export const removeMember = async (req: Request, res: Response) => {
+  try {
+    const { id, userId } = req.params;
+    await projectService.removeMember(id, userId);
+    res.json({ success: true, message: "Đã xóa thành viên" });
+  } catch (error: any) {
+    console.error("Error removing member:", error);
+    res.status(500).json({
+      success: false,
+      message: "Lỗi khi xóa thành viên",
+    });
+  }
+};
+
+export const generateProjectCode = async (req: Request, res: Response) => {
+  try {
+    const code = await projectService.generateProjectCode();
+    res.json({ success: true, code });
+  } catch (error: any) {
+    console.error("Error generating project code:", error);
+    res.status(500).json({
+      success: false,
+      message: "Lỗi khi tạo mã dự án",
+    });
+  }
+};

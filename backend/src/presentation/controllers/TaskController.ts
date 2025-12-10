@@ -75,3 +75,37 @@ export const deleteTask = async (req: Request, res: Response) => {
     });
   }
 };
+
+export const addChecklistItem = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { text } = req.body;
+    const newItemId = await taskService.addChecklistItem(id, text);
+    res.status(201).json({ success: true, data: { id: newItemId, text, isCompleted: false } });
+  } catch (error: any) {
+    console.error("Error adding checklist item:", error);
+    res.status(500).json({ success: false, message: "Lỗi thêm checklist" });
+  }
+};
+
+export const updateChecklistItem = async (req: Request, res: Response) => {
+  try {
+    const { itemId } = req.params;
+    await taskService.updateChecklistItem(itemId, req.body);
+    res.json({ success: true, message: "Cập nhật checklist thành công" });
+  } catch (error: any) {
+    console.error("Error updating checklist item:", error);
+    res.status(500).json({ success: false, message: "Lỗi cập nhật checklist" });
+  }
+};
+
+export const deleteChecklistItem = async (req: Request, res: Response) => {
+  try {
+    const { itemId } = req.params;
+    await taskService.deleteChecklistItem(itemId);
+    res.json({ success: true, message: "Xóa checklist thành công" });
+  } catch (error: any) {
+    console.error("Error deleting checklist item:", error);
+    res.status(500).json({ success: false, message: "Lỗi xóa checklist" });
+  }
+};

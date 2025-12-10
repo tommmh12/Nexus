@@ -16,7 +16,10 @@ export class SocketManager {
   constructor(httpServer: HTTPServer) {
     this.io = new SocketIOServer(httpServer, {
       cors: {
-        origin: process.env.FRONTEND_URL || "http://localhost:3000",
+        origin: [
+          process.env.FRONTEND_URL || "http://localhost:3000",
+          "http://localhost:5173",
+        ],
         credentials: true,
       },
     });
@@ -38,7 +41,8 @@ export class SocketManager {
       try {
         const decoded = jwt.verify(
           token,
-          process.env.JWT_SECRET || "your-secret-key"
+          process.env.JWT_SECRET ||
+          "nexus_super_secret_key_change_in_production_2024"
         ) as any;
         socket.userId = decoded.userId;
         socket.userRole = decoded.role;

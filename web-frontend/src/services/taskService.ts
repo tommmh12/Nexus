@@ -15,6 +15,8 @@ export interface TaskDetail {
   status: string;
   priority: "Low" | "Medium" | "High" | "Critical";
   assigneeDepartment: string;
+  assigneeIds?: string[];
+  assignees?: { id: string; name: string; avatarUrl: string }[];
   startDate: string;
   dueDate: string;
   checklist: { id: string; text: string; isCompleted: boolean }[];
@@ -41,6 +43,25 @@ export const taskService = {
     const response = await axios.get(`${API_URL}/tasks/project/${projectId}`, {
       headers: getAuthHeader(),
     });
+    const tasks = response.data.data || response.data;
+
+    // Fetch checklist for each task (Note: This is N+1, optimize later if needed)
+    const tasksWithChecklist = await Promise.all(tasks.map(async (task: any) => {
+      try {
+        const checklistRes = await axios.get(`${API_URL}/tasks/${task.id}`, { headers: getAuthHeader() });
+        return checklistRes.data.data; // Task detail includes checklist
+      } catch (e) {
+        return task;
+      }
+    }));
+
+    return tasksWithChecklist;
+  },
+
+  getTaskById: async (taskId: string): Promise<TaskDetail> => {
+    const response = await axios.get(`${API_URL}/tasks/${taskId}`, {
+      headers: getAuthHeader(),
+    });
     return response.data.data || response.data;
   },
 
@@ -58,12 +79,36 @@ export const taskService = {
     const response = await axios.put(`${API_URL}/tasks/${taskId}`, taskData, {
       headers: getAuthHeader(),
     });
+    return response.data.data || response.data;
+  },
+
+
+
+  // --- Checklist ---
+  addChecklistItem: async (taskId: string, text: string) => {
+    const response = await axios.post(`${API_URL}/tasks/${taskId}/checklist`, { text }, {
+      headers: getAuthHeader(),
+    });
     return response.data;
   },
 
-  deleteTask: async (taskId: string): Promise<void> => {
-    await axios.delete(`${API_URL}/tasks/${taskId}`, {
+  updateChecklistItem: async (itemId: string, updates: { text?: string; isCompleted?: boolean }) => {
+    const response = await axios.put(`${API_URL}/tasks/checklist/${itemId}`, updates, {
       headers: getAuthHeader(),
     });
+    return response.data;
+  },
+
+  deleteChecklistItem: async (itemId: string) => {
+    await axios.delete(`${API_URL}/tasks/checklist/${itemId}`, {
+      headers: getAuthHeader(),
+    });
+  },
+
+  deleteTask: async (taskId: string) => {
+    const response = await axios.delete(`${API_URL}/tasks/${taskId}`, {
+      headers: getAuthHeader(),
+    });
+    return response.data;
   },
 };

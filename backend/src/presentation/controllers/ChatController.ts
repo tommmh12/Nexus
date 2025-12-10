@@ -18,8 +18,13 @@ export class ChatController {
         success: true,
         data: conversations,
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error getting conversations:", error);
+      try {
+        const fs = require('fs');
+        fs.appendFileSync('chat-error.log', `${new Date().toISOString()} - Error getting conversations: ${error.message}\n${error.stack}\n`);
+      } catch (err) { console.error("Log error:", err); }
+
       res.status(500).json({
         success: false,
         message: "Không thể tải danh sách hội thoại",
