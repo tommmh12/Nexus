@@ -11,6 +11,8 @@ export class DepartmentRepository {
         d.name,
         d.code,
         d.description,
+        d.budget,
+        d.kpi_status as kpiStatus,
         d.manager_id as managerId,
         u.full_name as managerName,
         (SELECT COUNT(*) FROM users WHERE department_id = d.id) as memberCount,
@@ -31,6 +33,8 @@ export class DepartmentRepository {
         d.name,
         d.code,
         d.description,
+        d.budget,
+        d.kpi_status as kpiStatus,
         d.manager_id as managerId,
         u.full_name as managerName,
         (SELECT COUNT(*) FROM users WHERE department_id = d.id) as memberCount,
@@ -49,8 +53,16 @@ export class DepartmentRepository {
   async create(department: Partial<Department>): Promise<Department> {
     const deptId = crypto.randomUUID();
     await this.db.query(
-      "INSERT INTO departments (id, name, code, description, manager_id) VALUES (?, ?, ?, ?, ?)",
-      [deptId, department.name, department.code || null, department.description || null, department.managerId || null]
+      "INSERT INTO departments (id, name, code, description, budget, kpi_status, manager_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      [
+        deptId,
+        department.name,
+        department.code || null,
+        department.description || null,
+        department.budget || null,
+        department.kpiStatus || null,
+        department.managerId || null,
+      ]
     );
     const created = await this.findById(deptId);
     if (!created) throw new Error("Failed to create department");
@@ -59,8 +71,16 @@ export class DepartmentRepository {
 
   async update(id: string, department: Partial<Department>): Promise<void> {
     await this.db.query(
-      "UPDATE departments SET name = ?, code = ?, description = ?, manager_id = ? WHERE id = ?",
-      [department.name, department.code || null, department.description || null, department.managerId || null, id]
+      "UPDATE departments SET name = ?, code = ?, description = ?, budget = ?, kpi_status = ?, manager_id = ? WHERE id = ?",
+      [
+        department.name,
+        department.code || null,
+        department.description || null,
+        department.budget || null,
+        department.kpiStatus || null,
+        department.managerId || null,
+        id,
+      ]
     );
   }
 

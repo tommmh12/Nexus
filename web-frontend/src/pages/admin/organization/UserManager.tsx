@@ -1,5 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { EmployeeProfile, ActivityLog, ActivityType, Department } from "../../types";
+import {
+  EmployeeProfile,
+  ActivityLog,
+  ActivityType,
+  Department,
+} from "../../types";
 // TODO: Replace with API call
 import { Button } from "../../../components/system/ui/Button";
 import { Input } from "../../../components/system/ui/Input";
@@ -60,8 +65,14 @@ export const UserManager = () => {
           department: u.department_name || "",
           role: u.role,
           status: u.status,
-          joinDate: u.join_date ? new Date(u.join_date).toLocaleDateString('vi-VN') : "",
-          avatarUrl: u.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.full_name)}`,
+          joinDate: u.join_date
+            ? new Date(u.join_date).toLocaleDateString("vi-VN")
+            : "",
+          avatarUrl:
+            u.avatar_url ||
+            `https://ui-avatars.com/api/?name=${encodeURIComponent(
+              u.full_name
+            )}`,
           linkedAccounts: [],
         }));
         setUsers(mappedUsers);
@@ -104,21 +115,52 @@ export const UserManager = () => {
         alert("Xóa nhân sự thành công!");
       } catch (error: any) {
         console.error("Error deleting user:", error);
-        alert(error.response?.data?.error || error.message || "Không thể xóa nhân sự. Vui lòng thử lại.");
+        alert(
+          error.response?.data?.error ||
+            error.message ||
+            "Không thể xóa nhân sự. Vui lòng thử lại."
+        );
       }
     }
   };
 
   const handleSaveUser = async (formDataState: typeof formData) => {
     // Validation
-    if (!formDataState.fullName || !formDataState.email || !formDataState.employeeId || !formDataState.department) {
-      alert("Vui lòng điền đầy đủ thông tin bắt buộc: Họ tên, Email, Mã nhân viên, và Phòng ban");
+    console.log("Form data before validation:", formDataState);
+
+    const fullName = formDataState.fullName?.trim();
+    const email = formDataState.email?.trim();
+    let employeeId = formDataState.employeeId?.trim();
+    const department = formDataState.department?.trim();
+
+    if (!fullName || !email || !department) {
+      console.error("Validation failed:", { fullName, email, department });
+      alert(
+        "Vui lòng điền đầy đủ thông tin bắt buộc: Họ tên, Email, và Phòng ban"
+      );
+      return;
+    }
+
+    // Auto-generate employeeId if creating new user and not already set
+    if (!isEditing && !employeeId && department) {
+      const selectedDept = departments.find((d) => d.name === department);
+      if (selectedDept?.code) {
+        employeeId = generateEmployeeId(selectedDept.code);
+        console.log("Auto-generated employeeId:", employeeId);
+      } else {
+        alert("Không thể tạo mã nhân viên. Phòng ban chưa có mã.");
+        return;
+      }
+    }
+
+    if (!employeeId) {
+      alert("Mã nhân viên không hợp lệ");
       return;
     }
 
     try {
       // Find department_id from department name
-      const selectedDept = departments.find(d => d.name === formDataState.department);
+      const selectedDept = departments.find((d) => d.name === department);
       if (!selectedDept) {
         alert("Không tìm thấy phòng ban đã chọn");
         return;
@@ -127,9 +169,9 @@ export const UserManager = () => {
       if (isEditing && selectedUser) {
         // Update existing user
         await userService.updateUser(selectedUser.id, {
-          employee_id: formDataState.employeeId,
-          email: formDataState.email,
-          full_name: formDataState.fullName,
+          employee_id: employeeId,
+          email: email,
+          full_name: fullName,
           phone: formDataState.phone || undefined,
           position: formDataState.position || undefined,
           department_id: selectedDept.id.toString(),
@@ -140,9 +182,9 @@ export const UserManager = () => {
       } else {
         // Create new user
         const newUser = await userService.createUser({
-          employee_id: formDataState.employeeId,
-          email: formDataState.email,
-          full_name: formDataState.fullName,
+          employee_id: employeeId,
+          email: email,
+          full_name: fullName,
           phone: formDataState.phone || undefined,
           position: formDataState.position || undefined,
           department_id: selectedDept.id.toString(),
@@ -165,16 +207,24 @@ export const UserManager = () => {
         department: u.department_name || "",
         role: u.role,
         status: u.status,
-        joinDate: u.join_date ? new Date(u.join_date).toLocaleDateString('vi-VN') : "",
-        avatarUrl: u.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.full_name)}`,
+        joinDate: u.join_date
+          ? new Date(u.join_date).toLocaleDateString("vi-VN")
+          : "",
+        avatarUrl:
+          u.avatar_url ||
+          `https://ui-avatars.com/api/?name=${encodeURIComponent(u.full_name)}`,
         linkedAccounts: [],
       }));
       setUsers(mappedUsers);
-      
+
       setView("list");
     } catch (error: any) {
       console.error("Error saving user:", error);
-      alert(error.response?.data?.error || error.message || "Không thể lưu nhân sự. Vui lòng thử lại.");
+      alert(
+        error.response?.data?.error ||
+          error.message ||
+          "Không thể lưu nhân sự. Vui lòng thử lại."
+      );
     }
   };
 
@@ -215,7 +265,8 @@ export const UserManager = () => {
                       Bắt đầu bằng cách thêm nhân viên mới vào hệ thống
                     </p>
                     <Button onClick={handleCreate} size="sm">
-                      <Plus size={16} className="mr-2" /> Thêm nhân viên đầu tiên
+                      <Plus size={16} className="mr-2" /> Thêm nhân viên đầu
+                      tiên
                     </Button>
                   </div>
                 </td>
@@ -692,21 +743,28 @@ export const UserManager = () => {
   // Hàm tạo mã nhân viên tự động
   const generateEmployeeId = (deptCode: string): string => {
     if (!deptCode) return "";
-    
+
     // Tạo 6 số random
-    const randomNumbers = Math.floor(100000 + Math.random() * 900000).toString();
-    
+    const randomNumbers = Math.floor(
+      100000 + Math.random() * 900000
+    ).toString();
+
     // Kiểm tra mã đã tồn tại chưa
     let employeeId = `${deptCode}-${randomNumbers}`;
     let attempts = 0;
     const maxAttempts = 100;
-    
-    while (users.some(u => u.employeeId === employeeId) && attempts < maxAttempts) {
-      const newRandomNumbers = Math.floor(100000 + Math.random() * 900000).toString();
+
+    while (
+      users.some((u) => u.employeeId === employeeId) &&
+      attempts < maxAttempts
+    ) {
+      const newRandomNumbers = Math.floor(
+        100000 + Math.random() * 900000
+      ).toString();
       employeeId = `${deptCode}-${newRandomNumbers}`;
       attempts++;
     }
-    
+
     return employeeId;
   };
 
@@ -719,8 +777,10 @@ export const UserManager = () => {
       employeeId: selectedUser?.employeeId || "",
       department: selectedUser?.department || "",
       position: selectedUser?.position || "",
-      joinDate: selectedUser?.joinDate 
-        ? new Date(selectedUser.joinDate.split("/").reverse().join("-")).toISOString().split("T")[0]
+      joinDate: selectedUser?.joinDate
+        ? new Date(selectedUser.joinDate.split("/").reverse().join("-"))
+            .toISOString()
+            .split("T")[0]
         : "",
       role: selectedUser?.role || "Employee",
       status: selectedUser?.status || "Active",
@@ -736,8 +796,10 @@ export const UserManager = () => {
           employeeId: selectedUser.employeeId || "",
           department: selectedUser.department || "",
           position: selectedUser.position || "",
-          joinDate: selectedUser.joinDate 
-            ? new Date(selectedUser.joinDate.split("/").reverse().join("-")).toISOString().split("T")[0]
+          joinDate: selectedUser.joinDate
+            ? new Date(selectedUser.joinDate.split("/").reverse().join("-"))
+                .toISOString()
+                .split("T")[0]
             : "",
           role: selectedUser.role || "Employee",
           status: selectedUser.status || "Active",
@@ -760,15 +822,19 @@ export const UserManager = () => {
     // Tự động tạo mã nhân viên khi chọn phòng ban (chỉ khi thêm mới)
     const handleDepartmentChange = (deptName: string) => {
       if (!isEditing && deptName) {
-        const selectedDept = departments.find(d => d.name === deptName);
+        const selectedDept = departments.find((d) => d.name === deptName);
         if (selectedDept?.code) {
           const newEmployeeId = generateEmployeeId(selectedDept.code);
-          setFormData(prev => ({ ...prev, department: deptName, employeeId: newEmployeeId }));
+          setFormData((prev) => ({
+            ...prev,
+            department: deptName,
+            employeeId: newEmployeeId,
+          }));
         } else {
-          setFormData(prev => ({ ...prev, department: deptName }));
+          setFormData((prev) => ({ ...prev, department: deptName }));
         }
       } else {
-        setFormData(prev => ({ ...prev, department: deptName }));
+        setFormData((prev) => ({ ...prev, department: deptName }));
       }
     };
 
@@ -809,7 +875,9 @@ export const UserManager = () => {
                 <Input
                   label="Họ và tên"
                   value={formData.fullName}
-                  onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, fullName: e.target.value })
+                  }
                   required
                   placeholder="Ví dụ: Nguyễn Văn A"
                 />
@@ -817,21 +885,27 @@ export const UserManager = () => {
                   label="Email công ty"
                   type="email"
                   value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, email: e.target.value })
+                  }
                   required
                   placeholder="name@company.com"
                 />
                 <Input
                   label="Số điện thoại"
                   value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, phone: e.target.value })
+                  }
                   placeholder="09xx..."
                 />
                 {isEditing && (
                   <Input
                     label="Mã nhân viên"
                     value={formData.employeeId}
-                    onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, employeeId: e.target.value })
+                    }
                     placeholder="DEPT-123456"
                   />
                 )}
@@ -878,14 +952,18 @@ export const UserManager = () => {
                 <Input
                   label="Chức danh / Vị trí"
                   value={formData.position}
-                  onChange={(e) => setFormData({ ...formData, position: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, position: e.target.value })
+                  }
                   placeholder="Ví dụ: Senior Developer"
                 />
                 <Input
                   label="Ngày gia nhập"
                   type="date"
                   value={formData.joinDate}
-                  onChange={(e) => setFormData({ ...formData, joinDate: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, joinDate: e.target.value })
+                  }
                 />
               </div>
             </div>
@@ -903,7 +981,9 @@ export const UserManager = () => {
                   <select
                     className="w-full bg-slate-50 border border-slate-200 rounded-md p-2.5 text-sm focus:ring-2 focus:ring-brand-500 outline-none"
                     value={formData.role}
-                    onChange={(e) => setFormData({ ...formData, role: e.target.value as any })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, role: e.target.value as any })
+                    }
                   >
                     <option value="Employee">Employee (Nhân viên)</option>
                     <option value="Manager">Manager (Quản lý)</option>
@@ -920,7 +1000,9 @@ export const UserManager = () => {
                         type="radio"
                         name="status"
                         checked={formData.status === "Active"}
-                        onChange={() => setFormData({ ...formData, status: "Active" })}
+                        onChange={() =>
+                          setFormData({ ...formData, status: "Active" })
+                        }
                         className="mr-2 text-brand-600 focus:ring-brand-500"
                       />
                       <span className="text-sm text-slate-700">
@@ -932,7 +1014,9 @@ export const UserManager = () => {
                         type="radio"
                         name="status"
                         checked={formData.status === "Blocked"}
-                        onChange={() => setFormData({ ...formData, status: "Blocked" })}
+                        onChange={() =>
+                          setFormData({ ...formData, status: "Blocked" })
+                        }
                         className="mr-2 text-brand-600 focus:ring-brand-500"
                       />
                       <span className="text-sm text-slate-700">
@@ -941,26 +1025,30 @@ export const UserManager = () => {
                     </label>
                   </div>
                 </div>
-              {!isEditing && (
-                <div className="md:col-span-2 bg-blue-50 p-4 rounded-lg border border-blue-100 flex items-start gap-3">
-                  <Key size={18} className="text-blue-600 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-semibold text-blue-800">
-                      Mật khẩu mặc định
-                    </p>
-                    <p className="text-xs text-blue-600 mt-1">
-                      Mật khẩu ngẫu nhiên sẽ được gửi đến email của nhân sự sau
-                      khi tạo thành công.
-                    </p>
+                {!isEditing && (
+                  <div className="md:col-span-2 bg-blue-50 p-4 rounded-lg border border-blue-100 flex items-start gap-3">
+                    <Key size={18} className="text-blue-600 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-semibold text-blue-800">
+                        Mật khẩu mặc định
+                      </p>
+                      <p className="text-xs text-blue-600 mt-1">
+                        Mật khẩu ngẫu nhiên sẽ được gửi đến email của nhân sự
+                        sau khi tạo thành công.
+                      </p>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
               </div>
             </div>
           </div>
 
           <div className="bg-slate-50 px-8 py-4 border-t border-slate-200 flex justify-end gap-3">
-            <Button type="button" variant="ghost" onClick={() => setView("list")}>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setView("list")}
+            >
               Hủy bỏ
             </Button>
             <Button type="submit">

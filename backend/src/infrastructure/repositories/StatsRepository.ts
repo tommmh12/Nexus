@@ -96,9 +96,12 @@ export class StatsRepository {
         p.budget,
         p.start_date as startDate,
         p.end_date as endDate,
+        p.department_id as departmentId,
+        d.name as departmentName,
         u.full_name as managerName
       FROM projects p
       LEFT JOIN users u ON p.manager_id = u.id
+      LEFT JOIN departments d ON p.department_id = d.id
       WHERE p.deleted_at IS NULL
       ORDER BY p.created_at DESC
       LIMIT ?`,
@@ -106,6 +109,41 @@ export class StatsRepository {
     );
 
     return projects;
+  }
+
+  async getProjectsByDepartment() {
+    const [projects] = await this.db.query<RowDataPacket[]>(
+      `SELECT 
+        p.id,
+        p.code,
+        p.name,
+        p.status,
+        p.priority,
+        p.progress,
+        p.budget,
+        p.start_date as startDate,
+        p.end_date as endDate,
+        p.department_id as departmentId,
+        d.name as departmentName,
+        u.full_name as managerName
+      FROM projects p
+      LEFT JOIN users u ON p.manager_id = u.id
+      LEFT JOIN departments d ON p.department_id = d.id
+      WHERE p.deleted_at IS NULL
+      ORDER BY d.name, p.created_at DESC`
+    );
+
+    // Group by department
+    const grouped = projects.reduce((acc: any, project: any) => {
+      const deptName = project.departmentName || "Chưa phân bổ";
+      if (!acc[deptName]) {
+        acc[deptName] = [];
+      }
+      acc[deptName].push(project);
+      return acc;
+    }, {});
+
+    return grouped;
   }
 
   async getTasksSummary(limit: number = 10) {

@@ -8,24 +8,23 @@ const userService = new UserService(userRepository);
 
 // Helper to get IP address from request
 const getIpAddress = (req: Request): string => {
-  return (req.headers["x-forwarded-for"] as string)?.split(",")[0] || 
-         (req.headers["x-real-ip"] as string) || 
-         req.socket.remoteAddress || 
-         "unknown";
+  return (
+    (req.headers["x-forwarded-for"] as string)?.split(",")[0] ||
+    (req.headers["x-real-ip"] as string) ||
+    req.socket.remoteAddress ||
+    "unknown"
+  );
 };
 
 export const createUser = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.userId || null;
     const ipAddress = getIpAddress(req);
-    
-    // Generate random password if not provided
-    const password = req.body.password || Math.random().toString(36).slice(-12) + "A1!";
-    
-    const user = await userService.createUser({
+
+    const result = await userService.createUser({
       employee_id: req.body.employee_id,
       email: req.body.email,
-      password: password,
+      password: req.body.password, // Optional - will be auto-generated if not provided
       full_name: req.body.full_name,
       phone: req.body.phone,
       position: req.body.position,
@@ -36,14 +35,18 @@ export const createUser = async (req: Request, res: Response) => {
     });
 
     // Log audit trail
-    await auditLogger.logUserCreate(userId, user.id, user.full_name, ipAddress);
+    await auditLogger.logUserCreate(
+      userId,
+      result.user.id,
+      result.user.full_name,
+      ipAddress
+    );
 
     res.status(201).json({
       success: true,
-      data: user,
-      message: "User created successfully",
-      // Don't send password back
-      tempPassword: password, // Only for initial setup
+      data: result.user,
+      message: "User created successfully. Welcome email sent.",
+      tempPassword: result.password, // Return temporary password
     });
   } catch (error: any) {
     console.error("Error creating user:", error);
@@ -82,7 +85,7 @@ export const updateUser = async (req: Request, res: Response) => {
     const userId = (req as any).user?.userId || null;
     const ipAddress = getIpAddress(req);
     const targetUserId = req.params.id;
-    
+
     // Get user info before update for logging
     const existingUser = await userService.getUserById(targetUserId);
     if (!existingUser) {
@@ -90,7 +93,7 @@ export const updateUser = async (req: Request, res: Response) => {
     }
 
     await userService.updateUser(targetUserId, req.body);
-    
+
     // Log audit trail
     await auditLogger.logUserUpdate(
       userId,
@@ -112,7 +115,7 @@ export const deleteUser = async (req: Request, res: Response) => {
     const userId = (req as any).user?.userId || null;
     const ipAddress = getIpAddress(req);
     const targetUserId = req.params.id;
-    
+
     // Get user info before delete for logging
     const existingUser = await userService.getUserById(targetUserId);
     if (!existingUser) {
@@ -120,7 +123,7 @@ export const deleteUser = async (req: Request, res: Response) => {
     }
 
     await userService.deleteUser(targetUserId);
-    
+
     // Log audit trail
     await auditLogger.logUserDelete(
       userId,
@@ -135,4 +138,3 @@ export const deleteUser = async (req: Request, res: Response) => {
     res.status(400).json({ error: error.message });
   }
 };
-

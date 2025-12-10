@@ -6,6 +6,8 @@ export interface Department {
   managerId?: string;
   managerName?: string;
   memberCount?: number;
+  budget?: number;
+  kpiStatus?: "On Track" | "At Risk" | "Behind";
   createdAt?: Date;
   updatedAt?: Date;
 }

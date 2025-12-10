@@ -24,6 +24,9 @@ import {
   Check,
   ChevronDown,
   User as UserIcon,
+  DollarSign,
+  UserCircle,
+  FileText,
 } from "lucide-react";
 
 // --- Types & Interfaces for Local Use ---
@@ -83,8 +86,14 @@ const SelectManagerModal = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fadeIn" onClick={onCancel}>
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6 flex flex-col max-h-[80vh]" onClick={(e) => e.stopPropagation()}>
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fadeIn"
+      onClick={onCancel}
+    >
+      <div
+        className="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6 flex flex-col max-h-[80vh]"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-bold text-slate-900">
             Chọn trưởng phòng
@@ -188,9 +197,7 @@ const SelectManagerModal = ({
           <Button variant="ghost" onClick={onCancel}>
             Hủy
           </Button>
-          <Button onClick={handleConfirm}>
-            Xác nhận
-          </Button>
+          <Button onClick={handleConfirm}>Xác nhận</Button>
         </div>
       </div>
     </div>
@@ -216,9 +223,12 @@ const DepartmentFormModal = ({
     }
   );
   const [isManagerModalOpen, setIsManagerModalOpen] = useState(false);
-  const [selectedManager, setSelectedManager] = useState<EmployeeProfile | null>(
-    department ? users.find((u) => u.fullName === department.managerName) || null : null
-  );
+  const [selectedManager, setSelectedManager] =
+    useState<EmployeeProfile | null>(
+      department
+        ? users.find((u) => u.fullName === department.managerName) || null
+        : null
+    );
 
   const handleSelectManager = (user: EmployeeProfile | null) => {
     setSelectedManager(user);
@@ -236,7 +246,9 @@ const DepartmentFormModal = ({
     // If manager selected, use selected manager data
     const managerAvatar = selectedManager
       ? selectedManager.avatarUrl
-      : formData.managerAvatar || "https://ui-avatars.com/api/?name=" + (formData.managerName || "Department");
+      : formData.managerAvatar ||
+        "https://ui-avatars.com/api/?name=" +
+          (formData.managerName || "Department");
 
     onSave({ ...formData, managerAvatar } as Department);
   };
@@ -264,104 +276,113 @@ const DepartmentFormModal = ({
               <X size={20} />
             </button>
           </div>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <Input
-            label="Tên phòng ban"
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            required
-          />
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <Input
+              label="Tên phòng ban"
+              value={formData.name}
+              onChange={(e) =>
+                setFormData({ ...formData, name: e.target.value })
+              }
+              required
+            />
 
-          <Input
-            label="Mã phòng ban"
-            value={formData.code || ""}
-            onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-            required
-          />
+            <Input
+              label="Mã phòng ban"
+              value={formData.code || ""}
+              onChange={(e) =>
+                setFormData({ ...formData, code: e.target.value })
+              }
+              required
+            />
 
-          {isEditMode && (
-            <>
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
-                  Trưởng phòng
-                </label>
-                <div
-                  onClick={() => setIsManagerModalOpen(true)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-md p-2.5 text-sm cursor-pointer hover:border-brand-300 transition-colors flex items-center justify-between"
-                >
-                  {selectedManager ? (
-                    <div className="flex items-center gap-3">
-                      <img
-                        src={selectedManager.avatarUrl}
-                        className="w-8 h-8 rounded-full"
-                        alt=""
-                      />
-                      <div>
-                        <p className="text-sm font-medium text-slate-900">
-                          {selectedManager.fullName}
-                        </p>
-                        <p className="text-xs text-slate-500">
-                          {selectedManager.email}
-                        </p>
-                      </div>
-                    </div>
-                  ) : (
-                    <span className="text-slate-500">Chọn trưởng phòng...</span>
-                  )}
-                  <ChevronDown size={16} className="text-slate-400" />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
-                  Mô tả nhiệm vụ
-                </label>
-                <textarea
-                  className="w-full bg-slate-50 border border-slate-200 rounded-md p-3 text-sm focus:ring-2 focus:ring-brand-500 outline-none h-24 resize-none"
-                  value={formData.description}
-                  onChange={(e) =>
-                    setFormData({ ...formData, description: e.target.value })
-                  }
-                ></textarea>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <Input
-                  label="Ngân sách (Budget)"
-                  value={formData.budget}
-                  onChange={(e) =>
-                    setFormData({ ...formData, budget: e.target.value })
-                  }
-                />
+            {isEditMode && (
+              <>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">
-                    Trạng thái KPI
+                    Trưởng phòng
                   </label>
-                  <select
-                    className="w-full bg-slate-50 border border-slate-200 rounded-md p-2.5 text-sm outline-none focus:ring-2 focus:ring-brand-500"
-                    value={formData.kpiStatus}
-                    onChange={(e) =>
-                      setFormData({ ...formData, kpiStatus: e.target.value as any })
-                    }
+                  <div
+                    onClick={() => setIsManagerModalOpen(true)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-md p-2.5 text-sm cursor-pointer hover:border-brand-300 transition-colors flex items-center justify-between"
                   >
-                    <option value="On Track">On Track (Đúng tiến độ)</option>
-                    <option value="At Risk">At Risk (Rủi ro)</option>
-                    <option value="Behind">Behind (Chậm trễ)</option>
-                  </select>
+                    {selectedManager ? (
+                      <div className="flex items-center gap-3">
+                        <img
+                          src={selectedManager.avatarUrl}
+                          className="w-8 h-8 rounded-full"
+                          alt=""
+                        />
+                        <div>
+                          <p className="text-sm font-medium text-slate-900">
+                            {selectedManager.fullName}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            {selectedManager.email}
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="text-slate-500">
+                        Chọn trưởng phòng...
+                      </span>
+                    )}
+                    <ChevronDown size={16} className="text-slate-400" />
+                  </div>
                 </div>
-              </div>
-            </>
-          )}
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
-            <Button type="button" variant="ghost" onClick={onCancel}>
-              Hủy
-            </Button>
-            <Button type="submit">
-              <Save size={16} className="mr-2" /> Lưu
-            </Button>
-          </div>
-        </form>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    Mô tả nhiệm vụ
+                  </label>
+                  <textarea
+                    className="w-full bg-slate-50 border border-slate-200 rounded-md p-3 text-sm focus:ring-2 focus:ring-brand-500 outline-none h-24 resize-none"
+                    value={formData.description}
+                    onChange={(e) =>
+                      setFormData({ ...formData, description: e.target.value })
+                    }
+                  ></textarea>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <Input
+                    label="Ngân sách (Budget)"
+                    value={formData.budget}
+                    onChange={(e) =>
+                      setFormData({ ...formData, budget: e.target.value })
+                    }
+                  />
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">
+                      Trạng thái KPI
+                    </label>
+                    <select
+                      className="w-full bg-slate-50 border border-slate-200 rounded-md p-2.5 text-sm outline-none focus:ring-2 focus:ring-brand-500"
+                      value={formData.kpiStatus}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          kpiStatus: e.target.value as any,
+                        })
+                      }
+                    >
+                      <option value="On Track">On Track (Đúng tiến độ)</option>
+                      <option value="At Risk">At Risk (Rủi ro)</option>
+                      <option value="Behind">Behind (Chậm trễ)</option>
+                    </select>
+                  </div>
+                </div>
+              </>
+            )}
+
+            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+              <Button type="button" variant="ghost" onClick={onCancel}>
+                Hủy
+              </Button>
+              <Button type="submit">
+                <Save size={16} className="mr-2" /> Lưu
+              </Button>
+            </div>
+          </form>
         </div>
       </div>
     </>
@@ -647,7 +668,9 @@ const DepartmentDetailView = ({
                     {department.name}
                   </h1>
                   {department.code && (
-                    <p className="text-sm text-slate-400 mb-2">Mã phòng ban: {department.code}</p>
+                    <p className="text-sm text-slate-400 mb-2">
+                      Mã phòng ban: {department.code}
+                    </p>
                   )}
                   <p className="text-slate-500 max-w-2xl">
                     {department.description}
@@ -732,39 +755,130 @@ const DepartmentDetailView = ({
 
       {/* Content */}
       <div className="min-h-[400px]">
-        {activeTab === "overview" && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fadeIn">
-            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-              <h3 className="font-bold text-slate-900 mb-4 flex items-center">
-                <TrendingUp size={20} className="mr-2 text-brand-600" /> Hiệu
-                suất KPI
-              </h3>
-              <div className="space-y-4">
-                <div>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className="text-slate-600">Hoàn thành dự án</span>
-                    <span className="font-bold text-slate-900">85%</span>
-                  </div>
-                  <div className="w-full bg-slate-100 rounded-full h-2">
-                    <div
-                      className="bg-green-500 h-2 rounded-full"
-                      style={{ width: "85%" }}
-                    ></div>
-                  </div>
-                </div>
-                <div>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className="text-slate-600">Tuyển dụng</span>
-                    <span className="font-bold text-slate-900">60%</span>
-                  </div>
-                  <div className="w-full bg-slate-100 rounded-full h-2">
-                    <div
-                      className="bg-yellow-500 h-2 rounded-full"
-                      style={{ width: "60%" }}
-                    ></div>
-                  </div>
-                </div>
+        {activeTab === "overview" && selectedDept && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-fadeIn">
+            {/* Budget Card */}
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-xl border border-blue-200 shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="font-bold text-blue-900 flex items-center">
+                  <DollarSign size={20} className="mr-2" /> Ngân sách
+                </h3>
               </div>
+              <div className="text-3xl font-bold text-blue-900 mb-1">
+                {selectedDept.budget
+                  ? `${parseFloat(selectedDept.budget).toLocaleString(
+                      "vi-VN"
+                    )} VNĐ`
+                  : "---"}
+              </div>
+              <p className="text-sm text-blue-700">
+                Năm {new Date().getFullYear()}
+              </p>
+            </div>
+
+            {/* Members Card */}
+            <div className="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-xl border border-green-200 shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="font-bold text-green-900 flex items-center">
+                  <Users size={20} className="mr-2" /> Nhân sự
+                </h3>
+              </div>
+              <div className="text-3xl font-bold text-green-900 mb-1">
+                {deptMembers.length} người
+              </div>
+              <p className="text-sm text-green-700">
+                {deptMembers.filter((m) => m.status === "Active").length} đang
+                làm việc
+              </p>
+            </div>
+
+            {/* KPI Status Card */}
+            <div
+              className={`bg-gradient-to-br p-6 rounded-xl border shadow-sm ${
+                selectedDept.kpiStatus === "On Track"
+                  ? "from-green-50 to-green-100 border-green-200"
+                  : selectedDept.kpiStatus === "At Risk"
+                  ? "from-yellow-50 to-yellow-100 border-yellow-200"
+                  : "from-red-50 to-red-100 border-red-200"
+              }`}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <h3
+                  className={`font-bold flex items-center ${
+                    selectedDept.kpiStatus === "On Track"
+                      ? "text-green-900"
+                      : selectedDept.kpiStatus === "At Risk"
+                      ? "text-yellow-900"
+                      : "text-red-900"
+                  }`}
+                >
+                  <TrendingUp size={20} className="mr-2" /> Trạng thái KPI
+                </h3>
+              </div>
+              <div
+                className={`text-2xl font-bold mb-1 ${
+                  selectedDept.kpiStatus === "On Track"
+                    ? "text-green-900"
+                    : selectedDept.kpiStatus === "At Risk"
+                    ? "text-yellow-900"
+                    : "text-red-900"
+                }`}
+              >
+                {selectedDept.kpiStatus || "On Track"}
+              </div>
+              <p
+                className={`text-sm ${
+                  selectedDept.kpiStatus === "On Track"
+                    ? "text-green-700"
+                    : selectedDept.kpiStatus === "At Risk"
+                    ? "text-yellow-700"
+                    : "text-red-700"
+                }`}
+              >
+                Tháng {new Date().getMonth() + 1}/{new Date().getFullYear()}
+              </p>
+            </div>
+
+            {/* Manager Info */}
+            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm col-span-1 md:col-span-2">
+              <h3 className="font-bold text-slate-900 mb-4 flex items-center">
+                <UserCircle size={20} className="mr-2 text-brand-600" /> Trưởng
+                phòng
+              </h3>
+              {selectedDept.managerName ? (
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 rounded-full bg-brand-100 flex items-center justify-center text-brand-600 font-bold text-xl">
+                    {selectedDept.managerName?.split(" ").pop()?.charAt(0)}
+                  </div>
+                  <div>
+                    <p className="font-bold text-lg text-slate-900">
+                      {selectedDept.managerName}
+                    </p>
+                    <p className="text-sm text-slate-500">Quản lý phòng ban</p>
+                    <button className="text-sm text-brand-600 hover:underline mt-1">
+                      Thay đổi →
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-4 text-slate-400">
+                  <UserCircle size={48} className="mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">Chưa có trưởng phòng</p>
+                  <button className="text-sm text-brand-600 hover:underline mt-2">
+                    Chỉ định →
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Description */}
+            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+              <h3 className="font-bold text-slate-900 mb-3 flex items-center">
+                <FileText size={20} className="mr-2 text-brand-600" /> Mô tả
+              </h3>
+              <p className="text-sm text-slate-600 leading-relaxed">
+                {selectedDept.description || "Chưa có mô tả cho phòng ban này."}
+              </p>
             </div>
           </div>
         )}
@@ -926,7 +1040,9 @@ export const DepartmentManager = () => {
           code: d.code || "",
           description: d.description || "",
           managerName: d.managerName || "Chưa có",
-          managerAvatar: d.managerAvatar || "https://ui-avatars.com/api/?name=" + (d.name || "Department"),
+          managerAvatar:
+            d.managerAvatar ||
+            "https://ui-avatars.com/api/?name=" + (d.name || "Department"),
           memberCount: d.memberCount || 0,
           budget: d.budget || "---",
           kpiStatus: d.kpiStatus || "On Track",
@@ -955,8 +1071,14 @@ export const DepartmentManager = () => {
           department: u.department_name || "", // Use department_name from API
           role: u.role,
           status: u.status,
-          joinDate: u.join_date ? new Date(u.join_date).toLocaleDateString('vi-VN') : "",
-          avatarUrl: u.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.full_name)}`,
+          joinDate: u.join_date
+            ? new Date(u.join_date).toLocaleDateString("vi-VN")
+            : "",
+          avatarUrl:
+            u.avatar_url ||
+            `https://ui-avatars.com/api/?name=${encodeURIComponent(
+              u.full_name
+            )}`,
           linkedAccounts: [],
         }));
         setUsers(mappedUsers);
@@ -1014,7 +1136,7 @@ export const DepartmentManager = () => {
           managerId = manager.id;
         }
       }
-      
+
       if (editingDept) {
         // Update existing department
         await departmentService.updateDepartment(dept.id, {
@@ -1031,7 +1153,9 @@ export const DepartmentManager = () => {
           code: d.code || "",
           description: d.description || "",
           managerName: d.managerName || "Chưa có",
-          managerAvatar: d.managerAvatar || "https://ui-avatars.com/api/?name=" + (d.name || "Department"),
+          managerAvatar:
+            d.managerAvatar ||
+            "https://ui-avatars.com/api/?name=" + (d.name || "Department"),
           memberCount: d.memberCount || 0,
           budget: d.budget || "---",
           kpiStatus: d.kpiStatus || "On Track",
@@ -1059,7 +1183,9 @@ export const DepartmentManager = () => {
           code: d.code || "",
           description: d.description || "",
           managerName: d.managerName || "Chưa có",
-          managerAvatar: d.managerAvatar || "https://ui-avatars.com/api/?name=" + (d.name || "Department"),
+          managerAvatar:
+            d.managerAvatar ||
+            "https://ui-avatars.com/api/?name=" + (d.name || "Department"),
           memberCount: d.memberCount || 0,
           budget: d.budget || "---",
           kpiStatus: d.kpiStatus || "On Track",
@@ -1071,7 +1197,10 @@ export const DepartmentManager = () => {
       setIsFormOpen(false);
     } catch (error: any) {
       console.error("Error saving department:", error);
-      alert(error.response?.data?.error || "Không thể lưu phòng ban. Vui lòng thử lại.");
+      alert(
+        error.response?.data?.error ||
+          "Không thể lưu phòng ban. Vui lòng thử lại."
+      );
     } finally {
       setIsLoading(false);
     }
@@ -1080,7 +1209,7 @@ export const DepartmentManager = () => {
   const handleTransferUser = async (userId: string, targetDeptName: string) => {
     try {
       // Find target department
-      const targetDept = departments.find(d => d.name === targetDeptName);
+      const targetDept = departments.find((d) => d.name === targetDeptName);
       if (!targetDept) {
         alert("Không tìm thấy phòng ban đích");
         return;
@@ -1103,8 +1232,12 @@ export const DepartmentManager = () => {
         department: u.department_name || "",
         role: u.role,
         status: u.status,
-        joinDate: u.join_date ? new Date(u.join_date).toLocaleDateString('vi-VN') : "",
-        avatarUrl: u.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.full_name)}`,
+        joinDate: u.join_date
+          ? new Date(u.join_date).toLocaleDateString("vi-VN")
+          : "",
+        avatarUrl:
+          u.avatar_url ||
+          `https://ui-avatars.com/api/?name=${encodeURIComponent(u.full_name)}`,
         linkedAccounts: [],
       }));
       setUsers(mappedUsers);
@@ -1117,14 +1250,16 @@ export const DepartmentManager = () => {
         code: d.code || "",
         description: d.description || "",
         managerName: d.managerName || "Chưa có",
-        managerAvatar: d.managerAvatar || "https://ui-avatars.com/api/?name=" + (d.name || "Department"),
+        managerAvatar:
+          d.managerAvatar ||
+          "https://ui-avatars.com/api/?name=" + (d.name || "Department"),
         memberCount: d.memberCount || 0,
         budget: d.budget || "---",
         kpiStatus: d.kpiStatus || "On Track",
         parentDeptId: d.parentDeptId,
       }));
       setDepartments(mappedDepts);
-      
+
       if (selectedDept) {
         const updatedDept = mappedDepts.find((d) => d.id === selectedDept.id);
         if (updatedDept) setSelectedDept(updatedDept);
@@ -1133,13 +1268,16 @@ export const DepartmentManager = () => {
       alert("Điều chuyển nhân sự thành công!");
     } catch (error: any) {
       console.error("Error transferring user:", error);
-      alert(error.response?.data?.error || "Không thể điều chuyển nhân sự. Vui lòng thử lại.");
+      alert(
+        error.response?.data?.error ||
+          "Không thể điều chuyển nhân sự. Vui lòng thử lại."
+      );
     }
   };
 
   const handleAddMembers = async (userIds: string[]) => {
     if (!selectedDept) return;
-    
+
     try {
       // Update each user's department via API
       for (const userId of userIds) {
@@ -1160,8 +1298,12 @@ export const DepartmentManager = () => {
         department: u.department_name || "",
         role: u.role,
         status: u.status,
-        joinDate: u.join_date ? new Date(u.join_date).toLocaleDateString('vi-VN') : "",
-        avatarUrl: u.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.full_name)}`,
+        joinDate: u.join_date
+          ? new Date(u.join_date).toLocaleDateString("vi-VN")
+          : "",
+        avatarUrl:
+          u.avatar_url ||
+          `https://ui-avatars.com/api/?name=${encodeURIComponent(u.full_name)}`,
         linkedAccounts: [],
       }));
       setUsers(mappedUsers);
@@ -1174,21 +1316,26 @@ export const DepartmentManager = () => {
         code: d.code || "",
         description: d.description || "",
         managerName: d.managerName || "Chưa có",
-        managerAvatar: d.managerAvatar || "https://ui-avatars.com/api/?name=" + (d.name || "Department"),
+        managerAvatar:
+          d.managerAvatar ||
+          "https://ui-avatars.com/api/?name=" + (d.name || "Department"),
         memberCount: d.memberCount || 0,
         budget: d.budget || "---",
         kpiStatus: d.kpiStatus || "On Track",
         parentDeptId: d.parentDeptId,
       }));
       setDepartments(mappedDepts);
-      
+
       const updatedDept = mappedDepts.find((d) => d.id === selectedDept.id);
       if (updatedDept) setSelectedDept(updatedDept);
 
       alert(`Đã thêm ${userIds.length} nhân sự vào phòng ban thành công!`);
     } catch (error: any) {
       console.error("Error adding members:", error);
-      alert(error.response?.data?.error || "Không thể thêm nhân sự. Vui lòng thử lại.");
+      alert(
+        error.response?.data?.error ||
+          "Không thể thêm nhân sự. Vui lòng thử lại."
+      );
     }
   };
 
@@ -1276,7 +1423,9 @@ export const DepartmentManager = () => {
                     {dept.name}
                   </h3>
                   {dept.code && (
-                    <p className="text-xs text-slate-400 mt-1">Mã: {dept.code}</p>
+                    <p className="text-xs text-slate-400 mt-1">
+                      Mã: {dept.code}
+                    </p>
                   )}
                 </div>
                 <p className="text-sm text-slate-500 mb-6 line-clamp-2 min-h-[40px]">

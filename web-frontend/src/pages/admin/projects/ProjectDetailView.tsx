@@ -612,8 +612,8 @@ const TaskDetailPanel = ({
               <CheckSquare size={16} className="text-brand-600" /> Checklist
             </h3>
             <span className="text-xs text-slate-500">
-              {task.checklist.filter((i) => i.isCompleted).length}/
-              {task.checklist.length} hoàn thành
+              {task.checklist?.filter((i) => i.isCompleted).length || 0}/
+              {task.checklist?.length || 0} hoàn thành
             </span>
           </div>
 
@@ -623,9 +623,10 @@ const TaskDetailPanel = ({
               className="bg-brand-600 h-1.5 rounded-full transition-all duration-500"
               style={{
                 width: `${
-                  task.checklist.length > 0
-                    ? (task.checklist.filter((i) => i.isCompleted).length /
-                        task.checklist.length) *
+                  (task.checklist?.length || 0) > 0
+                    ? ((task.checklist?.filter((i) => i.isCompleted).length ||
+                        0) /
+                        (task.checklist?.length || 1)) *
                       100
                     : 0
                 }%`,
@@ -634,7 +635,7 @@ const TaskDetailPanel = ({
           </div>
 
           <div className="space-y-2">
-            {task.checklist.map((item) => (
+            {task.checklist?.map((item) => (
               <label
                 key={item.id}
                 className="flex items-start gap-3 p-2 hover:bg-slate-50 rounded-lg cursor-pointer group"
@@ -783,8 +784,20 @@ export const ProjectDetailView = ({
         }
       }
 
-      // Mock data for tasks/reports until APIs ready
-      setTasks([]);
+      // Load tasks for this project
+      try {
+        const projectTasks = await taskService.getTasksByProject(project.id);
+        const tasksWithDefaults = projectTasks.map((task: any) => ({
+          ...task,
+          checklist: task.checklist || [],
+          attachments: task.attachments || [],
+        }));
+        setTasks(tasksWithDefaults);
+      } catch (error) {
+        console.error("Lỗi tải tasks:", error);
+        setTasks([]);
+      }
+
       setReports([]);
     } catch (error) {
       console.error("Lỗi tải dữ liệu dự án:", error);
@@ -813,7 +826,15 @@ export const ProjectDetailView = ({
         ...newTaskData,
         projectId: project.id, // Keep as UUID string
       });
-      setTasks([createdTask, ...tasks]);
+
+      // Ensure checklist is always an array
+      const taskWithDefaults = {
+        ...createdTask,
+        checklist: createdTask.checklist || [],
+        attachments: createdTask.attachments || [],
+      };
+
+      setTasks([taskWithDefaults, ...tasks]);
       setShowCreateTask(false);
       alert("✅ Tạo task thành công!");
     } catch (error) {
@@ -1127,7 +1148,9 @@ export const ProjectDetailView = ({
                 </div>
                 <div>
                   <p className="font-bold text-slate-900 text-sm">
-                    {localProject.managerName || localProject.manager || "Chưa có"}
+                    {localProject.managerName ||
+                      localProject.manager ||
+                      "Chưa có"}
                   </p>
                   <p className="text-xs text-slate-500">Project Manager</p>
                 </div>
@@ -1215,10 +1238,10 @@ export const ProjectDetailView = ({
                   </thead>
                   <tbody className="bg-white divide-y divide-slate-200">
                     {tasks.map((task) => {
-                      const completedItems = task.checklist.filter(
-                        (i) => i.isCompleted
-                      ).length;
-                      const totalItems = task.checklist.length;
+                      const completedItems =
+                        task.checklist?.filter((i) => i.isCompleted).length ||
+                        0;
+                      const totalItems = task.checklist?.length || 0;
                       const progress =
                         totalItems > 0
                           ? Math.round((completedItems / totalItems) * 100)
