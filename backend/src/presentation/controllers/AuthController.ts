@@ -106,4 +106,67 @@ export class AuthController {
       next(error);
     }
   };
+
+  changePassword = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      const token = req.headers.authorization?.replace("Bearer ", "");
+
+      if (!token) {
+        res.status(401).json({
+          success: false,
+          message: "Token không hợp lệ",
+        });
+        return;
+      }
+
+      const user = await this.authService.verifyToken(token);
+
+      if (!user) {
+        res.status(401).json({
+          success: false,
+          message: "Phiên đăng nhập đã hết hạn",
+        });
+        return;
+      }
+
+      const { currentPassword, newPassword } = req.body;
+
+      if (!currentPassword || !newPassword) {
+        res.status(400).json({
+          success: false,
+          message: "Vui lòng nhập đầy đủ mật khẩu hiện tại và mật khẩu mới",
+        });
+        return;
+      }
+
+      if (newPassword.length < 8) {
+        res.status(400).json({
+          success: false,
+          message: "Mật khẩu mới phải có ít nhất 8 ký tự",
+        });
+        return;
+      }
+
+      // Change password via AuthService
+      await this.authService.changePassword(user.id, currentPassword, newPassword);
+
+      res.status(200).json({
+        success: true,
+        message: "Đổi mật khẩu thành công",
+      });
+    } catch (error) {
+      if (error instanceof Error) {
+        res.status(400).json({
+          success: false,
+          message: error.message,
+        });
+      } else {
+        next(error);
+      }
+    }
+  };
 }

@@ -99,4 +99,33 @@ export class AuthService {
       { expiresIn }
     );
   }
+
+  async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<void> {
+    // Find user by ID
+    const user = await this.userRepository.findById(userId);
+
+    if (!user) {
+      throw new Error("Không tìm thấy người dùng");
+    }
+
+    // Verify current password
+    const isPasswordValid = await bcrypt.compare(currentPassword, user.password_hash);
+
+    if (!isPasswordValid) {
+      throw new Error("Mật khẩu hiện tại không đúng");
+    }
+
+    // Check if new password is same as current
+    const isSamePassword = await bcrypt.compare(newPassword, user.password_hash);
+    if (isSamePassword) {
+      throw new Error("Mật khẩu mới phải khác mật khẩu hiện tại");
+    }
+
+    // Hash new password
+    const saltRounds = 10;
+    const newPasswordHash = await bcrypt.hash(newPassword, saltRounds);
+
+    // Update password in database
+    await this.userRepository.updatePassword(userId, newPasswordHash);
+  }
 }

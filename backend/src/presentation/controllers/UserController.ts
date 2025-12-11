@@ -138,3 +138,40 @@ export const deleteUser = async (req: Request, res: Response) => {
     res.status(400).json({ error: error.message });
   }
 };
+
+export const updateProfile = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?.userId;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: "Unauthorized"
+      });
+    }
+
+    const { full_name, phone, position, avatar_url } = req.body;
+
+    await userRepository.updateProfile(userId, {
+      full_name,
+      phone,
+      position,
+      avatar_url,
+    });
+
+    // Get updated user
+    const updatedUser = await userService.getUserById(userId);
+
+    res.json({
+      success: true,
+      message: "Profile updated successfully",
+      data: updatedUser
+    });
+  } catch (error: any) {
+    console.error("Error updating profile:", error);
+    res.status(400).json({
+      success: false,
+      error: error.message
+    });
+  }
+};

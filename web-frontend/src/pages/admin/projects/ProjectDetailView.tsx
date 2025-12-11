@@ -167,7 +167,6 @@ const CreateTaskModal = ({
       startDate,
       dueDate,
       description,
-      description,
       status: project.workflowStatuses?.[0]?.name || "To Do",
       checklist: [],
       comments: [],

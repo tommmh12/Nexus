@@ -33,6 +33,9 @@ import {
   MessageCircle,
   Headphones,
   BellRing,
+  UserCircle,
+  Key,
+  HelpCircle,
 } from "lucide-react";
 
 // Stable components for routes to prevent remounting
@@ -72,6 +75,10 @@ import { ChatManager } from "../pages/admin/communication/ChatManager";
 import { AuditLogManager } from "../pages/admin/system/AuditLogManager";
 import { AlertManager } from "../pages/admin/system/AlertManager";
 import { GeneralSettings } from "../pages/admin/system/GeneralSettings";
+// Account Pages
+import { ProfilePage } from "../pages/admin/account/ProfilePage";
+import { ChangePasswordPage } from "../pages/admin/account/ChangePasswordPage";
+import { AccountSettingsPage } from "../pages/admin/account/AccountSettingsPage";
 
 interface DashboardProps {
   user: User;
@@ -285,6 +292,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false); // New state for collapse
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showUserDropdown, setShowUserDropdown] = useState(false); // NEW: User dropdown state
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
   // Fetch notifications
@@ -646,29 +654,121 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                 <p className="text-sm font-semibold text-slate-900">
                   {user.name}
                 </p>
-                <p className="text-xs text-slate-500">System Admin</p>
+                <p className="text-xs text-slate-500">{user.role || 'System Admin'}</p>
               </div>
-              <div className="relative group">
-                <button className="flex items-center gap-2">
+
+              {/* User Dropdown */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowUserDropdown(!showUserDropdown)}
+                  className="flex items-center gap-2 group"
+                >
                   <img
-                    className="h-9 w-9 rounded-full object-cover ring-2 ring-slate-100 group-hover:ring-brand-200 transition-all"
-                    src={user.avatarUrl}
+                    className={`h-9 w-9 rounded-full object-cover ring-2 transition-all ${showUserDropdown
+                      ? 'ring-brand-300'
+                      : 'ring-slate-100 group-hover:ring-brand-200'
+                      }`}
+                    src={user.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=6366f1&color=fff`}
                     alt={user.name}
                   />
                   <ChevronDown
                     size={14}
-                    className="text-slate-400 group-hover:text-slate-600"
+                    className={`transition-transform ${showUserDropdown ? 'rotate-180 text-brand-600' : 'text-slate-400 group-hover:text-slate-600'}`}
                   />
                 </button>
-                {/* Dropdown would go here */}
+
+                {/* Dropdown Menu */}
+                {showUserDropdown && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-10"
+                      onClick={() => setShowUserDropdown(false)}
+                    ></div>
+                    <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-slate-100 z-20 overflow-hidden animate-fadeIn">
+                      {/* User Info Header */}
+                      <div className="px-4 py-4 bg-gradient-to-r from-brand-50 to-indigo-50 border-b border-slate-100">
+                        <div className="flex items-center gap-3">
+                          <img
+                            className="h-12 w-12 rounded-full object-cover ring-2 ring-white shadow"
+                            src={user.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=6366f1&color=fff`}
+                            alt={user.name}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-bold text-slate-900 truncate">{user.name}</p>
+                            <p className="text-xs text-slate-500 truncate">{user.email || 'admin@nexus.vn'}</p>
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-brand-100 text-brand-700 mt-1">
+                              {user.role || 'Admin'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Menu Items */}
+                      <div className="py-2">
+                        <button
+                          onClick={() => {
+                            setShowUserDropdown(false);
+                            navigate(`${rolePrefix}/profile`);
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                        >
+                          <UserCircle size={18} className="text-slate-400" />
+                          <span>Xem hồ sơ cá nhân</span>
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setShowUserDropdown(false);
+                            navigate(`${rolePrefix}/account-settings`);
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                        >
+                          <Settings size={18} className="text-slate-400" />
+                          <span>Cài đặt tài khoản</span>
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setShowUserDropdown(false);
+                            navigate(`${rolePrefix}/change-password`);
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                        >
+                          <Key size={18} className="text-slate-400" />
+                          <span>Đổi mật khẩu</span>
+                        </button>
+
+                        <div className="border-t border-slate-100 my-2"></div>
+
+                        <button
+                          onClick={() => {
+                            setShowUserDropdown(false);
+                            navigate(`${rolePrefix}/help`);
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                        >
+                          <HelpCircle size={18} className="text-slate-400" />
+                          <span>Trợ giúp & Hỗ trợ</span>
+                        </button>
+                      </div>
+
+                      {/* Logout Button */}
+                      <div className="px-3 py-3 bg-slate-50 border-t border-slate-100">
+                        <button
+                          onClick={() => {
+                            setShowUserDropdown(false);
+                            onLogout();
+                          }}
+                          className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-red-600 bg-white border border-red-200 rounded-lg hover:bg-red-50 transition-colors"
+                        >
+                          <LogOut size={16} />
+                          <span>Đăng xuất</span>
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
-              <Button
-                variant="ghost"
-                onClick={onLogout}
-                className="text-red-500 hover:bg-red-50 hover:text-red-600"
-              >
-                <LogOut size={18} />
-              </Button>
             </div>
           </div>
         </header>
@@ -724,6 +824,38 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
 
               {/* Settings Routes */}
               <Route path="general-settings" element={<GeneralSettings />} />
+
+              {/* Account Routes */}
+              <Route path="profile" element={<ProfilePage />} />
+              <Route path="change-password" element={<ChangePasswordPage />} />
+              <Route path="account-settings" element={<AccountSettingsPage />} />
+              <Route path="help" element={
+                <div className="max-w-4xl mx-auto animate-fadeIn">
+                  <div className="mb-8">
+                    <h1 className="text-2xl font-bold text-slate-900">Trợ giúp & Hỗ trợ</h1>
+                    <p className="text-slate-500 mt-1">Tìm câu trả lời cho các thắc mắc thường gặp</p>
+                  </div>
+                  <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
+                    <div className="text-center py-12">
+                      <div className="w-20 h-20 bg-brand-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <HelpCircle size={40} className="text-brand-600" />
+                      </div>
+                      <h2 className="text-xl font-semibold text-slate-900 mb-2">Cần hỗ trợ?</h2>
+                      <p className="text-slate-500 max-w-md mx-auto mb-6">
+                        Liên hệ với đội ngũ IT Support qua email hoặc hotline để được hỗ trợ nhanh nhất.
+                      </p>
+                      <div className="flex justify-center gap-4">
+                        <a href="mailto:support@nexus.vn" className="px-6 py-3 bg-brand-600 text-white rounded-lg font-medium hover:bg-brand-700 transition-colors">
+                          📧 support@nexus.vn
+                        </a>
+                        <a href="tel:19001234" className="px-6 py-3 bg-slate-100 text-slate-700 rounded-lg font-medium hover:bg-slate-200 transition-colors">
+                          📞 1900 1234
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              } />
 
               {/* Default/Not Found */}
               <Route

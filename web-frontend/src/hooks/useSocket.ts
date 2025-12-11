@@ -26,6 +26,26 @@ interface UserStatus {
   timestamp: string;
 }
 
+// Call related interfaces
+interface CallData {
+  callId: string;
+  callerId: string;
+  callerName: string;
+  recipientId: string;
+  recipientName: string;
+  roomName: string;
+  isVideoCall: boolean;
+  timestamp: string;
+}
+
+interface IncomingCall {
+  callId: string;
+  callerId: string;
+  callerName: string;
+  roomName: string;
+  isVideoCall: boolean;
+}
+
 export const useSocket = () => {
   const socketRef = useRef<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
@@ -60,12 +80,20 @@ export const useSocket = () => {
       console.error("Socket connection error:", error);
     });
 
+    // Receive full list of online users when connecting
+    socket.on("users:online_list", (data: { userIds: string[] }) => {
+      console.log("👥 Received online users list:", data.userIds);
+      setOnlineUsers(new Set(data.userIds));
+    });
+
     // User status events
     socket.on("user:online", (data: UserStatus) => {
+      console.log("🟢 User online:", data.userId);
       setOnlineUsers((prev) => new Set(prev).add(data.userId));
     });
 
     socket.on("user:offline", (data: UserStatus) => {
+      console.log("🔴 User offline:", data.userId);
       setOnlineUsers((prev) => {
         const newSet = new Set(prev);
         newSet.delete(data.userId);
@@ -187,6 +215,128 @@ export const useSocket = () => {
     }
   }, []);
 
+  // ==================== CALL FUNCTIONS ====================
+
+  // Start a call (video or audio)
+  const startCall = useCallback(
+    (data: {
+      recipientId: string;
+      recipientName: string;
+      isVideoCall: boolean;
+    }) => {
+      if (socketRef.current) {
+        const callId = `call-${Date.now()}-${Math.random()
+          .toString(36)
+          .substr(2, 9)}`;
+        const roomName = `room-${callId}`;
+
+        socketRef.current.emit("call:start", {
+          callId,
+          recipientId: data.recipientId,
+          recipientName: data.recipientName,
+          roomName,
+          isVideoCall: data.isVideoCall,
+        });
+
+        return { callId, roomName };
+      }
+      return null;
+    },
+    []
+  );
+
+  // Accept incoming call
+  const acceptCall = useCallback((callId: string) => {
+    if (socketRef.current) {
+      socketRef.current.emit("call:accept", { callId });
+    }
+  }, []);
+
+  // Decline incoming call
+  const declineCall = useCallback((callId: string, callerId: string) => {
+    if (socketRef.current) {
+      socketRef.current.emit("call:decline", { callId, callerId });
+    }
+  }, []);
+
+  // End active call
+  const endCall = useCallback((callId: string, recipientId: string) => {
+    if (socketRef.current) {
+      socketRef.current.emit("call:end", { callId, recipientId });
+    }
+  }, []);
+
+  // Listen for incoming calls
+  const onIncomingCall = useCallback(
+    (callback: (data: IncomingCall) => void) => {
+      if (socketRef.current) {
+        socketRef.current.on("call:incoming", callback);
+        return () => {
+          socketRef.current?.off("call:incoming", callback);
+        };
+      }
+    },
+    []
+  );
+
+  // Listen for call accepted
+  const onCallAccepted = useCallback(
+    (
+      callback: (data: {
+        callId: string;
+        recipientId: string;
+        roomName: string;
+      }) => void
+    ) => {
+      if (socketRef.current) {
+        socketRef.current.on("call:accepted", callback);
+        return () => {
+          socketRef.current?.off("call:accepted", callback);
+        };
+      }
+    },
+    []
+  );
+
+  // Listen for call declined
+  const onCallDeclined = useCallback(
+    (callback: (data: { callId: string; recipientId: string }) => void) => {
+      if (socketRef.current) {
+        socketRef.current.on("call:declined", callback);
+        return () => {
+          socketRef.current?.off("call:declined", callback);
+        };
+      }
+    },
+    []
+  );
+
+  // Listen for call ended
+  const onCallEnded = useCallback(
+    (callback: (data: { callId: string }) => void) => {
+      if (socketRef.current) {
+        socketRef.current.on("call:ended", callback);
+        return () => {
+          socketRef.current?.off("call:ended", callback);
+        };
+      }
+    },
+    []
+  );
+
+  // Listen for call busy (recipient is in another call)
+  const onCallBusy = useCallback(
+    (callback: (data: { callId: string; recipientId: string }) => void) => {
+      if (socketRef.current) {
+        socketRef.current.on("call:busy", callback);
+        return () => {
+          socketRef.current?.off("call:busy", callback);
+        };
+      }
+    },
+    []
+  );
+
   return {
     socket: socketRef.current,
     isConnected,
@@ -203,5 +353,15 @@ export const useSocket = () => {
     onStopTyping,
     onMessagesRead,
     onMessageDeleted,
+    // Call functions
+    startCall,
+    acceptCall,
+    declineCall,
+    endCall,
+    onIncomingCall,
+    onCallAccepted,
+    onCallDeclined,
+    onCallEnded,
+    onCallBusy,
   };
 };

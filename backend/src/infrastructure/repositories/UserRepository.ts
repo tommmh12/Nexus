@@ -258,4 +258,48 @@ export class UserRepository {
       [id]
     );
   }
+
+  async updatePassword(id: string, newPasswordHash: string): Promise<void> {
+    await dbPool.query<ResultSetHeader>(
+      "UPDATE users SET password_hash = ?, updated_at = NOW() WHERE id = ?",
+      [newPasswordHash, id]
+    );
+  }
+
+  async updateProfile(id: string, profileData: {
+    full_name?: string;
+    phone?: string;
+    position?: string;
+    avatar_url?: string;
+  }): Promise<void> {
+    const updates: string[] = [];
+    const values: any[] = [];
+
+    if (profileData.full_name) {
+      updates.push("full_name = ?");
+      values.push(profileData.full_name);
+    }
+    if (profileData.phone !== undefined) {
+      updates.push("phone = ?");
+      values.push(profileData.phone);
+    }
+    if (profileData.position !== undefined) {
+      updates.push("position = ?");
+      values.push(profileData.position);
+    }
+    if (profileData.avatar_url !== undefined) {
+      updates.push("avatar_url = ?");
+      values.push(profileData.avatar_url);
+    }
+
+    if (updates.length === 0) return;
+
+    updates.push("updated_at = NOW()");
+    values.push(id);
+
+    await dbPool.query<ResultSetHeader>(
+      `UPDATE users SET ${updates.join(", ")} WHERE id = ?`,
+      values
+    );
+  }
 }
