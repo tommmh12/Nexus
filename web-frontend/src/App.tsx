@@ -85,7 +85,7 @@ const App: React.FC = () => {
           avatarUrl:
             userData.avatar_url ||
             "https://api.dicebear.com/7.x/avataaars/svg?seed=" +
-            userData.employee_id,
+              userData.employee_id,
           department: userData.department_name || "N/A",
           role: userData.role as UserRole,
         },
@@ -110,6 +110,10 @@ const App: React.FC = () => {
       user: null,
       errorMessage: null,
     });
+    // Clear URL to prevent role mismatch when switching accounts
+    if (window.location.pathname !== "/") {
+      window.history.replaceState(null, "", "/");
+    }
   }, []);
 
   // Simple conditional rendering based on auth status

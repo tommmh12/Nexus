@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { AuthService } from "../../application/services/AuthService.js";
+import { auditLogger } from "../../utils/auditLogger.js";
 
 export class AuthController {
   private authService: AuthService;
@@ -15,6 +16,8 @@ export class AuthController {
   ): Promise<void> => {
     try {
       const { email, password, rememberMe } = req.body;
+      const ipAddress = req.ip || req.socket.remoteAddress || "unknown";
+      const userAgent = req.headers["user-agent"] || "unknown";
 
       // Validation
       if (!email || !password) {
@@ -32,12 +35,33 @@ export class AuthController {
         rememberMe: rememberMe || false,
       });
 
+      // Log successful login
+      auditLogger.logLogin(
+        authResponse.user.id,
+        authResponse.user.email,
+        ipAddress,
+        userAgent,
+        true
+      );
+
       res.status(200).json({
         success: true,
         message: "Đăng nhập thành công",
         data: authResponse,
       });
     } catch (error) {
+      // Log failed login attempt
+      const ipAddress = req.ip || req.socket.remoteAddress || "unknown";
+      const userAgent = req.headers["user-agent"] || "unknown";
+      auditLogger.logLogin(
+        "unknown",
+        req.body.email || "unknown",
+        ipAddress,
+        userAgent,
+        false,
+        error instanceof Error ? error.message : "Unknown error"
+      );
+
       if (error instanceof Error) {
         res.status(401).json({
           success: false,
@@ -56,9 +80,15 @@ export class AuthController {
   ): Promise<void> => {
     try {
       const token = req.headers.authorization?.replace("Bearer ", "");
+      const user = (req as any).user;
 
       if (token) {
         await this.authService.logout(token);
+      }
+
+      // Log logout
+      if (user) {
+        auditLogger.logLogout(user.id, user.email);
       }
 
       res.status(200).json({
@@ -152,7 +182,14 @@ export class AuthController {
       }
 
       // Change password via AuthService
-      await this.authService.changePassword(user.id, currentPassword, newPassword);
+      await this.authService.changePassword(
+        user.id,
+        currentPassword,
+        newPassword
+      );
+
+      // Log password change
+      auditLogger.logPasswordChange(user.id, user.email);
 
       res.status(200).json({
         success: true,

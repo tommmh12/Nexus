@@ -42,7 +42,12 @@ export const auditLogger = {
   },
 
   // Convenience methods for common actions
-  logUserCreate: async (userId: string | null, targetUserId: string, userName: string, ipAddress?: string) => {
+  logUserCreate: async (
+    userId: string | null,
+    targetUserId: string,
+    userName: string,
+    ipAddress?: string
+  ) => {
     await auditLogger.log({
       userId,
       type: "personnel_change",
@@ -57,7 +62,13 @@ export const auditLogger = {
     });
   },
 
-  logUserUpdate: async (userId: string | null, targetUserId: string, userName: string, changes: any, ipAddress?: string) => {
+  logUserUpdate: async (
+    userId: string | null,
+    targetUserId: string,
+    userName: string,
+    changes: any,
+    ipAddress?: string
+  ) => {
     await auditLogger.log({
       userId,
       type: "personnel_change",
@@ -73,7 +84,12 @@ export const auditLogger = {
     });
   },
 
-  logUserDelete: async (userId: string | null, targetUserId: string, userName: string, ipAddress?: string) => {
+  logUserDelete: async (
+    userId: string | null,
+    targetUserId: string,
+    userName: string,
+    ipAddress?: string
+  ) => {
     await auditLogger.log({
       userId,
       type: "personnel_change",
@@ -88,7 +104,12 @@ export const auditLogger = {
     });
   },
 
-  logDepartmentCreate: async (userId: string | null, deptId: string, deptName: string, ipAddress?: string) => {
+  logDepartmentCreate: async (
+    userId: string | null,
+    deptId: string,
+    deptName: string,
+    ipAddress?: string
+  ) => {
     await auditLogger.log({
       userId,
       type: "system",
@@ -103,7 +124,13 @@ export const auditLogger = {
     });
   },
 
-  logDepartmentUpdate: async (userId: string | null, deptId: string, deptName: string, changes: any, ipAddress?: string) => {
+  logDepartmentUpdate: async (
+    userId: string | null,
+    deptId: string,
+    deptName: string,
+    changes: any,
+    ipAddress?: string
+  ) => {
     await auditLogger.log({
       userId,
       type: "system",
@@ -119,7 +146,12 @@ export const auditLogger = {
     });
   },
 
-  logDepartmentDelete: async (userId: string | null, deptId: string, deptName: string, ipAddress?: string) => {
+  logDepartmentDelete: async (
+    userId: string | null,
+    deptId: string,
+    deptName: string,
+    ipAddress?: string
+  ) => {
     await auditLogger.log({
       userId,
       type: "system",
@@ -133,5 +165,414 @@ export const auditLogger = {
       },
     });
   },
-};
 
+  // === LOGIN & AUTH ===
+  logLogin: async (
+    userId: string,
+    userName: string,
+    ipAddress?: string,
+    userAgent?: string,
+    success: boolean = true
+  ) => {
+    await auditLogger.log({
+      userId,
+      type: success ? "login" : "login_failed",
+      content: success
+        ? `Đăng nhập thành công: ${userName}`
+        : `Đăng nhập thất bại: ${userName}`,
+      target: userName,
+      ipAddress,
+      meta: {
+        action: success ? "login" : "login_failed",
+        userAgent,
+        success,
+      },
+    });
+  },
+
+  logLogout: async (userId: string, userName: string, ipAddress?: string) => {
+    await auditLogger.log({
+      userId,
+      type: "logout",
+      content: `Đăng xuất: ${userName}`,
+      target: userName,
+      ipAddress,
+      meta: { action: "logout" },
+    });
+  },
+
+  logPasswordChange: async (
+    userId: string,
+    userName: string,
+    ipAddress?: string
+  ) => {
+    await auditLogger.log({
+      userId,
+      type: "password_change",
+      content: `Đổi mật khẩu: ${userName}`,
+      target: userName,
+      ipAddress,
+      meta: { action: "password_change" },
+    });
+  },
+
+  // === PROJECTS ===
+  logProjectCreate: async (
+    userId: string | null,
+    projectId: string,
+    projectName: string,
+    ipAddress?: string
+  ) => {
+    await auditLogger.log({
+      userId,
+      type: "project_create",
+      content: `Tạo dự án mới: ${projectName}`,
+      target: projectName,
+      ipAddress,
+      meta: { action: "create", entity: "project", entityId: projectId },
+    });
+  },
+
+  logProjectUpdate: async (
+    userId: string | null,
+    projectId: string,
+    projectName: string,
+    changes: any,
+    ipAddress?: string
+  ) => {
+    await auditLogger.log({
+      userId,
+      type: "project_update",
+      content: `Cập nhật dự án: ${projectName}`,
+      target: projectName,
+      ipAddress,
+      meta: {
+        action: "update",
+        entity: "project",
+        entityId: projectId,
+        changes,
+      },
+    });
+  },
+
+  logProjectDelete: async (
+    userId: string | null,
+    projectId: string,
+    projectName: string,
+    ipAddress?: string
+  ) => {
+    await auditLogger.log({
+      userId,
+      type: "project_delete",
+      content: `Xóa dự án: ${projectName}`,
+      target: projectName,
+      ipAddress,
+      meta: { action: "delete", entity: "project", entityId: projectId },
+    });
+  },
+
+  // === TASKS ===
+  logTaskCreate: async (
+    userId: string | null,
+    taskId: string,
+    taskTitle: string,
+    projectName: string,
+    ipAddress?: string
+  ) => {
+    await auditLogger.log({
+      userId,
+      type: "task_create",
+      content: `Tạo task: ${taskTitle} (${projectName})`,
+      target: taskTitle,
+      ipAddress,
+      meta: {
+        action: "create",
+        entity: "task",
+        entityId: taskId,
+        project: projectName,
+      },
+    });
+  },
+
+  logTaskUpdate: async (
+    userId: string | null,
+    taskId: string,
+    taskTitle: string,
+    changes: any,
+    ipAddress?: string
+  ) => {
+    await auditLogger.log({
+      userId,
+      type: "task_update",
+      content: `Cập nhật task: ${taskTitle}`,
+      target: taskTitle,
+      ipAddress,
+      meta: { action: "update", entity: "task", entityId: taskId, changes },
+    });
+  },
+
+  logTaskComplete: async (
+    userId: string | null,
+    taskId: string,
+    taskTitle: string,
+    ipAddress?: string
+  ) => {
+    await auditLogger.log({
+      userId,
+      type: "task_complete",
+      content: `Hoàn thành task: ${taskTitle}`,
+      target: taskTitle,
+      ipAddress,
+      meta: { action: "complete", entity: "task", entityId: taskId },
+    });
+  },
+
+  // === BOOKING ===
+  logBookingCreate: async (
+    userId: string | null,
+    bookingId: string,
+    roomName: string,
+    date: string,
+    ipAddress?: string
+  ) => {
+    await auditLogger.log({
+      userId,
+      type: "booking_create",
+      content: `Đặt phòng: ${roomName} ngày ${date}`,
+      target: roomName,
+      ipAddress,
+      meta: { action: "create", entity: "booking", entityId: bookingId, date },
+    });
+  },
+
+  logBookingApprove: async (
+    userId: string | null,
+    bookingId: string,
+    roomName: string,
+    ipAddress?: string
+  ) => {
+    await auditLogger.log({
+      userId,
+      type: "booking_approve",
+      content: `Duyệt đặt phòng: ${roomName}`,
+      target: roomName,
+      ipAddress,
+      meta: { action: "approve", entity: "booking", entityId: bookingId },
+    });
+  },
+
+  logBookingReject: async (
+    userId: string | null,
+    bookingId: string,
+    roomName: string,
+    reason?: string,
+    ipAddress?: string
+  ) => {
+    await auditLogger.log({
+      userId,
+      type: "booking_reject",
+      content: `Từ chối đặt phòng: ${roomName}`,
+      target: roomName,
+      ipAddress,
+      meta: {
+        action: "reject",
+        entity: "booking",
+        entityId: bookingId,
+        reason,
+      },
+    });
+  },
+
+  logBookingCancel: async (
+    userId: string | null,
+    bookingId: string,
+    roomName: string,
+    ipAddress?: string
+  ) => {
+    await auditLogger.log({
+      userId,
+      type: "booking_cancel",
+      content: `Hủy đặt phòng: ${roomName}`,
+      target: roomName,
+      ipAddress,
+      meta: { action: "cancel", entity: "booking", entityId: bookingId },
+    });
+  },
+
+  // === NEWS ===
+  logNewsCreate: async (
+    userId: string | null,
+    newsId: string,
+    title: string,
+    ipAddress?: string
+  ) => {
+    await auditLogger.log({
+      userId,
+      type: "news_create",
+      content: `Tạo bài viết: ${title}`,
+      target: title,
+      ipAddress,
+      meta: { action: "create", entity: "news", entityId: newsId },
+    });
+  },
+
+  logNewsPublish: async (
+    userId: string | null,
+    newsId: string,
+    title: string,
+    ipAddress?: string
+  ) => {
+    await auditLogger.log({
+      userId,
+      type: "news_publish",
+      content: `Xuất bản bài viết: ${title}`,
+      target: title,
+      ipAddress,
+      meta: { action: "publish", entity: "news", entityId: newsId },
+    });
+  },
+
+  // === FORUM ===
+  logForumPost: async (
+    userId: string | null,
+    postId: string,
+    title: string,
+    ipAddress?: string
+  ) => {
+    await auditLogger.log({
+      userId,
+      type: "forum_post",
+      content: `Đăng bài diễn đàn: ${title}`,
+      target: title,
+      ipAddress,
+      meta: { action: "create", entity: "forum_post", entityId: postId },
+    });
+  },
+
+  logForumModerate: async (
+    userId: string | null,
+    postId: string,
+    title: string,
+    action: string,
+    ipAddress?: string
+  ) => {
+    await auditLogger.log({
+      userId,
+      type: "forum_moderate",
+      content: `Kiểm duyệt bài viết: ${title} - ${action}`,
+      target: title,
+      ipAddress,
+      meta: { action, entity: "forum_post", entityId: postId },
+    });
+  },
+
+  // === MEETINGS ===
+  logMeetingCreate: async (
+    userId: string | null,
+    meetingId: string,
+    title: string,
+    ipAddress?: string
+  ) => {
+    await auditLogger.log({
+      userId,
+      type: "meeting_create",
+      content: `Tạo cuộc họp: ${title}`,
+      target: title,
+      ipAddress,
+      meta: { action: "create", entity: "meeting", entityId: meetingId },
+    });
+  },
+
+  logMeetingJoin: async (
+    userId: string | null,
+    meetingId: string,
+    title: string,
+    ipAddress?: string
+  ) => {
+    await auditLogger.log({
+      userId,
+      type: "meeting_join",
+      content: `Tham gia cuộc họp: ${title}`,
+      target: title,
+      ipAddress,
+      meta: { action: "join", entity: "meeting", entityId: meetingId },
+    });
+  },
+
+  // === FILES ===
+  logFileUpload: async (
+    userId: string | null,
+    fileName: string,
+    fileSize: number,
+    context: string,
+    ipAddress?: string
+  ) => {
+    await auditLogger.log({
+      userId,
+      type: "file_upload",
+      content: `Tải lên file: ${fileName}`,
+      target: fileName,
+      ipAddress,
+      meta: { action: "upload", entity: "file", fileName, fileSize, context },
+    });
+  },
+
+  // === SETTINGS ===
+  logSettingsChange: async (
+    userId: string | null,
+    settingKey: string,
+    oldValue: any,
+    newValue: any,
+    ipAddress?: string
+  ) => {
+    await auditLogger.log({
+      userId,
+      type: "settings_change",
+      content: `Thay đổi cài đặt: ${settingKey}`,
+      target: settingKey,
+      ipAddress,
+      meta: {
+        action: "update",
+        entity: "settings",
+        settingKey,
+        oldValue,
+        newValue,
+      },
+    });
+  },
+
+  // === SECURITY ===
+  logSecurityAlert: async (
+    userId: string | null,
+    alertType: string,
+    description: string,
+    ipAddress?: string,
+    meta?: any
+  ) => {
+    await auditLogger.log({
+      userId,
+      type: "security_alert",
+      content: `Cảnh báo bảo mật: ${alertType} - ${description}`,
+      target: alertType,
+      ipAddress,
+      meta: { action: "alert", entity: "security", alertType, ...meta },
+    });
+  },
+
+  // === PROFILE ===
+  logProfileUpdate: async (
+    userId: string,
+    userName: string,
+    changes: any,
+    ipAddress?: string
+  ) => {
+    await auditLogger.log({
+      userId,
+      type: "profile_update",
+      content: `Cập nhật hồ sơ: ${userName}`,
+      target: userName,
+      ipAddress,
+      meta: { action: "update", entity: "profile", changes },
+    });
+  },
+};

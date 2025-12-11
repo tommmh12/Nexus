@@ -1,7 +1,18 @@
 import { Request, Response } from "express";
 import { ProjectService } from "../../application/services/ProjectService.js";
+import { auditLogger } from "../../utils/auditLogger.js";
 
 const projectService = new ProjectService();
+
+// Helper to get IP address from request
+const getIpAddress = (req: Request): string => {
+  return (
+    (req.headers["x-forwarded-for"] as string)?.split(",")[0] ||
+    (req.headers["x-real-ip"] as string) ||
+    req.socket.remoteAddress ||
+    "unknown"
+  );
+};
 
 export const getProjects = async (req: Request, res: Response) => {
   try {
@@ -33,7 +44,17 @@ export const getProjectById = async (req: Request, res: Response) => {
 export const createProject = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.userId;
+    const ipAddress = getIpAddress(req);
     const project = await projectService.createProject(req.body, userId);
+
+    // Log project creation
+    await auditLogger.logProjectCreate(
+      userId,
+      project.id,
+      project.name,
+      ipAddress
+    );
+
     res.status(201).json({ success: true, data: project });
   } catch (error: any) {
     console.error("Error creating project:", error);
@@ -47,7 +68,22 @@ export const createProject = async (req: Request, res: Response) => {
 export const updateProject = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const userId = (req as any).user?.userId;
+    const ipAddress = getIpAddress(req);
+
+    // Get existing project for logging
+    const existingProject = await projectService.getProjectWithDetails(id);
     const project = await projectService.updateProject(id, req.body);
+
+    // Log project update
+    await auditLogger.logProjectUpdate(
+      userId,
+      id,
+      existingProject?.name || project.name,
+      req.body,
+      ipAddress
+    );
+
     res.json({ success: true, data: project });
   } catch (error: any) {
     console.error("Error updating project:", error);
@@ -61,7 +97,21 @@ export const updateProject = async (req: Request, res: Response) => {
 export const deleteProject = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const userId = (req as any).user?.userId;
+    const ipAddress = getIpAddress(req);
+
+    // Get project info before delete
+    const existingProject = await projectService.getProjectWithDetails(id);
     await projectService.deleteProject(id);
+
+    // Log project deletion
+    await auditLogger.logProjectDelete(
+      userId,
+      id,
+      existingProject?.name || "Unknown",
+      ipAddress
+    );
+
     res.json({ success: true, message: "Đã xóa dự án thành công" });
   } catch (error: any) {
     console.error("Error deleting project:", error);
@@ -75,13 +125,15 @@ export const deleteProject = async (req: Request, res: Response) => {
 export const addMember = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { userId, role } = req.body;
+    const { userId: memberId, role } = req.body;
 
-    if (!userId) {
-      return res.status(400).json({ success: false, message: "User ID is required" });
+    if (!memberId) {
+      return res
+        .status(400)
+        .json({ success: false, message: "User ID is required" });
     }
 
-    const members = await projectService.addMember(id, userId, role);
+    const members = await projectService.addMember(id, memberId, role);
     res.json({ success: true, data: members });
   } catch (error: any) {
     console.error("Error adding member:", error);
@@ -94,8 +146,8 @@ export const addMember = async (req: Request, res: Response) => {
 
 export const removeMember = async (req: Request, res: Response) => {
   try {
-    const { id, userId } = req.params;
-    await projectService.removeMember(id, userId);
+    const { id, userId: memberId } = req.params;
+    await projectService.removeMember(id, memberId);
     res.json({ success: true, message: "Đã xóa thành viên" });
   } catch (error: any) {
     console.error("Error removing member:", error);
