@@ -145,6 +145,7 @@ export interface RoomAvailabilityInfo {
     floorId: string;
     floorNumber: number;
     floorName: string;
+    equipment?: string[];
     bookings: RoomBookingSlot[];
 }
 

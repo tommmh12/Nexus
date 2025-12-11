@@ -60,6 +60,8 @@ import {
 } from "../pages/admin/organization/UserManager";
 import { MeetingAdmin } from "../pages/admin/workspace/MeetingAdmin";
 import { EventManager } from "../pages/admin/workspace/EventManager";
+import { OnlineMeetingModule } from "../pages/admin/workspace/OnlineMeetingModule";
+import { JitsiRoom } from "../pages/admin/workspace/JitsiRoom";
 import { BookingModule } from "../pages/admin/booking/BookingModule";
 import { BookingApproval } from "../pages/admin/booking/BookingApproval";
 import { FloorManagement } from "../pages/admin/booking/FloorManagement";
@@ -150,6 +152,7 @@ const MENU_ITEMS: MenuItem[] = [
     label: "Tiện ích Văn phòng",
     icon: Briefcase,
     children: [
+      { id: "online-meetings", label: "Phòng họp Online (Jitsi)" },
       { id: "room-booking", label: "Đặt phòng họp" },
       { id: "booking-approval", label: "Duyệt đặt phòng", badge: 0 },
       { id: "floor-management", label: "Quản lý Tầng/Phòng" },
@@ -695,6 +698,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
               <Route path="users" element={<UserManager />} />
 
               {/* Workspace Routes */}
+              <Route path="online-meetings" element={<OnlineMeetingModule />} />
+              <Route path="online-meetings/:id/join" element={<JitsiRoom />} />
               <Route path="room-booking" element={<BookingModule />} />
               <Route path="booking-approval" element={<BookingApproval />} />
               <Route path="floor-management" element={<FloorManagement />} />

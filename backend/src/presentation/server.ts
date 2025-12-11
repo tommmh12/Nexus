@@ -22,6 +22,7 @@ import uploadRoutes from "./routes/upload.routes.js";
 import floorRoutes from "./routes/floor.routes.js";
 import roomRoutes from "./routes/room.routes.js";
 import bookingRoutes from "./routes/booking.routes.js";
+import onlineMeetingRoutes from "./routes/onlineMeeting.routes.js";
 import { SocketManager } from "../infrastructure/socket/SocketManager.js";
 
 dotenv.config();
@@ -75,6 +76,7 @@ app.use("/api/upload", uploadRoutes);
 app.use("/api/floors", floorRoutes);
 app.use("/api/rooms", roomRoutes);
 app.use("/api/bookings", bookingRoutes);
+app.use("/api/meetings", onlineMeetingRoutes);
 
 // Serve uploaded files with CORS
 app.use(

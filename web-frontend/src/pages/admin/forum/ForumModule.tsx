@@ -64,6 +64,7 @@ import {
   Wand2,
   Save,
   FileText,
+  ThumbsUp,
 } from "lucide-react";
 import { UserProfile } from "./UserProfile";
 import { authService } from "../../../services/authService";
@@ -192,8 +193,8 @@ const UserHoverCard: React.FC<UserHoverCardProps> = ({
               />
               <span
                 className={`absolute bottom-1 right-1 w-3.5 h-3.5 border-2 border-white rounded-full ${userProfile.status === "Active"
-                    ? "bg-green-500"
-                    : "bg-slate-400"
+                  ? "bg-green-500"
+                  : "bg-slate-400"
                   }`}
               ></span>
             </div>
@@ -260,57 +261,48 @@ const UserHoverCard: React.FC<UserHoverCardProps> = ({
   );
 };
 
-const VoteControl = ({
+const PostActions = ({
   upvotes,
-  downvotes,
-  userVote,
+  commentCount,
+  isLiked,
+  onLike,
+  onComment,
+  onShare,
 }: {
   upvotes: number;
-  downvotes: number;
-  userVote?: 1 | 0 | -1;
+  commentCount: number;
+  isLiked?: boolean;
+  onLike?: (e: React.MouseEvent) => void;
+  onComment?: (e: React.MouseEvent) => void;
+  onShare?: (e: React.MouseEvent) => void;
 }) => {
-  const [score, setScore] = useState(upvotes - downvotes);
-  const [vote, setVote] = useState(userVote || 0);
-
-  const handleVote = (type: 1 | -1, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (vote === type) {
-      // Cancel vote
-      setVote(0);
-      setScore(type === 1 ? score - 1 : score + 1);
-    } else {
-      // Change vote
-      const diff = vote === 0 ? 1 : 2;
-      setScore(type === 1 ? score + diff : score - diff);
-      setVote(type);
-    }
-  };
-
   return (
-    <div className="flex flex-col items-center bg-slate-50 p-2 rounded-lg h-fit">
+    <div className="flex items-center gap-1 border-t border-slate-100 pt-3 mt-3">
       <button
-        onClick={(e) => handleVote(1, e)}
-        className={`p-1 hover:bg-slate-200 rounded ${vote === 1 ? "text-orange-600" : "text-slate-500"
+        onClick={onLike}
+        className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors ${isLiked
+          ? "text-brand-600 bg-brand-50"
+          : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
           }`}
       >
-        <ArrowBigUp size={24} fill={vote === 1 ? "currentColor" : "none"} />
+        <ThumbsUp size={18} className={isLiked ? "fill-current" : ""} />
+        <span>Thích {upvotes > 0 && `(${upvotes})`}</span>
       </button>
-      <span
-        className={`text-sm font-bold my-1 ${vote === 1
-            ? "text-orange-600"
-            : vote === -1
-              ? "text-blue-600"
-              : "text-slate-700"
-          }`}
-      >
-        {score}
-      </span>
+
       <button
-        onClick={(e) => handleVote(-1, e)}
-        className={`p-1 hover:bg-slate-200 rounded ${vote === -1 ? "text-blue-600" : "text-slate-500"
-          }`}
+        onClick={onComment}
+        className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors"
       >
-        <ArrowBigDown size={24} fill={vote === -1 ? "currentColor" : "none"} />
+        <MessageSquare size={18} />
+        <span>Bình luận {commentCount > 0 && `(${commentCount})`}</span>
+      </button>
+
+      <button
+        onClick={onShare}
+        className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors"
+      >
+        <Share2 size={18} />
+        <span>Chia sẻ</span>
       </button>
     </div>
   );
@@ -345,8 +337,8 @@ const PollWidget = ({ poll }: { poll: Poll }) => {
               key={opt.id}
               onClick={(e) => handleVote(opt.id, e)}
               className={`relative border rounded-lg overflow-hidden h-10 flex items-center px-4 cursor-pointer transition-all ${votedOption === opt.id
-                  ? "border-brand-500 ring-1 ring-brand-500"
-                  : "border-slate-300 hover:border-brand-400"
+                ? "border-brand-500 ring-1 ring-brand-500"
+                : "border-slate-300 hover:border-brand-400"
                 }`}
             >
               {/* Progress Bar Background */}
@@ -604,14 +596,14 @@ const CreatePostModal = ({ onClose }: { onClose: () => void }) => {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fadeIn"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn"
       onClick={(e) => {
         if (e.target === e.currentTarget) {
           onClose();
         }
       }}
     >
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col max-h-[90vh] border border-slate-100">
         {/* Header - Reddit Style */}
         <div className="px-6 py-4 border-b border-slate-200 bg-slate-50">
           <div className="flex items-center justify-between">
@@ -646,20 +638,23 @@ const CreatePostModal = ({ onClose }: { onClose: () => void }) => {
         </div>
 
         {/* Body */}
-        <div className="flex-1 p-6 flex flex-col overflow-y-auto">
+        <div className="flex-1 p-8 flex flex-col overflow-y-auto">
           {/* Title Input */}
-          <div className="mb-4">
+          <div className="mb-6">
             <div className="flex items-center justify-between mb-2">
               <input
                 type="text"
-                placeholder="Bạn nghĩ gì về..."
-                className="flex-1 text-lg font-medium text-slate-700 placeholder:text-slate-400 border-none focus:ring-0 px-0 outline-none"
+                placeholder="Tiêu đề bài viết..."
+                className="flex-1 text-2xl font-bold text-slate-800 placeholder:text-slate-400 border-none focus:ring-0 px-0 outline-none pr-4"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 maxLength={300}
                 autoFocus
               />
-              <span className="text-xs text-slate-400 ml-2">{title.length}/300</span>
+              <span className={`text-xs font-medium px-2 py-1 rounded-full ${title.length > 250 ? "bg-red-50 text-red-500" : "bg-slate-100 text-slate-500"
+                }`}>
+                {title.length}/300
+              </span>
             </div>
           </div>
 
@@ -1032,8 +1027,8 @@ const CreatePostModal = ({ onClose }: { onClose: () => void }) => {
             <button
               onClick={() => setFlairs({ ...flairs, oc: !flairs.oc })}
               className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-colors ${flairs.oc
-                  ? "bg-orange-100 border-orange-300 text-orange-700"
-                  : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                ? "bg-orange-100 border-orange-300 text-orange-700"
+                : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
                 }`}
             >
               + OC
@@ -1041,8 +1036,8 @@ const CreatePostModal = ({ onClose }: { onClose: () => void }) => {
             <button
               onClick={() => setFlairs({ ...flairs, spoiler: !flairs.spoiler })}
               className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-colors ${flairs.spoiler
-                  ? "bg-yellow-100 border-yellow-300 text-yellow-700"
-                  : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                ? "bg-yellow-100 border-yellow-300 text-yellow-700"
+                : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
                 }`}
             >
               + Spoiler
@@ -1050,8 +1045,8 @@ const CreatePostModal = ({ onClose }: { onClose: () => void }) => {
             <button
               onClick={() => setFlairs({ ...flairs, nsfw: !flairs.nsfw })}
               className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-colors ${flairs.nsfw
-                  ? "bg-red-100 border-red-300 text-red-700"
-                  : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                ? "bg-red-100 border-red-300 text-red-700"
+                : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
                 }`}
             >
               + NSFW
@@ -1178,140 +1173,123 @@ const PostDetail = ({
   const currentUser = authService.getStoredUser();
 
   return (
-    <div className="animate-fadeIn max-w-4xl mx-auto flex gap-6">
-      {/* Left Vote Column */}
-      <div className="hidden md:flex flex-col gap-4 sticky top-6 h-fit">
-        <Button
-          variant="outline"
-          onClick={onBack}
-          className="h-10 w-10 p-0 rounded-full border-slate-300"
-        >
-          <ArrowLeft size={20} />
-        </Button>
-        <VoteControl
-          upvotes={post.upvoteCount || 0}
-          downvotes={post.downvoteCount || 0}
-          userVote={undefined}
-        />
-      </div>
-
-      {/* Main Content */}
-      <div className="flex-1 min-w-0">
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-visible mb-6">
-          <div className="p-6 md:p-8">
-            {/* Meta Header */}
-            <div className="flex justify-between items-start mb-4">
-              <div className="flex items-center gap-3">
-                <UserHoverCard
-                  name={post.authorName}
-                  avatar={post.authorAvatar}
-                  dept={undefined}
-                  onClick={() => onUserClick(post.authorName)}
-                >
-                  <img
-                    src={post.authorAvatar}
-                    alt=""
-                    className="w-10 h-10 rounded-full border border-slate-100"
-                  />
-                </UserHoverCard>
-                <div>
-                  <UserHoverCard
-                    name={post.authorName}
-                    avatar={post.authorAvatar}
-                    dept={undefined}
-                    onClick={() => onUserClick(post.authorName)}
-                  >
-                    <h3 className="text-sm font-bold text-slate-900 hover:underline cursor-pointer">
-                      {post.authorName}
-                    </h3>
-                  </UserHoverCard>
-                  <p className="text-xs text-slate-500">
-                    • {new Date(post.createdAt).toLocaleDateString("vi-VN")}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant={isSubscribed ? "secondary" : "outline"}
-                  onClick={() => setIsSubscribed(!isSubscribed)}
-                  className={`text-xs h-8 px-3 ${isSubscribed ? "bg-slate-100 text-slate-700" : ""
-                    }`}
-                >
-                  {isSubscribed ? (
-                    <BellRing size={14} className="mr-2 text-brand-600" />
-                  ) : (
-                    <Bell size={14} className="mr-2" />
-                  )}
-                  {isSubscribed ? "Đang theo dõi" : "Theo dõi"}
-                </Button>
-                <Button
-                  variant="ghost"
-                  onClick={() => setIsSaved(!isSaved)}
-                  className={`h-8 w-8 p-0 ${isSaved ? "text-brand-600" : "text-slate-400"
-                    }`}
-                >
-                  <Bookmark
-                    size={18}
-                    fill={isSaved ? "currentColor" : "none"}
-                  />
-                </Button>
-                <button className="h-8 w-8 flex items-center justify-center text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100">
-                  <MoreHorizontal size={18} />
-                </button>
-              </div>
-            </div>
-
-            <h1 className="text-2xl font-bold text-slate-900 mb-4">
-              {post.title}
-            </h1>
-
-            {post.tags.map((tag) => (
-              <span
-                key={tag}
-                className="inline-block bg-slate-100 text-slate-600 text-xs px-2 py-1 rounded-md mr-2 mb-4"
+    <div className="animate-fadeIn max-w-4xl mx-auto">
+      {/* Main Content Only - Centered Reading Experience */}
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-visible mb-6">
+        <div className="p-6 md:p-8">
+          <div className="flex justify-between items-start mb-6">
+            <Button
+              variant="outline"
+              onClick={onBack}
+              className="h-9 px-3 mr-4 border-slate-300 text-slate-600"
+            >
+              <ArrowLeft size={16} className="mr-2" /> Quay lại
+            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant={isSubscribed ? "secondary" : "outline"}
+                onClick={() => setIsSubscribed(!isSubscribed)}
+                className={`text-xs h-8 px-3 ${isSubscribed ? "bg-slate-100 text-slate-700" : ""
+                  }`}
               >
-                #{tag}
-              </span>
-            ))}
-
-            <div className="prose prose-slate max-w-none text-slate-700 leading-relaxed mb-6">
-              {post.content}
-            </div>
-
-            {/* TODO: Implement poll display */}
-
-            {/* Footer Actions */}
-            <div className="flex items-center gap-6 pt-6 border-t border-slate-100 mt-6 text-slate-500 text-sm font-medium">
-              <span className="flex items-center gap-2">
-                <MessageSquare size={18} /> {post.commentCount} Bình luận
-              </span>
-              <span className="flex items-center gap-2 cursor-pointer hover:text-brand-600">
-                <Share2 size={18} /> Chia sẻ
-              </span>
-              <span className="flex items-center gap-2 cursor-pointer hover:text-red-600">
-                <Flag size={18} /> Báo cáo
-              </span>
-              <span className="ml-auto text-xs font-normal">
-                <Eye size={16} className="inline mr-1" /> {post.viewCount} lượt
-                xem
-              </span>
+                {isSubscribed ? (
+                  <BellRing size={14} className="mr-2 text-brand-600" />
+                ) : (
+                  <Bell size={14} className="mr-2" />
+                )}
+                {isSubscribed ? "Đang theo dõi" : "Theo dõi"}
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => setIsSaved(!isSaved)}
+                className={`h-8 w-8 p-0 ${isSaved ? "text-brand-600" : "text-slate-400"
+                  }`}
+              >
+                <Bookmark
+                  size={18}
+                  fill={isSaved ? "currentColor" : "none"}
+                />
+              </Button>
+              <button className="h-8 w-8 flex items-center justify-center text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100">
+                <MoreHorizontal size={18} />
+              </button>
             </div>
           </div>
-        </div>
 
-        {/* Comment Section */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 md:p-8">
-          <h3 className="font-bold text-slate-900 mb-6">
-            Thảo luận ({post.commentCount})
-          </h3>
+          {/* Author Header */}
+          <div className="flex items-center gap-3 mb-6">
+            <UserHoverCard
+              name={post.authorName}
+              avatar={post.authorAvatar}
+              dept={undefined}
+              onClick={() => onUserClick(post.authorName)}
+            >
+              <img
+                src={post.authorAvatar}
+                alt=""
+                className="w-12 h-12 rounded-full border border-slate-100"
+              />
+            </UserHoverCard>
+            <div>
+              <UserHoverCard
+                name={post.authorName}
+                avatar={post.authorAvatar}
+                dept={undefined}
+                onClick={() => onUserClick(post.authorName)}
+              >
+                <h3 className="text-base font-bold text-slate-900 hover:underline cursor-pointer">
+                  {post.authorName}
+                </h3>
+              </UserHoverCard>
+              <p className="text-sm text-slate-500">
+                {new Date(post.createdAt).toLocaleDateString("vi-VN")}
+              </p>
+            </div>
+          </div>
 
-          <CommentThread
-            type="forum_post"
-            id={post.id}
-            currentUserId={currentUser?.id}
-            canComment={true}
+          <h1 className="text-3xl font-bold text-slate-900 mb-4 leading-tight">
+            {post.title}
+          </h1>
+
+          {post.tags.map((tag) => (
+            <span
+              key={tag}
+              className="inline-block bg-slate-100 text-slate-600 text-xs font-medium px-2.5 py-1 rounded-md mr-2 mb-6"
+            >
+              #{tag}
+            </span>
+          ))}
+
+          <div className="prose prose-slate max-w-none text-slate-800 leading-relaxed mb-8">
+            {post.content}
+          </div>
+
+          {/* TODO: Implement poll display */}
+
+          {/* Footer Actions */}
+          <PostActions
+            upvotes={post.upvoteCount || 0}
+            commentCount={post.commentCount}
+            isLiked={false}
+            onLike={() => { }}
+            onComment={() => { }}
+            onShare={() => { }}
           />
         </div>
+      </div>
+
+      {/* Comment Section */}
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 md:p-8">
+        <h3 className="font-bold text-slate-900 mb-6 flex items-center gap-2">
+          <MessageSquare size={20} /> Thảo luận ({post.commentCount})
+        </h3>
+
+        <CommentThread
+          type="forum_post"
+          id={post.id}
+          currentUserId={currentUser?.id}
+          canComment={true}
+        />
       </div>
     </div>
   );
@@ -1422,8 +1400,8 @@ export const ForumModule = ({
                 <button
                   onClick={() => setFeedSort("new")}
                   className={`w-full flex items-center px-3 py-2 rounded-lg text-sm transition-colors ${feedSort === "new"
-                      ? "bg-slate-100 text-brand-600 font-bold"
-                      : "text-slate-600 hover:bg-slate-50"
+                    ? "bg-slate-100 text-brand-600 font-bold"
+                    : "text-slate-600 hover:bg-slate-50"
                     }`}
                 >
                   <Clock size={18} className="mr-3" /> Mới nhất
@@ -1431,8 +1409,8 @@ export const ForumModule = ({
                 <button
                   onClick={() => setFeedSort("hot")}
                   className={`w-full flex items-center px-3 py-2 rounded-lg text-sm transition-colors ${feedSort === "hot"
-                      ? "bg-slate-100 text-orange-600 font-bold"
-                      : "text-slate-600 hover:bg-slate-50"
+                    ? "bg-slate-100 text-orange-600 font-bold"
+                    : "text-slate-600 hover:bg-slate-50"
                     }`}
                 >
                   <Flame size={18} className="mr-3" /> Nổi bật (Trending)
@@ -1440,8 +1418,8 @@ export const ForumModule = ({
                 <button
                   onClick={() => setFeedSort("saved")}
                   className={`w-full flex items-center px-3 py-2 rounded-lg text-sm transition-colors ${feedSort === "saved"
-                      ? "bg-slate-100 text-blue-600 font-bold"
-                      : "text-slate-600 hover:bg-slate-50"
+                    ? "bg-slate-100 text-blue-600 font-bold"
+                    : "text-slate-600 hover:bg-slate-50"
                     }`}
                 >
                   <Bookmark size={18} className="mr-3" /> Đã lưu
@@ -1455,8 +1433,8 @@ export const ForumModule = ({
                 <button
                   onClick={() => setActiveCategory("all")}
                   className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors ${activeCategory === "all"
-                      ? "bg-slate-100 text-brand-600 font-bold"
-                      : "text-slate-600 hover:bg-slate-50"
+                    ? "bg-slate-100 text-brand-600 font-bold"
+                    : "text-slate-600 hover:bg-slate-50"
                     }`}
                 >
                   <span className="flex items-center">
@@ -1468,8 +1446,8 @@ export const ForumModule = ({
                     key={cat.id}
                     onClick={() => setActiveCategory(cat.id)}
                     className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors ${activeCategory === cat.id
-                        ? "bg-slate-100 text-brand-600 font-bold"
-                        : "text-slate-600 hover:bg-slate-50"
+                      ? "bg-slate-100 text-brand-600 font-bold"
+                      : "text-slate-600 hover:bg-slate-50"
                       }`}
                   >
                     <span className="flex items-center">
@@ -1511,17 +1489,8 @@ export const ForumModule = ({
                 <div
                   key={post.id}
                   onClick={() => handlePostClick(post)}
-                  className="bg-white rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow cursor-pointer group flex"
+                  className="bg-white rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow cursor-pointer group flex flex-col"
                 >
-                  {/* Vote Sidebar */}
-                  <div className="bg-slate-50 w-12 flex flex-col items-center pt-4 border-r border-slate-100">
-                    <VoteControl
-                      upvotes={post.upvoteCount || 0}
-                      downvotes={post.downvoteCount || 0}
-                      userVote={undefined}
-                    />
-                  </div>
-
                   {/* Content */}
                   <div className="p-5 flex-1">
                     <div className="flex justify-between items-start mb-2">
@@ -1577,16 +1546,14 @@ export const ForumModule = ({
 
                     {/* TODO: Implement poll display */}
 
-                    <div className="flex items-center gap-4 pt-2">
-                      <div className="flex items-center text-slate-500 text-xs font-bold bg-slate-100 px-2 py-1 rounded hover:bg-slate-200 transition-colors">
-                        <MessageSquare size={16} className="mr-1.5" />{" "}
-                        {post.commentCount} Bình luận
-                      </div>
-                      <div className="flex items-center text-slate-500 text-xs font-bold hover:bg-slate-100 px-2 py-1 rounded transition-colors">
-                        <Share2 size={16} className="mr-1.5" /> Chia sẻ
-                      </div>
-                      {/* TODO: Implement saved posts */}
-                    </div>
+                    <PostActions
+                      upvotes={post.upvoteCount || 0}
+                      commentCount={post.commentCount}
+                      isLiked={false}
+                      onLike={(e) => { e.stopPropagation(); }}
+                      onComment={(e) => { e.stopPropagation(); }}
+                      onShare={(e) => { e.stopPropagation(); }}
+                    />
                   </div>
                 </div>
               ))
