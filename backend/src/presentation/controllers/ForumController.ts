@@ -480,3 +480,149 @@ export const createComment = async (req: Request, res: Response) => {
     res.status(400).json({ error: error.message });
   }
 };
+
+// ==================== REACTIONS ====================
+
+export const toggleReaction = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?.userId;
+    const { targetType, targetId } = req.params;
+    const { reactionType } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    if (!["post", "comment"].includes(targetType)) {
+      return res.status(400).json({ error: "Invalid target type" });
+    }
+
+    if (!["like", "love", "laugh", "wow", "sad", "angry"].includes(reactionType)) {
+      return res.status(400).json({ error: "Invalid reaction type" });
+    }
+
+    const result = await forumRepository.toggleReaction(
+      userId,
+      targetType as "post" | "comment",
+      targetId,
+      reactionType
+    );
+
+    res.json(result);
+  } catch (error: any) {
+    console.error("Error toggling reaction:", error);
+    res.status(400).json({ error: error.message });
+  }
+};
+
+export const getReactions = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?.userId;
+    const { targetType, targetId } = req.params;
+
+    if (!["post", "comment"].includes(targetType)) {
+      return res.status(400).json({ error: "Invalid target type" });
+    }
+
+    const reactions = await forumRepository.getReactionCounts(
+      targetType as "post" | "comment",
+      targetId
+    );
+
+    const userReaction = userId
+      ? await forumRepository.getUserReaction(userId, targetType as "post" | "comment", targetId)
+      : null;
+
+    res.json({ reactions, userReaction });
+  } catch (error: any) {
+    console.error("Error getting reactions:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// ==================== ATTACHMENTS ====================
+
+export const getPostAttachments = async (req: Request, res: Response) => {
+  try {
+    const { postId } = req.params;
+    const attachments = await forumRepository.getPostAttachments(postId);
+    res.json(attachments);
+  } catch (error: any) {
+    console.error("Error getting attachments:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const addAttachment = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?.userId;
+    const { postId } = req.params;
+
+    if (!userId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const { fileName, filePath, fileType, fileSize, mimeType } = req.body;
+
+    if (!fileName || !filePath) {
+      return res.status(400).json({ error: "fileName and filePath are required" });
+    }
+
+    const id = await forumRepository.addAttachment({
+      postId,
+      fileName,
+      filePath,
+      fileType: fileType || "file",
+      fileSize: fileSize || 0,
+      mimeType: mimeType || "application/octet-stream",
+    });
+
+    res.status(201).json({ id, postId, fileName, filePath, fileType, fileSize, mimeType });
+  } catch (error: any) {
+    console.error("Error adding attachment:", error);
+    res.status(400).json({ error: error.message });
+  }
+};
+
+export const deleteAttachment = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?.userId;
+    const { attachmentId } = req.params;
+
+    if (!userId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    await forumRepository.deleteAttachment(attachmentId);
+    res.json({ message: "Attachment deleted successfully" });
+  } catch (error: any) {
+    console.error("Error deleting attachment:", error);
+    res.status(400).json({ error: error.message });
+  }
+};
+
+// ==================== HOT TOPICS ====================
+
+export const getHotTopics = async (req: Request, res: Response) => {
+  try {
+    const limit = parseInt(req.query.limit as string) || 5;
+    const topics = await forumRepository.getHotTopics(limit);
+    res.json(topics);
+  } catch (error: any) {
+    console.error("Error getting hot topics:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// ==================== USER FORUM STATS ====================
+
+export const getUserForumStats = async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.params;
+    const stats = await forumRepository.getUserForumStats(userId);
+    res.json(stats);
+  } catch (error: any) {
+    console.error("Error getting user forum stats:", error);
+    res.status(500).json({ error: error.message });
+  }
+};

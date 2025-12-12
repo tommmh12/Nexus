@@ -65,10 +65,26 @@ import {
   Save,
   FileText,
   ThumbsUp,
+  Heart,
+  Meh,
+  Frown,
+  Cake,
 } from "lucide-react";
 import { UserProfile } from "./UserProfile";
 import { authService } from "../../../services/authService";
 import { CommentThread } from "../../../components/comments/CommentThread";
+
+// Reaction types
+type ReactionType = "like" | "love" | "laugh" | "wow" | "sad" | "angry";
+
+const reactionConfig: { type: ReactionType; icon: React.ReactNode; emoji: string; label: string; color: string }[] = [
+  { type: "like", icon: <ThumbsUp size={16} />, emoji: "👍", label: "Thích", color: "text-blue-500" },
+  { type: "love", icon: <Heart size={16} />, emoji: "❤️", label: "Yêu thích", color: "text-red-500" },
+  { type: "laugh", icon: <Smile size={16} />, emoji: "😂", label: "Haha", color: "text-yellow-500" },
+  { type: "wow", icon: <AlertTriangle size={16} />, emoji: "😮", label: "Wow", color: "text-orange-500" },
+  { type: "sad", icon: <Frown size={16} />, emoji: "😢", label: "Buồn", color: "text-purple-500" },
+  { type: "angry", icon: <Meh size={16} />, emoji: "😠", label: "Phẫn nộ", color: "text-red-700" },
+];
 
 // --- Utility Components ---
 
@@ -262,48 +278,177 @@ const UserHoverCard: React.FC<UserHoverCardProps> = ({
 };
 
 const PostActions = ({
-  upvotes,
+  postId,
+  reactions,
+  userReaction,
   commentCount,
-  isLiked,
-  onLike,
   onComment,
   onShare,
+  onReactionChange,
 }: {
-  upvotes: number;
+  postId: string;
+  reactions: Record<string, number>;
+  userReaction: string | null;
   commentCount: number;
-  isLiked?: boolean;
-  onLike?: (e: React.MouseEvent) => void;
   onComment?: (e: React.MouseEvent) => void;
   onShare?: (e: React.MouseEvent) => void;
+  onReactionChange?: (reactions: Record<string, number>, userReaction: string | null) => void;
 }) => {
+  const [showReactionPicker, setShowReactionPicker] = useState(false);
+  const [localReactions, setLocalReactions] = useState<Record<string, number>>(reactions);
+  const [localUserReaction, setLocalUserReaction] = useState<string | null>(userReaction);
+  const pickerRef = useRef<HTMLDivElement>(null);
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    setLocalReactions(reactions);
+    setLocalUserReaction(userReaction);
+  }, [reactions, userReaction]);
+
+  // Close picker when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (pickerRef.current && !pickerRef.current.contains(event.target as Node)) {
+        setShowReactionPicker(false);
+      }
+    };
+
+    if (showReactionPicker) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showReactionPicker]);
+
+  const handleReact = async (e: React.MouseEvent, reactionType: ReactionType) => {
+    e.stopPropagation();
+    setShowReactionPicker(false);
+
+    try {
+      const result = await forumService.toggleReaction("post", postId, reactionType);
+      setLocalReactions(result.reactions);
+      setLocalUserReaction(result.reacted ? reactionType : null);
+      onReactionChange?.(result.reactions, result.reacted ? reactionType : null);
+    } catch (error) {
+      console.error("Error toggling reaction:", error);
+    }
+  };
+
+  const handleMouseEnter = () => {
+    hoverTimeoutRef.current = setTimeout(() => {
+      setShowReactionPicker(true);
+    }, 500);
+  };
+
+  const handleMouseLeave = () => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
+  };
+
+  const totalReactions = Object.values(localReactions).reduce((sum, count) => sum + count, 0);
+  
+  // Get top 3 reactions for display
+  const topReactions = reactionConfig
+    .filter((r) => localReactions[r.type] > 0)
+    .sort((a, b) => localReactions[b.type] - localReactions[a.type])
+    .slice(0, 3);
+
+  const currentReactionConfig = localUserReaction 
+    ? reactionConfig.find((r) => r.type === localUserReaction) 
+    : null;
+
   return (
-    <div className="flex items-center gap-1 border-t border-slate-100 pt-3 mt-3">
-      <button
-        onClick={onLike}
-        className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors ${isLiked
-          ? "text-brand-600 bg-brand-50"
-          : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
-          }`}
-      >
-        <ThumbsUp size={18} className={isLiked ? "fill-current" : ""} />
-        <span>Thích {upvotes > 0 && `(${upvotes})`}</span>
-      </button>
+    <div className="border-t border-slate-100 pt-3 mt-3">
+      {/* Reaction summary */}
+      {totalReactions > 0 && (
+        <div className="flex items-center gap-2 mb-2 text-xs text-slate-500">
+          <div className="flex -space-x-1">
+            {topReactions.map((r) => (
+              <span key={r.type} className="text-base">{r.emoji}</span>
+            ))}
+          </div>
+          <span>{totalReactions} người đã bày tỏ cảm xúc</span>
+        </div>
+      )}
 
-      <button
-        onClick={onComment}
-        className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors"
-      >
-        <MessageSquare size={18} />
-        <span>Bình luận {commentCount > 0 && `(${commentCount})`}</span>
-      </button>
+      {/* Action buttons */}
+      <div className="flex items-center gap-1">
+        <div className="relative flex-1" ref={pickerRef}>
+          <button
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (localUserReaction) {
+                handleReact(e, localUserReaction as ReactionType);
+              } else {
+                setShowReactionPicker(!showReactionPicker);
+              }
+            }}
+            className={`w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors ${
+              localUserReaction
+                ? `${currentReactionConfig?.color} bg-blue-50`
+                : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
+            }`}
+          >
+            {currentReactionConfig ? (
+              <>
+                <span className="text-lg">{currentReactionConfig.emoji}</span>
+                <span>{currentReactionConfig.label}</span>
+              </>
+            ) : (
+              <>
+                <ThumbsUp size={18} />
+                <span>Thích</span>
+              </>
+            )}
+          </button>
 
-      <button
-        onClick={onShare}
-        className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors"
-      >
-        <Share2 size={18} />
-        <span>Chia sẻ</span>
-      </button>
+          {/* Reaction picker popup */}
+          {showReactionPicker && (
+            <div 
+              className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-2 bg-white rounded-full shadow-xl border border-slate-200 flex items-center gap-1 z-50 animate-fadeIn"
+              onMouseEnter={() => {
+                if (hoverTimeoutRef.current) {
+                  clearTimeout(hoverTimeoutRef.current);
+                }
+              }}
+            >
+              {reactionConfig.map((config) => (
+                <button
+                  key={config.type}
+                  onClick={(e) => handleReact(e, config.type)}
+                  className={`p-2 rounded-full hover:bg-slate-100 hover:scale-125 transition-all ${
+                    localUserReaction === config.type ? "bg-slate-100 scale-110" : ""
+                  }`}
+                  title={config.label}
+                >
+                  <span className="text-xl">{config.emoji}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <button
+          onClick={onComment}
+          className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors"
+        >
+          <MessageSquare size={18} />
+          <span>Bình luận {commentCount > 0 && `(${commentCount})`}</span>
+        </button>
+
+        <button
+          onClick={onShare}
+          className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors"
+        >
+          <Share2 size={18} />
+          <span>Chia sẻ</span>
+        </button>
+      </div>
     </div>
   );
 };
@@ -1313,19 +1458,61 @@ export const ForumModule = ({
   const [posts, setPosts] = useState<ForumPost[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [categories, setCategories] = useState<Array<{ id: string; name: string }>>([]);
+  const [hotTopics, setHotTopics] = useState<ForumPost[]>([]);
+  const [userStats, setUserStats] = useState<{
+    postCount: number;
+    commentCount: number;
+    karmaPoints: number;
+    joinDate: Date | null;
+  } | null>(null);
+  const [postReactions, setPostReactions] = useState<Record<string, { reactions: Record<string, number>; userReaction: string | null }>>({});
 
-  // Load approved posts and categories
+  const currentUser = authService.getStoredUser();
+
+  // Load approved posts, categories, hot topics, and user stats
   useEffect(() => {
     const loadData = async () => {
       try {
         setIsLoading(true);
-        // Load only approved posts for reader view
         const [postsData, categoriesData] = await Promise.all([
           forumService.getAllPosts({ status: "Approved" }),
           forumService.getCategories(),
         ]);
         setPosts(postsData);
         setCategories(categoriesData);
+
+        // Load hot topics
+        try {
+          const hotData = await forumService.getHotTopics(5);
+          setHotTopics(hotData);
+        } catch (e) {
+          console.log("Hot topics not available yet");
+        }
+
+        // Load user stats
+        if (currentUser?.id) {
+          try {
+            const stats = await forumService.getUserForumStats(currentUser.id);
+            setUserStats(stats);
+          } catch (e) {
+            console.log("User stats not available yet");
+          }
+        }
+
+        // Load reactions for each post
+        const reactionsMap: Record<string, { reactions: Record<string, number>; userReaction: string | null }> = {};
+        for (const post of postsData.slice(0, 20)) {
+          try {
+            const reactionData = await forumService.getReactions("post", post.id);
+            reactionsMap[post.id] = reactionData;
+          } catch (e) {
+            reactionsMap[post.id] = { 
+              reactions: { like: 0, love: 0, laugh: 0, wow: 0, sad: 0, angry: 0 },
+              userReaction: null 
+            };
+          }
+        }
+        setPostReactions(reactionsMap);
       } catch (error) {
         console.error("Error loading forum data:", error);
       } finally {
@@ -1333,7 +1520,7 @@ export const ForumModule = ({
       }
     };
     loadData();
-  }, []);
+  }, [currentUser?.id]);
 
   const handlePostClick = (post: ForumPost) => {
     setSelectedPost(post);
@@ -1547,12 +1734,18 @@ export const ForumModule = ({
                     {/* TODO: Implement poll display */}
 
                     <PostActions
-                      upvotes={post.upvoteCount || 0}
+                      postId={post.id}
+                      reactions={postReactions[post.id]?.reactions || { like: 0, love: 0, laugh: 0, wow: 0, sad: 0, angry: 0 }}
+                      userReaction={postReactions[post.id]?.userReaction || null}
                       commentCount={post.commentCount}
-                      isLiked={false}
-                      onLike={(e) => { e.stopPropagation(); }}
                       onComment={(e) => { e.stopPropagation(); }}
                       onShare={(e) => { e.stopPropagation(); }}
+                      onReactionChange={(reactions, userReaction) => {
+                        setPostReactions(prev => ({
+                          ...prev,
+                          [post.id]: { reactions, userReaction }
+                        }));
+                      }}
                     />
                   </div>
                 </div>
@@ -1564,28 +1757,50 @@ export const ForumModule = ({
           <div className="lg:col-span-3 space-y-6">
             {/* User Karma Card */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-              <div className="h-16 bg-brand-600"></div>
+              <div className="h-16 bg-gradient-to-r from-brand-600 to-brand-500"></div>
               <div className="px-4 pb-4 -mt-8">
                 <img
-                  src="/avatar-placeholder.png"
-                  alt=""
-                  className="w-16 h-16 rounded-full border-4 border-white mb-2"
+                  src={currentUser?.avatar_url || "/avatar-placeholder.png"}
+                  alt={currentUser?.full_name || "User"}
+                  className="w-16 h-16 rounded-full border-4 border-white mb-2 object-cover bg-white"
                 />
-                <h3 className="font-bold text-slate-900">User</h3>
-                <p className="text-xs text-slate-500 mb-4">Employee</p>
+                <h3 className="font-bold text-slate-900">{currentUser?.full_name || "Người dùng"}</h3>
+                <p className="text-xs text-slate-500 mb-4">{currentUser?.position || "Nhân viên"}</p>
 
                 <div className="grid grid-cols-2 gap-2 text-center border-t border-slate-100 pt-3">
                   <div>
-                    <div className="font-bold text-lg text-slate-900">3.4k</div>
-                    <div className="text-xs text-slate-500">Karma</div>
+                    <div className="font-bold text-lg text-brand-600">
+                      {userStats?.karmaPoints 
+                        ? userStats.karmaPoints >= 1000 
+                          ? `${(userStats.karmaPoints / 1000).toFixed(1)}k`
+                          : userStats.karmaPoints
+                        : "0"}
+                    </div>
+                    <div className="text-xs text-slate-500 flex items-center justify-center gap-1">
+                      <Sparkles size={12} className="text-amber-500" />
+                      Karma
+                    </div>
                   </div>
                   <div>
                     <div className="font-bold text-lg text-slate-900">
-                      20/11
+                      {userStats?.joinDate 
+                        ? new Date(userStats.joinDate).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" })
+                        : "--/--"}
                     </div>
-                    <div className="text-xs text-slate-500">Cake Day</div>
+                    <div className="text-xs text-slate-500 flex items-center justify-center gap-1">
+                      <Cake size={12} className="text-pink-500" />
+                      Cake Day
+                    </div>
                   </div>
                 </div>
+                
+                {/* Stats Row */}
+                <div className="flex items-center justify-center gap-4 mt-3 text-xs text-slate-500">
+                  <span>{userStats?.postCount || 0} bài viết</span>
+                  <span>•</span>
+                  <span>{userStats?.commentCount || 0} bình luận</span>
+                </div>
+
                 <Button
                   fullWidth
                   className="mt-4 text-xs h-8"
@@ -1594,6 +1809,7 @@ export const ForumModule = ({
                     setView("profile");
                   }}
                 >
+                  <User size={14} className="mr-1" />
                   Xem hồ sơ
                 </Button>
               </div>
@@ -1609,24 +1825,40 @@ export const ForumModule = ({
                 />{" "}
                 Chủ đề nóng 24h
               </h3>
-              <ul className="space-y-4">
-                {[].map((p: any, idx: number) => (
-                  <li
-                    key={p.id}
-                    className="text-sm border-b border-slate-50 last:border-0 pb-2 last:pb-0"
-                  >
-                    <a
-                      href="#"
-                      className="font-bold text-slate-700 hover:text-brand-600 block line-clamp-2 mb-1"
+              {hotTopics.length === 0 ? (
+                <p className="text-sm text-slate-400 text-center py-4">Chưa có chủ đề nóng</p>
+              ) : (
+                <ul className="space-y-4">
+                  {hotTopics.map((p, idx) => (
+                    <li
+                      key={p.id}
+                      onClick={() => handlePostClick(p)}
+                      className="text-sm border-b border-slate-50 last:border-0 pb-2 last:pb-0 cursor-pointer hover:bg-slate-50 -mx-2 px-2 py-1 rounded transition-colors"
                     >
-                      {p.title}
-                    </a>
-                    <span className="text-xs text-slate-400">
-                      {p.upvotes} upvotes • {p.commentCount} comments
-                    </span>
-                  </li>
-                ))}
-              </ul>
+                      <div className="flex items-start gap-2">
+                        <span className="text-xs font-bold text-orange-500 bg-orange-50 rounded px-1.5 py-0.5">
+                          #{idx + 1}
+                        </span>
+                        <div className="flex-1">
+                          <span className="font-bold text-slate-700 hover:text-brand-600 block line-clamp-2 mb-1">
+                            {p.title}
+                          </span>
+                          <span className="text-xs text-slate-400 flex items-center gap-2">
+                            <span className="flex items-center gap-1">
+                              <ThumbsUp size={10} />
+                              {p.upvoteCount || 0}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <MessageSquare size={10} />
+                              {p.commentCount || 0}
+                            </span>
+                          </span>
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
 
             <div className="text-xs text-slate-400 text-center">

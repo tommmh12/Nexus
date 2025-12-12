@@ -1,6 +1,7 @@
 import { RowDataPacket, ResultSetHeader } from "mysql2/promise";
 import { dbPool } from "../database/connection.js";
 import { ForumPost, ForumComment } from "../../domain/entities/ForumPost.js";
+import crypto from "crypto";
 
 export class ForumRepository {
   private db = dbPool;
@@ -317,5 +318,177 @@ export class ForumRepository {
       deletedAt: row.deleted_at ? new Date(row.deleted_at) : undefined,
     };
   }
+
+  // ==================== REACTIONS ====================
+
+  async toggleReaction(
+    userId: string,
+    targetType: "post" | "comment",
+    targetId: string,
+    reactionType: string
+  ): Promise<{ reacted: boolean; reactions: Record<string, number> }> {
+    // Check if user already reacted
+    const [existing] = await this.db.query<RowDataPacket[]>(
+      `SELECT id, reaction_type FROM forum_reactions WHERE user_id = ? AND target_type = ? AND target_id = ?`,
+      [userId, targetType, targetId]
+    );
+
+    if (existing.length > 0) {
+      if (existing[0].reaction_type === reactionType) {
+        // Remove reaction
+        await this.db.query(
+          `DELETE FROM forum_reactions WHERE user_id = ? AND target_type = ? AND target_id = ?`,
+          [userId, targetType, targetId]
+        );
+      } else {
+        // Update reaction
+        await this.db.query(
+          `UPDATE forum_reactions SET reaction_type = ? WHERE user_id = ? AND target_type = ? AND target_id = ?`,
+          [reactionType, userId, targetType, targetId]
+        );
+      }
+    } else {
+      // Create reaction
+      await this.db.query(
+        `INSERT INTO forum_reactions (id, user_id, target_type, target_id, reaction_type) VALUES (?, ?, ?, ?, ?)`,
+        [crypto.randomUUID(), userId, targetType, targetId, reactionType]
+      );
+    }
+
+    // Get updated reaction counts
+    const reactions = await this.getReactionCounts(targetType, targetId);
+
+    return {
+      reacted: existing.length === 0 || existing[0].reaction_type !== reactionType,
+      reactions,
+    };
+  }
+
+  async getReactionCounts(
+    targetType: "post" | "comment",
+    targetId: string
+  ): Promise<Record<string, number>> {
+    const [rows] = await this.db.query<RowDataPacket[]>(
+      `SELECT reaction_type, COUNT(*) as count FROM forum_reactions 
+       WHERE target_type = ? AND target_id = ? GROUP BY reaction_type`,
+      [targetType, targetId]
+    );
+
+    const reactions: Record<string, number> = {
+      like: 0,
+      love: 0,
+      laugh: 0,
+      wow: 0,
+      sad: 0,
+      angry: 0,
+    };
+
+    rows.forEach((row) => {
+      reactions[row.reaction_type] = row.count;
+    });
+
+    return reactions;
+  }
+
+  async getUserReaction(
+    userId: string,
+    targetType: "post" | "comment",
+    targetId: string
+  ): Promise<string | null> {
+    const [rows] = await this.db.query<RowDataPacket[]>(
+      `SELECT reaction_type FROM forum_reactions WHERE user_id = ? AND target_type = ? AND target_id = ?`,
+      [userId, targetType, targetId]
+    );
+    return rows.length > 0 ? rows[0].reaction_type : null;
+  }
+
+  // ==================== ATTACHMENTS ====================
+
+  async addAttachment(attachment: {
+    postId: string;
+    fileName: string;
+    filePath: string;
+    fileType: string;
+    fileSize: number;
+    mimeType: string;
+  }): Promise<string> {
+    const id = crypto.randomUUID();
+    await this.db.query(
+      `INSERT INTO forum_attachments (id, post_id, file_name, file_path, file_type, file_size, mime_type) 
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [id, attachment.postId, attachment.fileName, attachment.filePath, attachment.fileType, attachment.fileSize, attachment.mimeType]
+    );
+    return id;
+  }
+
+  async getPostAttachments(postId: string): Promise<any[]> {
+    const [rows] = await this.db.query<RowDataPacket[]>(
+      `SELECT * FROM forum_attachments WHERE post_id = ? ORDER BY created_at`,
+      [postId]
+    );
+    return rows;
+  }
+
+  async deleteAttachment(id: string): Promise<void> {
+    await this.db.query(`DELETE FROM forum_attachments WHERE id = ?`, [id]);
+  }
+
+  // ==================== TRENDING / HOT TOPICS ====================
+
+  async getHotTopics(limit: number = 5): Promise<ForumPost[]> {
+    const [rows] = await this.db.query<RowDataPacket[]>(
+      `SELECT 
+        fp.*,
+        fc.name as categoryName,
+        u.full_name as authorName,
+        u.avatar_url as authorAvatar,
+        GROUP_CONCAT(DISTINCT fpt.tag_name) as tags,
+        (fp.upvote_count * 2 + fp.comment_count + fp.view_count * 0.1) as hot_score
+      FROM forum_posts fp
+      LEFT JOIN forum_categories fc ON fp.category_id = fc.id
+      LEFT JOIN users u ON fp.author_id = u.id
+      LEFT JOIN forum_post_tags fpt ON fp.id = fpt.post_id
+      WHERE fp.deleted_at IS NULL 
+        AND fp.status = 'Approved'
+        AND fp.created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
+      GROUP BY fp.id
+      ORDER BY hot_score DESC, fp.created_at DESC
+      LIMIT ?`,
+      [limit]
+    );
+    return rows.map(this.mapRowToPost);
+  }
+
+  // ==================== USER STATS ====================
+
+  async getUserForumStats(userId: string): Promise<{
+    postCount: number;
+    commentCount: number;
+    karmaPoints: number;
+    joinDate: Date | null;
+  }> {
+    const [postCount] = await this.db.query<RowDataPacket[]>(
+      `SELECT COUNT(*) as count FROM forum_posts WHERE author_id = ? AND deleted_at IS NULL`,
+      [userId]
+    );
+    
+    const [commentCount] = await this.db.query<RowDataPacket[]>(
+      `SELECT COUNT(*) as count FROM forum_comments WHERE author_id = ? AND deleted_at IS NULL`,
+      [userId]
+    );
+
+    const [userInfo] = await this.db.query<RowDataPacket[]>(
+      `SELECT karma_points, created_at as joinDate FROM users WHERE id = ?`,
+      [userId]
+    );
+
+    return {
+      postCount: postCount[0]?.count || 0,
+      commentCount: commentCount[0]?.count || 0,
+      karmaPoints: userInfo[0]?.karma_points || 0,
+      joinDate: userInfo[0]?.joinDate ? new Date(userInfo[0].joinDate) : null,
+    };
+  }
 }
+
 

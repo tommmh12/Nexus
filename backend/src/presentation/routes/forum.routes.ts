@@ -15,6 +15,12 @@ router.post("/categories", ForumController.createCategory);
 router.put("/categories/:id", ForumController.updateCategory);
 router.delete("/categories/:id", ForumController.deleteCategory);
 
+// Hot topics endpoint
+router.get("/hot-topics", ForumController.getHotTopics);
+
+// User forum stats endpoint
+router.get("/user-stats/:userId", ForumController.getUserForumStats);
+
 router.get("/", ForumController.getAllPosts);
 router.get("/:id", ForumController.getPostById);
 router.post("/", ForumController.createPost);
@@ -24,6 +30,15 @@ router.post("/:id/moderate", ForumController.moderatePost);
 router.post("/:id/vote", ForumController.toggleVote);
 router.get("/:postId/comments", ForumController.getComments);
 router.post("/:postId/comments", ForumController.createComment);
+
+// Reaction endpoints
+router.post("/:targetType/:targetId/reaction", ForumController.toggleReaction);
+router.get("/:targetType/:targetId/reactions", ForumController.getReactions);
+
+// Attachment endpoints
+router.get("/:postId/attachments", ForumController.getPostAttachments);
+router.post("/:postId/attachments", ForumController.addAttachment);
+router.delete("/attachments/:attachmentId", ForumController.deleteAttachment);
 
 export default router;
 

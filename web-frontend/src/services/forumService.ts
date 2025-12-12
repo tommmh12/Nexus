@@ -159,5 +159,90 @@ export const forumService = {
     );
     return response.data;
   },
+
+  // ==================== REACTIONS ====================
+
+  toggleReaction: async (
+    targetType: "post" | "comment",
+    targetId: string,
+    reactionType: "like" | "love" | "laugh" | "wow" | "sad" | "angry"
+  ): Promise<{ reacted: boolean; reactions: Record<string, number> }> => {
+    const response = await axios.post(
+      `${API_URL}/forum/${targetType}/${targetId}/reaction`,
+      { reactionType },
+      { headers: getAuthHeader() }
+    );
+    return response.data;
+  },
+
+  getReactions: async (
+    targetType: "post" | "comment",
+    targetId: string
+  ): Promise<{ reactions: Record<string, number>; userReaction: string | null }> => {
+    const response = await axios.get(
+      `${API_URL}/forum/${targetType}/${targetId}/reactions`,
+      { headers: getAuthHeader() }
+    );
+    return response.data;
+  },
+
+  // ==================== ATTACHMENTS ====================
+
+  getPostAttachments: async (postId: string): Promise<any[]> => {
+    const response = await axios.get(`${API_URL}/forum/${postId}/attachments`, {
+      headers: getAuthHeader(),
+    });
+    return response.data;
+  },
+
+  addAttachment: async (
+    postId: string,
+    attachment: {
+      fileName: string;
+      filePath: string;
+      fileType: string;
+      fileSize: number;
+      mimeType: string;
+    }
+  ): Promise<any> => {
+    const response = await axios.post(
+      `${API_URL}/forum/${postId}/attachments`,
+      attachment,
+      { headers: getAuthHeader() }
+    );
+    return response.data;
+  },
+
+  deleteAttachment: async (attachmentId: string): Promise<void> => {
+    await axios.delete(`${API_URL}/forum/attachments/${attachmentId}`, {
+      headers: getAuthHeader(),
+    });
+  },
+
+  // ==================== HOT TOPICS ====================
+
+  getHotTopics: async (limit: number = 5): Promise<ForumPost[]> => {
+    const response = await axios.get(`${API_URL}/forum/hot-topics`, {
+      headers: getAuthHeader(),
+      params: { limit },
+    });
+    return response.data;
+  },
+
+  // ==================== USER STATS ====================
+
+  getUserForumStats: async (
+    userId: string
+  ): Promise<{
+    postCount: number;
+    commentCount: number;
+    karmaPoints: number;
+    joinDate: Date | null;
+  }> => {
+    const response = await axios.get(`${API_URL}/forum/user-stats/${userId}`, {
+      headers: getAuthHeader(),
+    });
+    return response.data;
+  },
 };
 
