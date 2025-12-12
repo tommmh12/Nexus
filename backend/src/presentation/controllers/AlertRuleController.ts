@@ -46,8 +46,16 @@ export const getAlertRuleById = async (req: Request, res: Response) => {
 
 export const createAlertRule = async (req: Request, res: Response) => {
   try {
-    const { name, description, category, threshold, unit, notify_roles, notify_departments, notify_users } =
-      req.body;
+    const {
+      name,
+      description,
+      category,
+      threshold,
+      unit,
+      notify_roles,
+      notify_departments,
+      notify_users,
+    } = req.body;
     const userId = (req as any).user?.userId;
 
     if (!name || !category || threshold === undefined || !unit) {
@@ -88,7 +96,14 @@ export const createAlertRule = async (req: Request, res: Response) => {
 export const updateAlertRule = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { threshold, notify_roles, notify_departments, notify_users, is_enabled, description } = req.body;
+    const {
+      threshold,
+      notify_roles,
+      notify_departments,
+      notify_users,
+      is_enabled,
+      description,
+    } = req.body;
 
     const rule = await alertRuleRepository.update(id, {
       threshold,
@@ -267,7 +282,7 @@ export const triggerAlertCheck = async (req: Request, res: Response) => {
 export const getMyAlerts = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.userId;
-    console.log('🔔 getMyAlerts - userId:', userId);
+    console.log("🔔 getMyAlerts - userId:", userId);
     if (!userId) {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
@@ -279,14 +294,24 @@ export const getMyAlerts = async (req: Request, res: Response) => {
     );
 
     if (userRows.length === 0) {
-      return res.status(404).json({ success: false, message: "User not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
     }
 
     const user = userRows[0];
-    console.log('🔔 getMyAlerts - user:', { id: user.id, role: user.role, department_id: user.department_id });
-    
-    const rules = await alertRuleRepository.findForUser(userId, user.role, user.department_id);
-    console.log('🔔 getMyAlerts - found rules:', rules.length);
+    console.log("🔔 getMyAlerts - user:", {
+      id: user.id,
+      role: user.role,
+      department_id: user.department_id,
+    });
+
+    const rules = await alertRuleRepository.findForUser(
+      userId,
+      user.role,
+      user.department_id
+    );
+    console.log("🔔 getMyAlerts - found rules:", rules.length);
 
     // Get unread count from alert_history for this user
     const [unreadRows] = await dbPool.query<RowDataPacket[]>(
@@ -338,7 +363,7 @@ export const getDepartmentsForAlert = async (req: Request, res: Response) => {
 export const getUsersForAlert = async (req: Request, res: Response) => {
   try {
     const { department_id } = req.query;
-    
+
     let query = `SELECT id, full_name, email, role, department_id 
                  FROM users 
                  WHERE status = 'Active' AND deleted_at IS NULL`;

@@ -306,17 +306,22 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
     const fetchAlertRules = async () => {
       try {
         const token = localStorage.getItem("accessToken");
-        const response = await fetch("http://localhost:5000/api/alert-rules/my-alerts", {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const response = await fetch(
+          "http://localhost:5000/api/alert-rules/my-alerts",
+          {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
         if (response.ok) {
           const data = await response.json();
           if (data.success) {
             setAlertRules(data.data.rules || []);
-            setUnreadAlertCount(data.data.rules?.filter((r: any) => r.is_enabled).length || 0);
+            setUnreadAlertCount(
+              data.data.rules?.filter((r: any) => r.is_enabled).length || 0
+            );
           }
         }
       } catch (error) {
@@ -655,35 +660,69 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                             }}
                           >
                             <div className="flex gap-3">
-                              <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                                rule.is_enabled ? "bg-amber-100" : "bg-slate-100"
-                              }`}>
-                                <ShieldAlert size={14} className={rule.is_enabled ? "text-amber-600" : "text-slate-500"} />
+                              <div
+                                className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                                  rule.is_enabled
+                                    ? "bg-amber-100"
+                                    : "bg-slate-100"
+                                }`}
+                              >
+                                <ShieldAlert
+                                  size={14}
+                                  className={
+                                    rule.is_enabled
+                                      ? "text-amber-600"
+                                      : "text-slate-500"
+                                  }
+                                />
                               </div>
                               <div className="flex-1">
                                 <div className="flex items-center gap-2">
-                                  <p className={`text-sm leading-snug ${rule.is_enabled ? "text-slate-900 font-medium" : "text-slate-500"}`}>
+                                  <p
+                                    className={`text-sm leading-snug ${
+                                      rule.is_enabled
+                                        ? "text-slate-900 font-medium"
+                                        : "text-slate-500"
+                                    }`}
+                                  >
                                     {rule.name}
                                   </p>
-                                  <span className={`px-1.5 py-0.5 text-[10px] rounded ${
-                                    rule.category === 'HR' ? 'bg-blue-100 text-blue-700' :
-                                    rule.category === 'System' ? 'bg-purple-100 text-purple-700' :
-                                    'bg-red-100 text-red-700'
-                                  }`}>
+                                  <span
+                                    className={`px-1.5 py-0.5 text-[10px] rounded ${
+                                      rule.category === "HR"
+                                        ? "bg-blue-100 text-blue-700"
+                                        : rule.category === "System"
+                                        ? "bg-purple-100 text-purple-700"
+                                        : "bg-red-100 text-red-700"
+                                    }`}
+                                  >
                                     {rule.category}
                                   </span>
                                 </div>
                                 {rule.description && (
-                                  <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">{rule.description}</p>
+                                  <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">
+                                    {rule.description}
+                                  </p>
                                 )}
                                 <div className="flex items-center gap-2 mt-1">
-                                  <span className={`text-xs px-1.5 py-0.5 rounded ${
-                                    rule.is_enabled ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'
-                                  }`}>
-                                    {rule.is_enabled ? '🟢 Đang hoạt động' : '⚫ Tắt'}
+                                  <span
+                                    className={`text-xs px-1.5 py-0.5 rounded ${
+                                      rule.is_enabled
+                                        ? "bg-green-100 text-green-700"
+                                        : "bg-slate-100 text-slate-500"
+                                    }`}
+                                  >
+                                    {rule.is_enabled
+                                      ? "🟢 Đang hoạt động"
+                                      : "⚫ Tắt"}
                                   </span>
                                   <span className="text-xs text-slate-400">
-                                    {rule.threshold} {rule.unit === 'days' ? 'ngày' : rule.unit === 'percent' ? '%' : 'lần'}
+                                    {rule.threshold}{" "}
+                                    {rule.unit === "days"
+                                      ? "ngày"
+                                      : rule.unit === "percent"
+                                      ? "%"
+                                      : "lần"}
                                   </span>
                                 </div>
                               </div>
@@ -692,13 +731,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                         ))
                       ) : (
                         <div className="p-8 text-center text-slate-500 text-sm">
-                          <ShieldAlert size={32} className="mx-auto mb-2 text-slate-300" />
+                          <ShieldAlert
+                            size={32}
+                            className="mx-auto mb-2 text-slate-300"
+                          />
                           Không có cảnh báo nào.
                         </div>
                       )}
                     </div>
                     <div className="p-2 border-t border-slate-100 text-center">
-                      <button 
+                      <button
                         onClick={() => {
                           setShowAlerts(false);
                           navigate(`${rolePrefix}/alert-manager`);

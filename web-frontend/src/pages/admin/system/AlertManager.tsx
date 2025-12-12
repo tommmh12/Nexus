@@ -141,7 +141,10 @@ const AlertRuleModal = ({
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto flex-1">
+        <form
+          onSubmit={handleSubmit}
+          className="p-6 space-y-5 overflow-y-auto flex-1"
+        >
           {/* Tên quy tắc */}
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-2">
@@ -494,7 +497,8 @@ const AlertRuleModal = ({
                           </div>
                           <div className="text-xs text-slate-400">
                             {user.email}
-                            {user.department_name && ` • ${user.department_name}`}
+                            {user.department_name &&
+                              ` • ${user.department_name}`}
                           </div>
                         </div>
                       </div>

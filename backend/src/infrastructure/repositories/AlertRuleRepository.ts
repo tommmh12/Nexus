@@ -60,10 +60,18 @@ export class AlertRuleRepository {
   }
 
   // Tìm rules áp dụng cho user cụ thể (theo role, department, hoặc được chỉ định trực tiếp)
-  async findForUser(userId: string, userRole: string, departmentId: string | null): Promise<AlertRule[]> {
+  async findForUser(
+    userId: string,
+    userRole: string,
+    departmentId: string | null
+  ): Promise<AlertRule[]> {
     // Make role matching case-insensitive
-    const roleVariants = [userRole, userRole.toLowerCase(), userRole.charAt(0).toUpperCase() + userRole.slice(1).toLowerCase()];
-    
+    const roleVariants = [
+      userRole,
+      userRole.toLowerCase(),
+      userRole.charAt(0).toUpperCase() + userRole.slice(1).toLowerCase(),
+    ];
+
     const [rows] = await this.db.query<RowDataPacket[]>(
       `SELECT DISTINCT ar.* FROM alert_rules ar
        WHERE ar.is_enabled = TRUE

@@ -5,6 +5,9 @@ export interface Department {
   description?: string;
   managerId?: string;
   managerName?: string;
+  managerAvatar?: string;
+  parentDepartmentId?: string | null;
+  parentDepartmentName?: string | null;
   memberCount?: number;
   budget?: number;
   kpiStatus?: "On Track" | "At Risk" | "Behind";

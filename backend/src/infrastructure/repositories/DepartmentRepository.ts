@@ -15,11 +15,15 @@ export class DepartmentRepository {
         d.kpi_status as kpiStatus,
         d.manager_id as managerId,
         u.full_name as managerName,
+        u.avatar_url as managerAvatar,
+        d.parent_department_id as parentDepartmentId,
+        pd.name as parentDepartmentName,
         (SELECT COUNT(*) FROM users WHERE department_id = d.id) as memberCount,
         d.created_at as createdAt,
         d.updated_at as updatedAt
       FROM departments d
       LEFT JOIN users u ON d.manager_id = u.id
+      LEFT JOIN departments pd ON d.parent_department_id = pd.id
       ORDER BY d.name ASC
     `);
     return rows as Department[];
@@ -37,11 +41,15 @@ export class DepartmentRepository {
         d.kpi_status as kpiStatus,
         d.manager_id as managerId,
         u.full_name as managerName,
+        u.avatar_url as managerAvatar,
+        d.parent_department_id as parentDepartmentId,
+        pd.name as parentDepartmentName,
         (SELECT COUNT(*) FROM users WHERE department_id = d.id) as memberCount,
         d.created_at as createdAt,
         d.updated_at as updatedAt
       FROM departments d
       LEFT JOIN users u ON d.manager_id = u.id
+      LEFT JOIN departments pd ON d.parent_department_id = pd.id
       WHERE d.id = ?
     `,
       [id]
@@ -53,7 +61,7 @@ export class DepartmentRepository {
   async create(department: Partial<Department>): Promise<Department> {
     const deptId = crypto.randomUUID();
     await this.db.query(
-      "INSERT INTO departments (id, name, code, description, budget, kpi_status, manager_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      "INSERT INTO departments (id, name, code, description, budget, kpi_status, manager_id, parent_department_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
       [
         deptId,
         department.name,
@@ -62,6 +70,7 @@ export class DepartmentRepository {
         department.budget || null,
         department.kpiStatus || null,
         department.managerId || null,
+        department.parentDepartmentId || null,
       ]
     );
     const created = await this.findById(deptId);
@@ -71,7 +80,7 @@ export class DepartmentRepository {
 
   async update(id: string, department: Partial<Department>): Promise<void> {
     await this.db.query(
-      "UPDATE departments SET name = ?, code = ?, description = ?, budget = ?, kpi_status = ?, manager_id = ? WHERE id = ?",
+      "UPDATE departments SET name = ?, code = ?, description = ?, budget = ?, kpi_status = ?, manager_id = ?, parent_department_id = ? WHERE id = ?",
       [
         department.name,
         department.code || null,
@@ -79,6 +88,7 @@ export class DepartmentRepository {
         department.budget || null,
         department.kpiStatus || null,
         department.managerId || null,
+        department.parentDepartmentId || null,
         id,
       ]
     );
@@ -94,18 +104,24 @@ export class DepartmentRepository {
    * Update user's department_id to the specified department
    * This ensures the manager is also a member of the department
    */
-  async updateUserDepartment(userId: string, departmentId: string): Promise<void> {
-    await this.db.query(
-      "UPDATE users SET department_id = ? WHERE id = ?",
-      [departmentId, userId]
-    );
+  async updateUserDepartment(
+    userId: string,
+    departmentId: string
+  ): Promise<void> {
+    await this.db.query("UPDATE users SET department_id = ? WHERE id = ?", [
+      departmentId,
+      userId,
+    ]);
   }
 
   /**
    * Check if a user is a manager of any department (excluding a specific dept)
    * Returns the department info if user is a manager elsewhere, null otherwise
    */
-  async checkUserIsManagerElsewhere(userId: string, excludeDeptId?: string): Promise<{ id: string; name: string } | null> {
+  async checkUserIsManagerElsewhere(
+    userId: string,
+    excludeDeptId?: string
+  ): Promise<{ id: string; name: string } | null> {
     let query = `
       SELECT id, name FROM departments 
       WHERE manager_id = ?
