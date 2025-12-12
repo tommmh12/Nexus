@@ -15,16 +15,30 @@ router.get("/", async (req, res) => {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
-    const { limit, offset, unreadOnly, category, type } = req.query;
+    const { limit, offset, page, unreadOnly, category, type, is_read, search } =
+      req.query;
+
+    // Calculate offset from page if provided
+    const pageNum = page ? parseInt(page as string) : 1;
+    const limitNum = limit ? parseInt(limit as string) : 20;
+    const offsetNum = offset
+      ? parseInt(offset as string)
+      : (pageNum - 1) * limitNum;
+
+    // Determine unreadOnly from is_read param
+    let unreadOnlyFlag = unreadOnly === "true";
+    if (is_read === "false") unreadOnlyFlag = true;
+    if (is_read === "true") unreadOnlyFlag = false;
 
     const result = await enhancedNotificationService.getUserNotifications(
       userId,
       {
-        limit: limit ? parseInt(limit as string) : 20,
-        offset: offset ? parseInt(offset as string) : 0,
-        unreadOnly: unreadOnly === "true",
+        limit: limitNum,
+        offset: offsetNum,
+        unreadOnly: unreadOnlyFlag,
         category: category as string,
         type: type as string,
+        search: search as string,
       }
     );
 
@@ -32,7 +46,10 @@ router.get("/", async (req, res) => {
       success: true,
       data: result.notifications,
       pagination: {
+        page: pageNum,
+        limit: limitNum,
         total: result.total,
+        totalPages: Math.ceil(result.total / limitNum),
         unreadCount: result.unreadCount,
       },
     });

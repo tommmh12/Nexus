@@ -114,6 +114,7 @@ export class EnhancedNotificationService {
       unreadOnly?: boolean;
       category?: string;
       type?: string;
+      search?: string;
     } = {}
   ): Promise<{ notifications: any[]; total: number; unreadCount: number }> {
     const {
@@ -122,6 +123,7 @@ export class EnhancedNotificationService {
       unreadOnly = false,
       category,
       type,
+      search,
     } = options;
 
     let whereClause = "WHERE n.user_id = ?";
@@ -139,6 +141,11 @@ export class EnhancedNotificationService {
     if (type) {
       whereClause += " AND n.type = ?";
       params.push(type);
+    }
+
+    if (search) {
+      whereClause += " AND (n.title LIKE ? OR n.message LIKE ?)";
+      params.push(`%${search}%`, `%${search}%`);
     }
 
     // Filter out expired notifications

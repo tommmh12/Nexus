@@ -75,6 +75,7 @@ import { ChatManager } from "../pages/admin/communication/ChatManager";
 import { AuditLogManager } from "../pages/admin/system/AuditLogManager";
 import { AlertManager } from "../pages/admin/system/AlertManager";
 import { GeneralSettings } from "../pages/admin/system/GeneralSettings";
+import NotificationsPage from "../pages/NotificationsPage";
 // Account Pages
 import { ProfilePage } from "../pages/admin/account/ProfilePage";
 import { ChangePasswordPage } from "../pages/admin/account/ChangePasswordPage";
@@ -197,19 +198,21 @@ const ContentAdminDashboard = ({
       <div className="flex border-b border-slate-200 bg-white px-6">
         <button
           onClick={() => setActiveTab("news")}
-          className={`py-4 px-6 text-sm font-medium border-b-2 transition-colors ${activeTab === "news"
-            ? "border-brand-600 text-brand-600"
-            : "border-transparent text-slate-500 hover:text-slate-700"
-            }`}
+          className={`py-4 px-6 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === "news"
+              ? "border-brand-600 text-brand-600"
+              : "border-transparent text-slate-500 hover:text-slate-700"
+          }`}
         >
           Quản lý Tin tức
         </button>
         <button
           onClick={() => setActiveTab("forum")}
-          className={`py-4 px-6 text-sm font-medium border-b-2 transition-colors ${activeTab === "forum"
-            ? "border-brand-600 text-brand-600"
-            : "border-transparent text-slate-500 hover:text-slate-700"
-            }`}
+          className={`py-4 px-6 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === "forum"
+              ? "border-brand-600 text-brand-600"
+              : "border-transparent text-slate-500 hover:text-slate-700"
+          }`}
         >
           Kiểm duyệt Diễn đàn
         </button>
@@ -237,8 +240,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
     userRole === "admin"
       ? "/admin"
       : userRole === "department-manager" || userRole === "manager"
-        ? "/manager"
-        : "/employee";
+      ? "/manager"
+      : "/employee";
 
   console.log("👤 User role:", user.role, "rolePrefix:", rolePrefix);
 
@@ -292,8 +295,39 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false); // New state for collapse
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showAlerts, setShowAlerts] = useState(false); // NEW: Alert dropdown state
   const [showUserDropdown, setShowUserDropdown] = useState(false); // NEW: User dropdown state
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [alertRules, setAlertRules] = useState<any[]>([]); // NEW: Alert rules for current user
+  const [unreadAlertCount, setUnreadAlertCount] = useState(0); // NEW: Unread alert count
+
+  // Fetch alert rules for current user
+  useEffect(() => {
+    const fetchAlertRules = async () => {
+      try {
+        const token = localStorage.getItem("accessToken");
+        const response = await fetch("http://localhost:5000/api/alert-rules/my-alerts", {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            setAlertRules(data.data.rules || []);
+            setUnreadAlertCount(data.data.rules?.filter((r: any) => r.is_enabled).length || 0);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch alert rules", error);
+      }
+    };
+
+    fetchAlertRules();
+    const interval = setInterval(fetchAlertRules, 60000); // Poll every 60s
+    return () => clearInterval(interval);
+  }, []);
 
   // Fetch notifications
   useEffect(() => {
@@ -301,18 +335,20 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
       try {
         const data = await notificationService.getNotifications();
         // data interface might differ slightly, let's map if needed or use as is
-        setNotifications(data.map((n: any) => ({
-          id: n.id,
-          userId: n.user_id,
-          type: n.type,
-          title: n.title,
-          message: n.message,
-          isRead: n.is_read || n.isRead,
-          relatedId: n.related_id,
-          createdAt: n.created_at,
-          timestamp: new Date(n.created_at).toLocaleString('vi-VN'),
-          actorAvatar: null // or fetch actor info
-        })));
+        setNotifications(
+          data.map((n: any) => ({
+            id: n.id,
+            userId: n.user_id,
+            type: n.type,
+            title: n.title,
+            message: n.message,
+            isRead: n.is_read || n.isRead,
+            relatedId: n.related_id,
+            createdAt: n.created_at,
+            timestamp: new Date(n.created_at).toLocaleString("vi-VN"),
+            actorAvatar: null, // or fetch actor info
+          }))
+        );
       } catch (error) {
         console.error("Failed to fetch notifications", error);
       }
@@ -371,8 +407,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
       >
         {/* Sidebar Header */}
         <div
-          className={`h-16 flex items-center ${isSidebarCollapsed ? "justify-center px-0" : "px-6"
-            } bg-slate-950 border-b border-slate-800 transition-all duration-300`}
+          className={`h-16 flex items-center ${
+            isSidebarCollapsed ? "justify-center px-0" : "px-6"
+          } bg-slate-950 border-b border-slate-800 transition-all duration-300`}
         >
           <div className="flex items-center gap-2 font-bold text-xl text-white tracking-tight overflow-hidden whitespace-nowrap">
             <div className="h-8 w-8 min-w-[32px] bg-brand-600 rounded-lg flex items-center justify-center">
@@ -409,10 +446,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                     }
                     className={`
                                 w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
-                                ${activeMenu === item.id
-                        ? "bg-brand-600 text-white shadow-lg shadow-brand-900/20"
-                        : "hover:bg-slate-800 hover:text-white"
-                      }
+                                ${
+                                  activeMenu === item.id
+                                    ? "bg-brand-600 text-white shadow-lg shadow-brand-900/20"
+                                    : "hover:bg-slate-800 hover:text-white"
+                                }
                                 ${isSidebarCollapsed ? "justify-center" : ""}
                             `}
                     title={isSidebarCollapsed ? item.label : undefined}
@@ -421,10 +459,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                       {item.icon && (
                         <item.icon
                           size={20}
-                          className={`${!isSidebarCollapsed ? "mr-3" : ""} ${activeMenu === item.id
-                            ? "text-white"
-                            : "text-slate-400"
-                            }`}
+                          className={`${!isSidebarCollapsed ? "mr-3" : ""} ${
+                            activeMenu === item.id
+                              ? "text-white"
+                              : "text-slate-400"
+                          }`}
                         />
                       )}
                       {!isSidebarCollapsed && <span>{item.label}</span>}
@@ -434,8 +473,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                       <div className="flex items-center">
                         {item.badge && (
                           <span
-                            className={`${item.badgeColor || "bg-brand-500"
-                              } text-white text-[10px] px-1.5 py-0.5 rounded-full mr-2`}
+                            className={`${
+                              item.badgeColor || "bg-brand-500"
+                            } text-white text-[10px] px-1.5 py-0.5 rounded-full mr-2`}
                           >
                             {item.badge}
                           </span>
@@ -466,17 +506,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                             }
                             className={`
                                             w-full flex items-center justify-between px-3 py-2 rounded-md text-sm transition-colors
-                                            ${activeMenu === child.id
-                                ? "text-brand-400 bg-slate-800/50"
-                                : "text-slate-400 hover:text-white hover:bg-slate-800/30"
-                              }
+                                            ${
+                                              activeMenu === child.id
+                                                ? "text-brand-400 bg-slate-800/50"
+                                                : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                                            }
                                         `}
                           >
                             <span className="truncate">{child.label}</span>
                             {child.badge && (
                               <span
-                                className={`${child.badgeColor || "text-slate-400"
-                                  } text-xs font-bold`}
+                                className={`${
+                                  child.badgeColor || "text-slate-400"
+                                } text-xs font-bold`}
                               >
                                 {child.badge}
                               </span>
@@ -512,8 +554,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
 
           {/* Collapse Toggle Button */}
           <div
-            className={`flex ${isSidebarCollapsed ? "justify-center" : "justify-end px-4"
-              }`}
+            className={`flex ${
+              isSidebarCollapsed ? "justify-center" : "justify-end px-4"
+            }`}
           >
             <button
               onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
@@ -559,14 +602,129 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
               />
             </div>
 
+            {/* Alert Bell - Cảnh báo hệ thống */}
+            <div className="relative">
+              <button
+                onClick={() => {
+                  setShowAlerts(!showAlerts);
+                  setShowNotifications(false);
+                }}
+                className={`p-2 rounded-full relative transition-colors ${
+                  showAlerts
+                    ? "bg-amber-50 text-amber-600"
+                    : "text-slate-400 hover:text-amber-600 hover:bg-amber-50"
+                }`}
+                title="Cảnh báo hệ thống"
+              >
+                <ShieldAlert size={20} />
+                {unreadAlertCount > 0 && (
+                  <span className="absolute top-1 right-1 h-2.5 w-2.5 bg-red-500 rounded-full ring-2 ring-white animate-pulse"></span>
+                )}
+              </button>
+
+              {/* Alert Dropdown */}
+              {showAlerts && (
+                <>
+                  <div
+                    className="fixed inset-0 z-10"
+                    onClick={() => setShowAlerts(false)}
+                  ></div>
+                  <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-slate-100 z-20 overflow-hidden animate-fadeIn">
+                    <div className="px-4 py-3 border-b border-slate-100 flex justify-between items-center bg-amber-50">
+                      <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                        <ShieldAlert size={16} className="text-amber-600" />
+                        Cảnh báo hệ thống
+                      </h3>
+                      {unreadAlertCount > 0 && (
+                        <span className="px-2 py-0.5 text-xs font-medium bg-red-100 text-red-600 rounded-full">
+                          {unreadAlertCount} mới
+                        </span>
+                      )}
+                    </div>
+                    <div className="max-h-[350px] overflow-y-auto">
+                      {alertRules.length > 0 ? (
+                        alertRules.map((rule) => (
+                          <div
+                            key={rule.id}
+                            className={`p-4 border-b border-slate-50 hover:bg-slate-50 transition-colors cursor-pointer ${
+                              rule.is_enabled ? "bg-amber-50/50" : ""
+                            }`}
+                            onClick={() => {
+                              setShowAlerts(false);
+                              navigate(`${rolePrefix}/alert-manager`);
+                            }}
+                          >
+                            <div className="flex gap-3">
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                                rule.is_enabled ? "bg-amber-100" : "bg-slate-100"
+                              }`}>
+                                <ShieldAlert size={14} className={rule.is_enabled ? "text-amber-600" : "text-slate-500"} />
+                              </div>
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                  <p className={`text-sm leading-snug ${rule.is_enabled ? "text-slate-900 font-medium" : "text-slate-500"}`}>
+                                    {rule.name}
+                                  </p>
+                                  <span className={`px-1.5 py-0.5 text-[10px] rounded ${
+                                    rule.category === 'HR' ? 'bg-blue-100 text-blue-700' :
+                                    rule.category === 'System' ? 'bg-purple-100 text-purple-700' :
+                                    'bg-red-100 text-red-700'
+                                  }`}>
+                                    {rule.category}
+                                  </span>
+                                </div>
+                                {rule.description && (
+                                  <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">{rule.description}</p>
+                                )}
+                                <div className="flex items-center gap-2 mt-1">
+                                  <span className={`text-xs px-1.5 py-0.5 rounded ${
+                                    rule.is_enabled ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'
+                                  }`}>
+                                    {rule.is_enabled ? '🟢 Đang hoạt động' : '⚫ Tắt'}
+                                  </span>
+                                  <span className="text-xs text-slate-400">
+                                    {rule.threshold} {rule.unit === 'days' ? 'ngày' : rule.unit === 'percent' ? '%' : 'lần'}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="p-8 text-center text-slate-500 text-sm">
+                          <ShieldAlert size={32} className="mx-auto mb-2 text-slate-300" />
+                          Không có cảnh báo nào.
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-2 border-t border-slate-100 text-center">
+                      <button 
+                        onClick={() => {
+                          setShowAlerts(false);
+                          navigate(`${rolePrefix}/alert-manager`);
+                        }}
+                        className="text-xs text-slate-500 hover:text-amber-600 font-medium w-full py-1"
+                      >
+                        Quản lý cảnh báo
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
             {/* Notification Bell */}
             <div className="relative">
               <button
-                onClick={() => setShowNotifications(!showNotifications)}
-                className={`p-2 rounded-full relative transition-colors ${showNotifications
-                  ? "bg-blue-50 text-brand-600"
-                  : "text-slate-400 hover:text-brand-600 hover:bg-blue-50"
-                  }`}
+                onClick={() => {
+                  setShowNotifications(!showNotifications);
+                  setShowAlerts(false);
+                }}
+                className={`p-2 rounded-full relative transition-colors ${
+                  showNotifications
+                    ? "bg-blue-50 text-brand-600"
+                    : "text-slate-400 hover:text-brand-600 hover:bg-blue-50"
+                }`}
               >
                 <Bell size={20} />
                 {unreadCount > 0 && (
@@ -600,8 +758,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                         notifications.map((notif) => (
                           <div
                             key={notif.id}
-                            className={`p-4 border-b border-slate-50 hover:bg-slate-50 transition-colors ${!notif.isRead ? "bg-blue-50/30" : ""
-                              }`}
+                            className={`p-4 border-b border-slate-50 hover:bg-slate-50 transition-colors ${
+                              !notif.isRead ? "bg-blue-50/30" : ""
+                            }`}
                           >
                             <div className="flex gap-3">
                               {notif.actorAvatar ? (
@@ -638,7 +797,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                       )}
                     </div>
                     <div className="p-2 border-t border-slate-100 text-center">
-                      <button className="text-xs text-slate-500 hover:text-brand-600 font-medium w-full py-1">
+                      <button
+                        onClick={() => {
+                          setShowNotifications(false);
+                          navigate(`${rolePrefix}/notifications`);
+                        }}
+                        className="text-xs text-slate-500 hover:text-brand-600 font-medium w-full py-1"
+                      >
                         Xem tất cả thông báo
                       </button>
                     </div>
@@ -654,7 +819,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                 <p className="text-sm font-semibold text-slate-900">
                   {user.name}
                 </p>
-                <p className="text-xs text-slate-500">{user.role || 'System Admin'}</p>
+                <p className="text-xs text-slate-500">
+                  {user.role || "System Admin"}
+                </p>
               </div>
 
               {/* User Dropdown */}
@@ -664,16 +831,26 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                   className="flex items-center gap-2 group"
                 >
                   <img
-                    className={`h-9 w-9 rounded-full object-cover ring-2 transition-all ${showUserDropdown
-                      ? 'ring-brand-300'
-                      : 'ring-slate-100 group-hover:ring-brand-200'
-                      }`}
-                    src={user.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=6366f1&color=fff`}
+                    className={`h-9 w-9 rounded-full object-cover ring-2 transition-all ${
+                      showUserDropdown
+                        ? "ring-brand-300"
+                        : "ring-slate-100 group-hover:ring-brand-200"
+                    }`}
+                    src={
+                      user.avatarUrl ||
+                      `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                        user.name
+                      )}&background=6366f1&color=fff`
+                    }
                     alt={user.name}
                   />
                   <ChevronDown
                     size={14}
-                    className={`transition-transform ${showUserDropdown ? 'rotate-180 text-brand-600' : 'text-slate-400 group-hover:text-slate-600'}`}
+                    className={`transition-transform ${
+                      showUserDropdown
+                        ? "rotate-180 text-brand-600"
+                        : "text-slate-400 group-hover:text-slate-600"
+                    }`}
                   />
                 </button>
 
@@ -690,14 +867,23 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                         <div className="flex items-center gap-3">
                           <img
                             className="h-12 w-12 rounded-full object-cover ring-2 ring-white shadow"
-                            src={user.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=6366f1&color=fff`}
+                            src={
+                              user.avatarUrl ||
+                              `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                                user.name
+                              )}&background=6366f1&color=fff`
+                            }
                             alt={user.name}
                           />
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold text-slate-900 truncate">{user.name}</p>
-                            <p className="text-xs text-slate-500 truncate">{user.email || 'admin@nexus.vn'}</p>
+                            <p className="text-sm font-bold text-slate-900 truncate">
+                              {user.name}
+                            </p>
+                            <p className="text-xs text-slate-500 truncate">
+                              {user.email || "admin@nexus.vn"}
+                            </p>
                             <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-brand-100 text-brand-700 mt-1">
-                              {user.role || 'Admin'}
+                              {user.role || "Admin"}
                             </span>
                           </div>
                         </div>
@@ -775,8 +961,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
 
         {/* Content Area */}
         <main
-          className={`flex-1 overflow-y-auto bg-slate-50 ${isFullWidthView ? "p-0" : "p-4 sm:p-6 lg:p-8"
-            }`}
+          className={`flex-1 overflow-y-auto bg-slate-50 ${
+            isFullWidthView ? "p-0" : "p-4 sm:p-6 lg:p-8"
+          }`}
         >
           <div
             className={`mx-auto h-full ${isFullWidthView ? "" : "max-w-7xl"}`}
@@ -821,6 +1008,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
               {/* System & Safety Routes */}
               <Route path="audit-logs" element={<AuditLogManager />} />
               <Route path="alert-manager" element={<AlertManager />} />
+              <Route path="notifications" element={<NotificationsPage />} />
 
               {/* Settings Routes */}
               <Route path="general-settings" element={<GeneralSettings />} />
@@ -828,34 +1016,53 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
               {/* Account Routes */}
               <Route path="profile" element={<ProfilePage />} />
               <Route path="change-password" element={<ChangePasswordPage />} />
-              <Route path="account-settings" element={<AccountSettingsPage />} />
-              <Route path="help" element={
-                <div className="max-w-4xl mx-auto animate-fadeIn">
-                  <div className="mb-8">
-                    <h1 className="text-2xl font-bold text-slate-900">Trợ giúp & Hỗ trợ</h1>
-                    <p className="text-slate-500 mt-1">Tìm câu trả lời cho các thắc mắc thường gặp</p>
-                  </div>
-                  <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
-                    <div className="text-center py-12">
-                      <div className="w-20 h-20 bg-brand-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <HelpCircle size={40} className="text-brand-600" />
-                      </div>
-                      <h2 className="text-xl font-semibold text-slate-900 mb-2">Cần hỗ trợ?</h2>
-                      <p className="text-slate-500 max-w-md mx-auto mb-6">
-                        Liên hệ với đội ngũ IT Support qua email hoặc hotline để được hỗ trợ nhanh nhất.
+              <Route
+                path="account-settings"
+                element={<AccountSettingsPage />}
+              />
+              <Route
+                path="help"
+                element={
+                  <div className="max-w-4xl mx-auto animate-fadeIn">
+                    <div className="mb-8">
+                      <h1 className="text-2xl font-bold text-slate-900">
+                        Trợ giúp & Hỗ trợ
+                      </h1>
+                      <p className="text-slate-500 mt-1">
+                        Tìm câu trả lời cho các thắc mắc thường gặp
                       </p>
-                      <div className="flex justify-center gap-4">
-                        <a href="mailto:support@nexus.vn" className="px-6 py-3 bg-brand-600 text-white rounded-lg font-medium hover:bg-brand-700 transition-colors">
-                          📧 support@nexus.vn
-                        </a>
-                        <a href="tel:19001234" className="px-6 py-3 bg-slate-100 text-slate-700 rounded-lg font-medium hover:bg-slate-200 transition-colors">
-                          📞 1900 1234
-                        </a>
+                    </div>
+                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
+                      <div className="text-center py-12">
+                        <div className="w-20 h-20 bg-brand-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <HelpCircle size={40} className="text-brand-600" />
+                        </div>
+                        <h2 className="text-xl font-semibold text-slate-900 mb-2">
+                          Cần hỗ trợ?
+                        </h2>
+                        <p className="text-slate-500 max-w-md mx-auto mb-6">
+                          Liên hệ với đội ngũ IT Support qua email hoặc hotline
+                          để được hỗ trợ nhanh nhất.
+                        </p>
+                        <div className="flex justify-center gap-4">
+                          <a
+                            href="mailto:support@nexus.vn"
+                            className="px-6 py-3 bg-brand-600 text-white rounded-lg font-medium hover:bg-brand-700 transition-colors"
+                          >
+                            📧 support@nexus.vn
+                          </a>
+                          <a
+                            href="tel:19001234"
+                            className="px-6 py-3 bg-slate-100 text-slate-700 rounded-lg font-medium hover:bg-slate-200 transition-colors"
+                          >
+                            📞 1900 1234
+                          </a>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              } />
+                }
+              />
 
               {/* Default/Not Found */}
               <Route

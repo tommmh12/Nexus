@@ -26,6 +26,7 @@ import onlineMeetingRoutes from "./routes/onlineMeeting.routes.js";
 import activityLogRoutes from "./routes/activityLog.routes.js";
 import alertRuleRoutes from "./routes/alertRule.routes.js";
 import { SocketManager } from "../infrastructure/socket/SocketManager.js";
+import { alertSchedulerService } from "../application/services/AlertSchedulerService.js";
 
 dotenv.config();
 
@@ -124,6 +125,9 @@ httpServer.listen(PORT, () => {
   console.log(`🔗 API URL: http://localhost:${PORT}`);
   console.log(`💬 Socket.IO enabled for realtime chat`);
   console.log("========================================\n");
+
+  // Start Alert Scheduler (check every 30 minutes)
+  alertSchedulerService.start(30 * 60 * 1000);
 });
 
 export default app;
