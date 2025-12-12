@@ -170,3 +170,17 @@ export const generateProjectCode = async (req: Request, res: Response) => {
     });
   }
 };
+
+export const getMyProjects = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?.userId;
+    const projects = await projectService.getProjectsByUserId(userId);
+    res.json({ success: true, data: projects });
+  } catch (error: any) {
+    console.error("Error getting my projects:", error);
+    res.status(500).json({
+      success: false,
+      message: "Lỗi khi lấy danh sách dự án của bạn",
+    });
+  }
+};

@@ -56,6 +56,10 @@ export class ChatRepository {
           WHEN c.participant1_id = ? THEN u2.email
           ELSE u1.email
         END as other_user_email,
+        CASE 
+          WHEN c.participant1_id = ? THEN u2.avatar_url
+          ELSE u1.avatar_url
+        END as other_user_avatar,
         COALESCE(status.status, 'offline') as other_user_status,
         status.last_seen as other_user_last_seen,
         lm.message_text as last_message_text,
@@ -80,6 +84,7 @@ export class ChatRepository {
     `;
 
     const [rows]: any = await this.db.query(query, [
+      userId,
       userId,
       userId,
       userId,
@@ -148,6 +153,7 @@ export class ChatRepository {
         m.*,
         u.full_name as sender_name,
         u.email as sender_email,
+        u.avatar_url as sender_avatar,
         a.id as attachment_id,
         a.file_name,
         a.file_path,

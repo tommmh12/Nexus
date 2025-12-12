@@ -9,6 +9,7 @@ router.use(authMiddleware);
 
 // Route này phải đặt TRƯỚC /:id để tránh bị match nhầm id là "generate-code"
 router.get("/generate-code", ProjectController.generateProjectCode);
+router.get("/my-projects", ProjectController.getMyProjects);
 router.get("/", ProjectController.getProjects);
 router.get("/:id", ProjectController.getProjectById);
 router.post("/", ProjectController.createProject);

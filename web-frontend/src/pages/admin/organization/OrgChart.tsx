@@ -254,7 +254,9 @@ const DepartmentNode = ({
 }) => {
   const isCompact = scale < 0.6;
   const hasChildren = dept.children.length > 0;
-  const deptEmployees = employees.filter((e) => e.department_id === dept.id && e.role !== "Admin");
+  const deptEmployees = employees.filter(
+    (e) => e.department_id === dept.id && e.role !== "Admin"
+  );
   const manager = employees.find((e) => e.id === dept.managerId);
 
   const getKpiColor = (status?: string) => {
@@ -380,11 +382,7 @@ const DepartmentNode = ({
               }`}
             >
               <Users size={12} /> {deptEmployees.length}
-              {showEmployees ? (
-                <EyeOff size={10} />
-              ) : (
-                <Eye size={10} />
-              )}
+              {showEmployees ? <EyeOff size={10} /> : <Eye size={10} />}
             </button>
             {hasChildren && (
               <span className="text-[11px] bg-brand-50 text-brand-700 px-2 py-1 rounded-full flex items-center gap-1">
@@ -449,8 +447,12 @@ const DepartmentNode = ({
               <div
                 className="absolute top-0 h-0.5 bg-slate-300"
                 style={{
-                  left: `calc(50% - ${(dept.children.length - 1) * (isCompact ? 80 : 140)}px)`,
-                  right: `calc(50% - ${(dept.children.length - 1) * (isCompact ? 80 : 140)}px)`,
+                  left: `calc(50% - ${
+                    (dept.children.length - 1) * (isCompact ? 80 : 140)
+                  }px)`,
+                  right: `calc(50% - ${
+                    (dept.children.length - 1) * (isCompact ? 80 : 140)
+                  }px)`,
                 }}
               />
             )}
@@ -552,9 +554,7 @@ const DeptFormModal = ({
           <Input
             label="Tên phòng ban"
             value={formData.name}
-            onChange={(e) =>
-              setFormData({ ...formData, name: e.target.value })
-            }
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             placeholder="VD: Phòng Nhân sự"
             required
           />
@@ -562,9 +562,7 @@ const DeptFormModal = ({
           <Input
             label="Mã phòng ban"
             value={formData.code || ""}
-            onChange={(e) =>
-              setFormData({ ...formData, code: e.target.value })
-            }
+            onChange={(e) => setFormData({ ...formData, code: e.target.value })}
             placeholder="VD: HR"
           />
 
@@ -654,10 +652,7 @@ const DeleteConfirmModal = ({
       {childCount > 0 && (
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
           <div className="flex gap-2">
-            <AlertTriangle
-              size={20}
-              className="text-amber-600 flex-shrink-0"
-            />
+            <AlertTriangle size={20} className="text-amber-600 flex-shrink-0" />
             <p className="text-sm text-amber-800">
               Phòng ban này có <strong>{childCount}</strong> phòng ban con.
             </p>
@@ -956,7 +951,9 @@ export const OrgChart = () => {
               <Crown size={20} className="text-purple-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-slate-900">{stats.admins}</p>
+              <p className="text-2xl font-bold text-slate-900">
+                {stats.admins}
+              </p>
               <p className="text-xs text-slate-500">Quản trị viên</p>
             </div>
           </div>
@@ -1041,8 +1038,7 @@ export const OrgChart = () => {
           <div
             className="absolute inset-0 opacity-[0.03] pointer-events-none"
             style={{
-              backgroundImage:
-                "radial-gradient(#475569 1px, transparent 1px)",
+              backgroundImage: "radial-gradient(#475569 1px, transparent 1px)",
               backgroundSize: `${20 * scale}px ${20 * scale}px`,
               backgroundPosition: `${position.x}px ${position.y}px`,
             }}
@@ -1083,7 +1079,9 @@ export const OrgChart = () => {
 
           {/* Legend */}
           <div className="absolute top-4 right-4 z-20 bg-white/90 backdrop-blur p-3 rounded-lg border border-slate-200 shadow-sm">
-            <p className="text-xs font-semibold text-slate-700 mb-2">Chú thích</p>
+            <p className="text-xs font-semibold text-slate-700 mb-2">
+              Chú thích
+            </p>
             <div className="space-y-1.5">
               <div className="flex items-center gap-2 text-xs text-slate-600">
                 <div className="w-3 h-3 bg-purple-600 rounded" />

@@ -62,13 +62,13 @@ export class TaskService {
   async updateTask(id: string, taskData: any) {
     const currentTask = await this.taskRepo.getTaskById(id);
 
-    if (taskData.status === 'Done' && currentTask.status !== 'Done') {
+    if (taskData.status === "Done" && currentTask.status !== "Done") {
       // Task completed, update progress
       await this.taskRepo.updateTask(id, taskData);
       await this.projectRepo.recalculateProgress(currentTask.project_id);
 
       // Notify creator? Or just manager? For now simple.
-    } else if (taskData.status !== 'Done' && currentTask.status === 'Done') {
+    } else if (taskData.status !== "Done" && currentTask.status === "Done") {
       // Task reopened, update progress
       await this.taskRepo.updateTask(id, taskData);
       await this.projectRepo.recalculateProgress(currentTask.project_id);
@@ -107,12 +107,12 @@ export class TaskService {
     // Need to find task id to update progress
     // This is inefficient but necessary without a direct lookup or trigger
     // Alternatively, we can assume the frontend will refresh or we just recalculate later.
-    // For correctness, let's find the task. 
+    // For correctness, let's find the task.
     // Since we don't have getTaskByChecklistItem, we might need to add it or just pass projectId from frontend
-    // But to be safe, let's just update and then try to find the project if possible, 
+    // But to be safe, let's just update and then try to find the project if possible,
     // or just rely on the fact that we need the task ID.
     // Wait, `updateChecklistItem` doesn't take taskId.
-    // Let's modify `getTaskChecklist` or add a new method `getTaskByChecklistItem`? 
+    // Let's modify `getTaskChecklist` or add a new method `getTaskByChecklistItem`?
     // Or simpler: pass taskId from frontend? Use the task repo to find it?
     // Let's add `getTaskByChecklistItemId` to Repo?
     // Actually, for now let's just update perfectly and maybe skip progress update if it's just text change?
@@ -158,5 +158,9 @@ export class TaskService {
     await this.projectRepo.recalculateProgress(task.project_id);
 
     return result;
+  }
+
+  async getTasksByUserId(userId: string) {
+    return await this.taskRepo.getTasksByUserId(userId);
   }
 }

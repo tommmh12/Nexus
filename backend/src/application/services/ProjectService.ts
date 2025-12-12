@@ -101,7 +101,7 @@ export class ProjectService {
     return await this.projectRepo.getProjectMembers(projectId);
   }
 
-  async addMember(projectId: string, userId: string, role: string = 'Member') {
+  async addMember(projectId: string, userId: string, role: string = "Member") {
     await this.projectRepo.addProjectMember(projectId, userId, role);
     return await this.getMembers(projectId);
   }
@@ -129,5 +129,9 @@ export class ProjectService {
     }
 
     return `WEB-${Date.now().toString().slice(-4)}`; // Fallback
+  }
+
+  async getProjectsByUserId(userId: string) {
+    return await this.projectRepo.getProjectsByUserId(userId);
   }
 }

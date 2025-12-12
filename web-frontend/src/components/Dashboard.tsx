@@ -234,6 +234,54 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
     location
   );
 
+  // Current user state - can be updated when localStorage changes
+  const [currentUser, setCurrentUser] = useState(() => {
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      try {
+        const parsed = JSON.parse(storedUser);
+        return {
+          ...user,
+          name: parsed.full_name || parsed.name || user.name,
+          avatarUrl: parsed.avatar_url || user.avatarUrl,
+        };
+      } catch {
+        return user;
+      }
+    }
+    return user;
+  });
+
+  // Listen for storage changes (when avatar is updated in ProfilePage)
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const storedUser = localStorage.getItem("user");
+      if (storedUser) {
+        try {
+          const parsed = JSON.parse(storedUser);
+          setCurrentUser((prev) => ({
+            ...prev,
+            name: parsed.full_name || parsed.name || prev.name,
+            avatarUrl: parsed.avatar_url || prev.avatarUrl,
+          }));
+        } catch (e) {
+          console.error("Error parsing stored user:", e);
+        }
+      }
+    };
+
+    // Listen for storage event from other tabs
+    window.addEventListener("storage", handleStorageChange);
+
+    // Also listen for custom event for same-tab updates
+    window.addEventListener("userUpdated", handleStorageChange);
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("userUpdated", handleStorageChange);
+    };
+  }, []);
+
   // Determine role-based prefix (case-insensitive)
   const userRole = user?.role?.toLowerCase() || "employee";
   const rolePrefix =
@@ -540,23 +588,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
 
         {/* Sidebar Footer */}
         <div className="pt-4 pb-4 border-t border-slate-800 bg-slate-900">
-          {/* Storage Widget - Hide when collapsed */}
-          {!isSidebarCollapsed && (
-            <div className="mx-4 mb-4 bg-slate-800/50 rounded-lg p-4 animate-fadeIn">
-              <p className="text-xs text-slate-400 mb-2">Storage Usage</p>
-              <div className="w-full bg-slate-700 rounded-full h-1.5 mb-2">
-                <div
-                  className="bg-brand-500 h-1.5 rounded-full"
-                  style={{ width: "75%" }}
-                ></div>
-              </div>
-              <div className="flex justify-between text-xs text-slate-300">
-                <span>750GB</span>
-                <span>1TB</span>
-              </div>
-            </div>
-          )}
-
           {/* Collapse Toggle Button */}
           <div
             className={`flex ${
@@ -859,10 +890,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
             <div className="flex items-center gap-3">
               <div className="text-right hidden md:block">
                 <p className="text-sm font-semibold text-slate-900">
-                  {user.name}
+                  {currentUser.name}
                 </p>
                 <p className="text-xs text-slate-500">
-                  {user.role || "System Admin"}
+                  {currentUser.role || "System Admin"}
                 </p>
               </div>
 
@@ -879,12 +910,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                         : "ring-slate-100 group-hover:ring-brand-200"
                     }`}
                     src={
-                      user.avatarUrl ||
+                      currentUser.avatarUrl ||
                       `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                        user.name
+                        currentUser.name
                       )}&background=6366f1&color=fff`
                     }
-                    alt={user.name}
+                    alt={currentUser.name}
                   />
                   <ChevronDown
                     size={14}
@@ -910,22 +941,22 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                           <img
                             className="h-12 w-12 rounded-full object-cover ring-2 ring-white shadow"
                             src={
-                              user.avatarUrl ||
+                              currentUser.avatarUrl ||
                               `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                                user.name
+                                currentUser.name
                               )}&background=6366f1&color=fff`
                             }
-                            alt={user.name}
+                            alt={currentUser.name}
                           />
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-bold text-slate-900 truncate">
-                              {user.name}
+                              {currentUser.name}
                             </p>
                             <p className="text-xs text-slate-500 truncate">
-                              {user.email || "admin@nexus.vn"}
+                              {currentUser.email || "admin@nexus.vn"}
                             </p>
                             <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-brand-100 text-brand-700 mt-1">
-                              {user.role || "Admin"}
+                              {currentUser.role || "Admin"}
                             </span>
                           </div>
                         </div>

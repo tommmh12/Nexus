@@ -146,7 +146,7 @@ export const updateProfile = async (req: Request, res: Response) => {
     if (!userId) {
       return res.status(401).json({
         success: false,
-        error: "Unauthorized"
+        error: "Unauthorized",
       });
     }
 
@@ -165,13 +165,46 @@ export const updateProfile = async (req: Request, res: Response) => {
     res.json({
       success: true,
       message: "Profile updated successfully",
-      data: updatedUser
+      data: updatedUser,
     });
   } catch (error: any) {
     console.error("Error updating profile:", error);
     res.status(400).json({
       success: false,
-      error: error.message
+      error: error.message,
+    });
+  }
+};
+
+export const getProfile = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?.userId;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: "Unauthorized",
+      });
+    }
+
+    const user = await userService.getUserById(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: "User not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      data: user,
+    });
+  } catch (error: any) {
+    console.error("Error getting profile:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
     });
   }
 };

@@ -30,11 +30,14 @@ export class TaskRepository {
 
     try {
       const [rows] = await this.db.query<RowDataPacket[]>(query, [projectId]);
-      return rows.map(row => {
+      return rows.map((row) => {
         let assignees = [];
         try {
           if (row.assignees) {
-            assignees = typeof row.assignees === 'string' ? JSON.parse(row.assignees) : row.assignees;
+            assignees =
+              typeof row.assignees === "string"
+                ? JSON.parse(row.assignees)
+                : row.assignees;
           }
         } catch (e) {
           console.error("Error parsing assignees JSON", e);
@@ -43,8 +46,11 @@ export class TaskRepository {
 
         return {
           ...row,
-          attachments: typeof row.attachments === 'string' ? JSON.parse(row.attachments) : (row.attachments || []),
-          assignees: Array.isArray(assignees) ? assignees : []
+          attachments:
+            typeof row.attachments === "string"
+              ? JSON.parse(row.attachments)
+              : row.attachments || [],
+          assignees: Array.isArray(assignees) ? assignees : [],
         };
       });
     } catch (error) {
@@ -78,9 +84,14 @@ export class TaskRepository {
     const [rows] = await this.db.query<RowDataPacket[]>(query, [id]);
     const task = rows[0] || null;
     if (task) {
-      task.attachments = typeof task.attachments === 'string' ? JSON.parse(task.attachments) : (task.attachments || []);
+      task.attachments =
+        typeof task.attachments === "string"
+          ? JSON.parse(task.attachments)
+          : task.attachments || [];
       task.assignees = task.assignees
-        ? (typeof task.assignees === 'string' ? JSON.parse(task.assignees) : task.assignees)
+        ? typeof task.assignees === "string"
+          ? JSON.parse(task.assignees)
+          : task.assignees
         : [];
     }
     return task;
@@ -117,8 +128,15 @@ export class TaskRepository {
       ]);
 
       // Handle Assignees
-      if (taskData.assigneeIds && Array.isArray(taskData.assigneeIds) && taskData.assigneeIds.length > 0) {
-        const values = taskData.assigneeIds.map((userId: string) => [taskId, userId]);
+      if (
+        taskData.assigneeIds &&
+        Array.isArray(taskData.assigneeIds) &&
+        taskData.assigneeIds.length > 0
+      ) {
+        const values = taskData.assigneeIds.map((userId: string) => [
+          taskId,
+          userId,
+        ]);
         const assigneeQuery = `INSERT IGNORE INTO task_assignees (task_id, user_id) VALUES ?`;
         await connection.query(assigneeQuery, [values]);
       }
@@ -165,13 +183,21 @@ export class TaskRepository {
       ]);
 
       // Handle Assignees
-      if (taskData.assigneeIds !== undefined && Array.isArray(taskData.assigneeIds)) {
+      if (
+        taskData.assigneeIds !== undefined &&
+        Array.isArray(taskData.assigneeIds)
+      ) {
         // Remove old
-        await connection.query("DELETE FROM task_assignees WHERE task_id = ?", [id]);
+        await connection.query("DELETE FROM task_assignees WHERE task_id = ?", [
+          id,
+        ]);
 
         // Add new
         if (taskData.assigneeIds.length > 0) {
-          const values = taskData.assigneeIds.map((userId: string) => [id, userId]);
+          const values = taskData.assigneeIds.map((userId: string) => [
+            id,
+            userId,
+          ]);
           const assigneeQuery = `INSERT IGNORE INTO task_assignees (task_id, user_id) VALUES ?`;
           await connection.query(assigneeQuery, [values]);
         }
@@ -201,7 +227,10 @@ export class TaskRepository {
     let statusName: string;
 
     // Check if it looks like a UUID (contains dashes and is 36 chars)
-    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(statusIdOrName);
+    const isUUID =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        statusIdOrName
+      );
 
     if (isUUID) {
       // Get status name from workflow_statuses by ID
@@ -245,7 +274,7 @@ export class TaskRepository {
       }
     }
 
-    const completedAt = statusName.toLowerCase() === 'done' ? new Date() : null;
+    const completedAt = statusName.toLowerCase() === "done" ? new Date() : null;
 
     await this.db.query(
       `UPDATE tasks 
@@ -277,33 +306,36 @@ export class TaskRepository {
       ORDER BY \`order\`, created_at
     `;
     const [rows] = await this.db.query<RowDataPacket[]>(query, [taskId]);
-    return rows.map(row => ({
+    return rows.map((row) => ({
       id: row.id,
       taskId: row.task_id,
       text: row.text,
       isCompleted: !!row.is_completed, // Convert 1/0 to boolean
       order: row.order,
-      createdAt: row.created_at
+      createdAt: row.created_at,
     }));
   }
 
   async addChecklistItem(taskId: string, text: string) {
     // Get max order
     const [rows] = await this.db.query<RowDataPacket[]>(
-      "SELECT MAX(\`order\`) as maxOrder FROM task_checklist_items WHERE task_id = ?",
+      "SELECT MAX(`order`) as maxOrder FROM task_checklist_items WHERE task_id = ?",
       [taskId]
     );
     const order = (rows[0]?.maxOrder || 0) + 1;
 
     const id = crypto.randomUUID();
     await this.db.query(
-      "INSERT INTO task_checklist_items (id, task_id, text, \`order\`) VALUES (?, ?, ?, ?)",
+      "INSERT INTO task_checklist_items (id, task_id, text, `order`) VALUES (?, ?, ?, ?)",
       [id, taskId, text, order]
     );
     return id;
   }
 
-  async updateChecklistItem(id: string, updates: { text?: string; isCompleted?: boolean }) {
+  async updateChecklistItem(
+    id: string,
+    updates: { text?: string; isCompleted?: boolean }
+  ) {
     const updateParts: string[] = [];
     const values: any[] = [];
 
@@ -327,5 +359,28 @@ export class TaskRepository {
 
   async deleteChecklistItem(id: string) {
     await this.db.query("DELETE FROM task_checklist_items WHERE id = ?", [id]);
+  }
+
+  async getTasksByUserId(userId: string) {
+    const query = `
+      SELECT DISTINCT
+        t.*,
+        p.name as projectName,
+        p.code as projectCode,
+        u.full_name as createdByName
+      FROM tasks t
+      LEFT JOIN projects p ON t.project_id = p.id
+      LEFT JOIN users u ON t.created_by = u.id
+      LEFT JOIN task_assignees ta ON t.id = ta.task_id
+      WHERE t.deleted_at IS NULL 
+        AND (t.created_by = ? OR ta.user_id = ?)
+      ORDER BY t.created_at DESC
+    `;
+
+    const [rows] = await this.db.query<RowDataPacket[]>(query, [
+      userId,
+      userId,
+    ]);
+    return rows;
   }
 }

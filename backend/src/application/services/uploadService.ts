@@ -1,46 +1,82 @@
-import multer from 'multer';
-import path from 'path';
-import crypto from 'crypto';
-import fs from 'fs';
+import multer from "multer";
+import path from "path";
+import crypto from "crypto";
+import fs from "fs";
 
-// Ensure upload directory exists
-const UPLOAD_DIR = path.join(process.cwd(), 'uploads', 'comments');
-if (!fs.existsSync(UPLOAD_DIR)) {
-    fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+// Ensure upload directories exist
+const COMMENT_UPLOAD_DIR = path.join(process.cwd(), "uploads", "comments");
+const AVATAR_UPLOAD_DIR = path.join(process.cwd(), "uploads", "avatars");
+
+if (!fs.existsSync(COMMENT_UPLOAD_DIR)) {
+  fs.mkdirSync(COMMENT_UPLOAD_DIR, { recursive: true });
+}
+if (!fs.existsSync(AVATAR_UPLOAD_DIR)) {
+  fs.mkdirSync(AVATAR_UPLOAD_DIR, { recursive: true });
 }
 
-// Configure multer storage
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, UPLOAD_DIR);
-    },
-    filename: (req, file, cb) => {
-        const uniqueSuffix = crypto.randomUUID();
-        const ext = path.extname(file.originalname);
-        cb(null, `${uniqueSuffix}${ext}`);
-    }
+// Configure multer storage for comments
+const commentStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, COMMENT_UPLOAD_DIR);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = crypto.randomUUID();
+    const ext = path.extname(file.originalname);
+    cb(null, `${uniqueSuffix}${ext}`);
+  },
+});
+
+// Configure multer storage for avatars
+const avatarStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, AVATAR_UPLOAD_DIR);
+  },
+  filename: (req, file, cb) => {
+    const userId = (req as any).user?.userId || "unknown";
+    const ext = path.extname(file.originalname);
+    // Use userId in filename for easy identification
+    cb(null, `avatar-${userId}-${Date.now()}${ext}`);
+  },
 });
 
 // File filter - only allow images
-const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-    if (allowedTypes.includes(file.mimetype)) {
-        cb(null, true);
-    } else {
-        cb(new Error('Chỉ cho phép upload file ảnh (JPEG, PNG, GIF, WebP)'));
-    }
+const imageFilter = (
+  req: any,
+  file: Express.Multer.File,
+  cb: multer.FileFilterCallback
+) => {
+  const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+  if (allowedTypes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error("Chỉ cho phép upload file ảnh (JPEG, PNG, GIF, WebP)"));
+  }
 };
 
-// Multer upload configuration
+// Multer upload configuration for comments
 export const commentImageUpload = multer({
-    storage,
-    fileFilter,
-    limits: {
-        fileSize: 5 * 1024 * 1024, // 5MB max
-    }
+  storage: commentStorage,
+  fileFilter: imageFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB max
+  },
+});
+
+// Multer upload configuration for avatars
+export const avatarUpload = multer({
+  storage: avatarStorage,
+  fileFilter: imageFilter,
+  limits: {
+    fileSize: 2 * 1024 * 1024, // 2MB max for avatars
+  },
 });
 
 // Get public URL for uploaded file
 export const getImageUrl = (filename: string): string => {
-    return `/uploads/comments/${filename}`;
+  return `/uploads/comments/${filename}`;
+};
+
+// Get public URL for avatar
+export const getAvatarUrl = (filename: string): string => {
+  return `/uploads/avatars/${filename}`;
 };

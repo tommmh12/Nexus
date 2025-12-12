@@ -34,6 +34,7 @@ interface Message {
   is_read: boolean;
   created_at: string;
   sender_name?: string;
+  sender_avatar?: string;
   // Attachment fields
   attachment_id?: string;
   file_name?: string;
@@ -48,6 +49,7 @@ interface Conversation {
   other_user_id: string;
   other_user_name: string;
   other_user_email: string;
+  other_user_avatar?: string;
   other_user_status: "online" | "offline" | "busy" | "away";
   other_user_last_seen?: string;
   last_message_text?: string;
@@ -65,6 +67,7 @@ interface User {
   role: string;
   department_name?: string;
   status: "online" | "offline" | "busy" | "away";
+  avatar_url?: string;
 }
 
 export const ChatManager: React.FC = () => {
@@ -757,9 +760,17 @@ export const ChatManager: React.FC = () => {
               >
                 <div className="flex items-start gap-3">
                   <div className="relative flex-shrink-0">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center text-white font-bold">
-                      {conv.other_user_name.charAt(0).toUpperCase()}
-                    </div>
+                    {conv.other_user_avatar ? (
+                      <img
+                        src={conv.other_user_avatar}
+                        alt={conv.other_user_name}
+                        className="w-12 h-12 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center text-white font-bold">
+                        {conv.other_user_name.charAt(0).toUpperCase()}
+                      </div>
+                    )}
                     <Circle
                       size={12}
                       className={`absolute bottom-0 right-0 fill-current border-2 border-white rounded-full ${
@@ -805,9 +816,19 @@ export const ChatManager: React.FC = () => {
             <div className="p-4 bg-white border-b border-slate-200 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="relative">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center text-white font-bold">
-                    {activeConversation.other_user_name.charAt(0).toUpperCase()}
-                  </div>
+                  {activeConversation.other_user_avatar ? (
+                    <img
+                      src={activeConversation.other_user_avatar}
+                      alt={activeConversation.other_user_name}
+                      className="w-10 h-10 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center text-white font-bold">
+                      {activeConversation.other_user_name
+                        .charAt(0)
+                        .toUpperCase()}
+                    </div>
+                  )}
                   <Circle
                     size={10}
                     className={`absolute bottom-0 right-0 fill-current border-2 border-white rounded-full ${
@@ -898,6 +919,23 @@ export const ChatManager: React.FC = () => {
                         isMe ? "justify-end" : "justify-start"
                       } group ${isGrouped ? "mt-0.5" : "mt-3"}`}
                     >
+                      {/* Avatar for other user's messages */}
+                      {!isMe && !isGrouped && (
+                        <div className="flex-shrink-0 mr-2">
+                          {msg.sender_avatar || activeConversation?.other_user_avatar ? (
+                            <img
+                              src={msg.sender_avatar || activeConversation?.other_user_avatar}
+                              alt={msg.sender_name || "User"}
+                              className="w-8 h-8 rounded-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center text-white text-sm font-bold">
+                              {(msg.sender_name || activeConversation?.other_user_name || "U").charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {!isMe && isGrouped && <div className="w-8 mr-2" />}
                       <div
                         className={`max-w-lg ${
                           isMe ? "items-end" : "items-start"

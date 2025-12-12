@@ -7,6 +7,7 @@ const router = Router();
 // All routes require authentication
 router.use(authMiddleware);
 
+router.get("/my-tasks", TaskController.getMyTasks);
 router.get("/project/:projectId", TaskController.getTasksByProject);
 router.get("/:id", TaskController.getTaskById);
 router.post("/", TaskController.createTask);

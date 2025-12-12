@@ -81,7 +81,12 @@ export const addChecklistItem = async (req: Request, res: Response) => {
     const { id } = req.params;
     const { text } = req.body;
     const newItemId = await taskService.addChecklistItem(id, text);
-    res.status(201).json({ success: true, data: { id: newItemId, text, isCompleted: false } });
+    res
+      .status(201)
+      .json({
+        success: true,
+        data: { id: newItemId, text, isCompleted: false },
+      });
   } catch (error: any) {
     console.error("Error adding checklist item:", error);
     res.status(500).json({ success: false, message: "Lỗi thêm checklist" });
@@ -138,6 +143,20 @@ export const updateTaskStatus = async (req: Request, res: Response) => {
     res.status(400).json({
       success: false,
       message: error.message || "Lỗi khi cập nhật trạng thái task",
+    });
+  }
+};
+
+export const getMyTasks = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?.userId;
+    const tasks = await taskService.getTasksByUserId(userId);
+    res.json({ success: true, data: tasks });
+  } catch (error: any) {
+    console.error("Error getting my tasks:", error);
+    res.status(500).json({
+      success: false,
+      message: "Lỗi khi lấy danh sách task của bạn",
     });
   }
 };

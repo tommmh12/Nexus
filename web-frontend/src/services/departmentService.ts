@@ -165,9 +165,12 @@ export const departmentService = {
    * Get users by department ID
    */
   getUsersByDepartment: async (departmentId: string): Promise<any[]> => {
-    const response = await axios.get(`${API_URL}/users?department_id=${departmentId}`, {
-      headers: getAuthHeader(),
-    });
+    const response = await axios.get(
+      `${API_URL}/users?department_id=${departmentId}`,
+      {
+        headers: getAuthHeader(),
+      }
+    );
     return response.data.users || response.data || [];
   },
 
