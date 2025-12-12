@@ -58,16 +58,19 @@ export const forumService = {
     return response.data;
   },
 
-  createCategory: async (category: Partial<ForumCategory>): Promise<ForumCategory> => {
-    const response = await axios.post(
-      `${API_URL}/forum/categories`,
-      category,
-      { headers: getAuthHeader() }
-    );
+  createCategory: async (
+    category: Partial<ForumCategory>
+  ): Promise<ForumCategory> => {
+    const response = await axios.post(`${API_URL}/forum/categories`, category, {
+      headers: getAuthHeader(),
+    });
     return response.data;
   },
 
-  updateCategory: async (id: string, category: Partial<ForumCategory>): Promise<ForumCategory> => {
+  updateCategory: async (
+    id: string,
+    category: Partial<ForumCategory>
+  ): Promise<ForumCategory> => {
     const response = await axios.put(
       `${API_URL}/forum/categories/${id}`,
       category,
@@ -103,24 +106,27 @@ export const forumService = {
   },
 
   createPost: async (post: Partial<ForumPost>): Promise<ForumPost> => {
-    const response = await axios.post(
-      `${API_URL}/forum`,
-      post,
-      { headers: getAuthHeader() }
-    );
+    const response = await axios.post(`${API_URL}/forum`, post, {
+      headers: getAuthHeader(),
+    });
     return response.data;
   },
 
-  updatePost: async (id: string, post: Partial<ForumPost>): Promise<ForumPost> => {
-    const response = await axios.put(
-      `${API_URL}/forum/${id}`,
-      post,
-      { headers: getAuthHeader() }
-    );
+  updatePost: async (
+    id: string,
+    post: Partial<ForumPost>
+  ): Promise<ForumPost> => {
+    const response = await axios.put(`${API_URL}/forum/${id}`, post, {
+      headers: getAuthHeader(),
+    });
     return response.data;
   },
 
-  moderatePost: async (id: string, status: "Approved" | "Rejected", notes?: string): Promise<ForumPost> => {
+  moderatePost: async (
+    id: string,
+    status: "Approved" | "Rejected",
+    notes?: string
+  ): Promise<ForumPost> => {
     const response = await axios.post(
       `${API_URL}/forum/${id}/moderate`,
       { status, notes },
@@ -135,7 +141,14 @@ export const forumService = {
     });
   },
 
-  toggleVote: async (id: string, voteType: 1 | -1): Promise<{ voted: boolean; upvoteCount: number; downvoteCount: number }> => {
+  toggleVote: async (
+    id: string,
+    voteType: 1 | -1
+  ): Promise<{
+    voted: boolean;
+    upvoteCount: number;
+    downvoteCount: number;
+  }> => {
     const response = await axios.post(
       `${API_URL}/forum/${id}/vote`,
       { voteType },
@@ -151,7 +164,10 @@ export const forumService = {
     return response.data;
   },
 
-  createComment: async (postId: string, comment: { content: string; parentId?: string }): Promise<ForumComment> => {
+  createComment: async (
+    postId: string,
+    comment: { content: string; parentId?: string }
+  ): Promise<ForumComment> => {
     const response = await axios.post(
       `${API_URL}/forum/${postId}/comments`,
       comment,
@@ -178,7 +194,10 @@ export const forumService = {
   getReactions: async (
     targetType: "post" | "comment",
     targetId: string
-  ): Promise<{ reactions: Record<string, number>; userReaction: string | null }> => {
+  ): Promise<{
+    reactions: Record<string, number>;
+    userReaction: string | null;
+  }> => {
     const response = await axios.get(
       `${API_URL}/forum/${targetType}/${targetId}/reactions`,
       { headers: getAuthHeader() }
@@ -245,4 +264,3 @@ export const forumService = {
     return response.data;
   },
 };
-

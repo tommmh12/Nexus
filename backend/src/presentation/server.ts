@@ -48,8 +48,12 @@ app.use(
   })
 );
 app.use(morgan("dev"));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+
+// Upload routes MUST be before json body parser to handle multipart/form-data correctly
+app.use("/api/upload", uploadRoutes);
+
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
 // Health check
 app.get("/health", (req: Request, res: Response) => {
@@ -75,7 +79,7 @@ app.use("/api/news", newsRoutes);
 app.use("/api/forum", forumRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/comments", commentRoutes);
-app.use("/api/upload", uploadRoutes);
+// Note: uploadRoutes is registered earlier (before body parser)
 app.use("/api/floors", floorRoutes);
 app.use("/api/rooms", roomRoutes);
 app.use("/api/bookings", bookingRoutes);

@@ -147,7 +147,9 @@ export class ForumRepository {
 
     // Update tags if provided
     if (post.tags !== undefined) {
-      await this.db.query(`DELETE FROM forum_post_tags WHERE post_id = ?`, [id]);
+      await this.db.query(`DELETE FROM forum_post_tags WHERE post_id = ?`, [
+        id,
+      ]);
       for (const tag of post.tags) {
         await this.db.query(
           `INSERT INTO forum_post_tags (id, post_id, tag_name) VALUES (?, ?, ?)`,
@@ -171,7 +173,11 @@ export class ForumRepository {
     );
   }
 
-  async toggleVote(postId: string, userId: string, voteType: 1 | -1): Promise<{ voted: boolean; upvoteCount: number; downvoteCount: number }> {
+  async toggleVote(
+    postId: string,
+    userId: string,
+    voteType: 1 | -1
+  ): Promise<{ voted: boolean; upvoteCount: number; downvoteCount: number }> {
     // Check if already voted
     const [existing] = await this.db.query<RowDataPacket[]>(
       `SELECT id, vote_type FROM forum_votes WHERE user_id = ? AND votable_type = 'post' AND votable_id = ?`,
@@ -359,7 +365,8 @@ export class ForumRepository {
     const reactions = await this.getReactionCounts(targetType, targetId);
 
     return {
-      reacted: existing.length === 0 || existing[0].reaction_type !== reactionType,
+      reacted:
+        existing.length === 0 || existing[0].reaction_type !== reactionType,
       reactions,
     };
   }
@@ -416,7 +423,15 @@ export class ForumRepository {
     await this.db.query(
       `INSERT INTO forum_attachments (id, post_id, file_name, file_path, file_type, file_size, mime_type) 
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [id, attachment.postId, attachment.fileName, attachment.filePath, attachment.fileType, attachment.fileSize, attachment.mimeType]
+      [
+        id,
+        attachment.postId,
+        attachment.fileName,
+        attachment.filePath,
+        attachment.fileType,
+        attachment.fileSize,
+        attachment.mimeType,
+      ]
     );
     return id;
   }
@@ -471,7 +486,7 @@ export class ForumRepository {
       `SELECT COUNT(*) as count FROM forum_posts WHERE author_id = ? AND deleted_at IS NULL`,
       [userId]
     );
-    
+
     const [commentCount] = await this.db.query<RowDataPacket[]>(
       `SELECT COUNT(*) as count FROM forum_comments WHERE author_id = ? AND deleted_at IS NULL`,
       [userId]
@@ -490,5 +505,3 @@ export class ForumRepository {
     };
   }
 }
-
-

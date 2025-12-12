@@ -39,7 +39,9 @@ async function runMigration() {
 
     // 3. Add karma_points to users if not exists
     try {
-      await dbPool.query(`ALTER TABLE users ADD COLUMN karma_points INT DEFAULT 0`);
+      await dbPool.query(
+        `ALTER TABLE users ADD COLUMN karma_points INT DEFAULT 0`
+      );
       console.log("✅ Added karma_points column to users");
     } catch (e: any) {
       if (e.code === "ER_DUP_FIELDNAME") {
@@ -49,9 +51,11 @@ async function runMigration() {
       }
     }
 
-    // 4. Add join_date to users if not exists  
+    // 4. Add join_date to users if not exists
     try {
-      await dbPool.query(`ALTER TABLE users ADD COLUMN join_date DATE DEFAULT NULL`);
+      await dbPool.query(
+        `ALTER TABLE users ADD COLUMN join_date DATE DEFAULT NULL`
+      );
       console.log("✅ Added join_date column to users");
     } catch (e: any) {
       if (e.code === "ER_DUP_FIELDNAME") {

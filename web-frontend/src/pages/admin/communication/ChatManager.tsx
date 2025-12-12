@@ -922,15 +922,25 @@ export const ChatManager: React.FC = () => {
                       {/* Avatar for other user's messages */}
                       {!isMe && !isGrouped && (
                         <div className="flex-shrink-0 mr-2">
-                          {msg.sender_avatar || activeConversation?.other_user_avatar ? (
+                          {msg.sender_avatar ||
+                          activeConversation?.other_user_avatar ? (
                             <img
-                              src={msg.sender_avatar || activeConversation?.other_user_avatar}
+                              src={
+                                msg.sender_avatar ||
+                                activeConversation?.other_user_avatar
+                              }
                               alt={msg.sender_name || "User"}
                               className="w-8 h-8 rounded-full object-cover"
                             />
                           ) : (
                             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center text-white text-sm font-bold">
-                              {(msg.sender_name || activeConversation?.other_user_name || "U").charAt(0).toUpperCase()}
+                              {(
+                                msg.sender_name ||
+                                activeConversation?.other_user_name ||
+                                "U"
+                              )
+                                .charAt(0)
+                                .toUpperCase()}
                             </div>
                           )}
                         </div>

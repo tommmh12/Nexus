@@ -41,4 +41,3 @@ router.post("/:postId/attachments", ForumController.addAttachment);
 router.delete("/attachments/:attachmentId", ForumController.deleteAttachment);
 
 export default router;
-

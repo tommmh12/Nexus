@@ -4,6 +4,8 @@ import {
   getImageUrl,
   avatarUpload,
   getAvatarUrl,
+  forumImageUpload,
+  getForumImageUrl,
 } from "../../application/services/uploadService.js";
 import { authMiddleware } from "../middlewares/auth.middleware.js";
 import { UserRepository } from "../../infrastructure/repositories/UserRepository.js";
@@ -101,6 +103,45 @@ router.post(
       res.status(500).json({
         success: false,
         message: error.message || "Lỗi khi upload avatar",
+      });
+    }
+  }
+);
+
+/**
+ * POST /api/upload/forum-image
+ * Upload an image for use in forum posts
+ */
+router.post(
+  "/forum-image",
+  forumImageUpload.single("image"),
+  (req: Request, res: Response) => {
+    try {
+      if (!req.file) {
+        res.status(400).json({
+          success: false,
+          message: "Không có file được upload",
+        });
+        return;
+      }
+
+      const imageUrl = getForumImageUrl(req.file.filename);
+      const fullImageUrl = `http://localhost:5000${imageUrl}`;
+
+      res.json({
+        success: true,
+        data: {
+          url: fullImageUrl,
+          filename: req.file.filename,
+          originalName: req.file.originalname,
+          size: req.file.size,
+        },
+      });
+    } catch (error: any) {
+      console.error("Forum image upload error:", error);
+      res.status(500).json({
+        success: false,
+        message: error.message || "Lỗi khi upload ảnh",
       });
     }
   }

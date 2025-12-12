@@ -9,10 +9,12 @@ const forumRepository = new ForumRepository();
 const forumService = new ForumService(forumRepository);
 
 const getIpAddress = (req: Request): string => {
-  return (req.headers["x-forwarded-for"] as string)?.split(",")[0] || 
-         (req.headers["x-real-ip"] as string) || 
-         req.socket.remoteAddress || 
-         "unknown";
+  return (
+    (req.headers["x-forwarded-for"] as string)?.split(",")[0] ||
+    (req.headers["x-real-ip"] as string) ||
+    req.socket.remoteAddress ||
+    "unknown"
+  );
 };
 
 // Get all categories
@@ -210,8 +212,8 @@ export const deleteCategory = async (req: Request, res: Response) => {
     );
 
     if (posts[0]?.count > 0) {
-      return res.status(400).json({ 
-        error: `Cannot delete category. It has ${posts[0].count} active post(s). Please move or delete posts first.` 
+      return res.status(400).json({
+        error: `Cannot delete category. It has ${posts[0].count} active post(s). Please move or delete posts first.`,
       });
     }
 
@@ -393,7 +395,9 @@ export const moderatePost = async (req: Request, res: Response) => {
     await auditLogger.log({
       userId,
       type: "content_management",
-      content: `${status === "Approved" ? "Duyệt" : "Từ chối"} bài viết diễn đàn: ${post.title}`,
+      content: `${
+        status === "Approved" ? "Duyệt" : "Từ chối"
+      } bài viết diễn đàn: ${post.title}`,
       target: post.title,
       ipAddress,
       meta: {
@@ -497,7 +501,9 @@ export const toggleReaction = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Invalid target type" });
     }
 
-    if (!["like", "love", "laugh", "wow", "sad", "angry"].includes(reactionType)) {
+    if (
+      !["like", "love", "laugh", "wow", "sad", "angry"].includes(reactionType)
+    ) {
       return res.status(400).json({ error: "Invalid reaction type" });
     }
 
@@ -530,7 +536,11 @@ export const getReactions = async (req: Request, res: Response) => {
     );
 
     const userReaction = userId
-      ? await forumRepository.getUserReaction(userId, targetType as "post" | "comment", targetId)
+      ? await forumRepository.getUserReaction(
+          userId,
+          targetType as "post" | "comment",
+          targetId
+        )
       : null;
 
     res.json({ reactions, userReaction });
@@ -565,7 +575,9 @@ export const addAttachment = async (req: Request, res: Response) => {
     const { fileName, filePath, fileType, fileSize, mimeType } = req.body;
 
     if (!fileName || !filePath) {
-      return res.status(400).json({ error: "fileName and filePath are required" });
+      return res
+        .status(400)
+        .json({ error: "fileName and filePath are required" });
     }
 
     const id = await forumRepository.addAttachment({
@@ -577,7 +589,9 @@ export const addAttachment = async (req: Request, res: Response) => {
       mimeType: mimeType || "application/octet-stream",
     });
 
-    res.status(201).json({ id, postId, fileName, filePath, fileType, fileSize, mimeType });
+    res
+      .status(201)
+      .json({ id, postId, fileName, filePath, fileType, fileSize, mimeType });
   } catch (error: any) {
     console.error("Error adding attachment:", error);
     res.status(400).json({ error: error.message });

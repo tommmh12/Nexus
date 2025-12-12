@@ -74,16 +74,105 @@ import { UserProfile } from "./UserProfile";
 import { authService } from "../../../services/authService";
 import { CommentThread } from "../../../components/comments/CommentThread";
 
+// Helper function to strip HTML tags and markdown syntax for preview
+const stripHtmlTags = (html: string): string => {
+  // Remove markdown image syntax ![...](...)
+  let cleaned = html.replace(/!\[.*?\]\([^)]+\)/g, "");
+  // Remove HTML img tags
+  cleaned = cleaned.replace(/<img[^>]*>/gi, "");
+  // Parse remaining HTML
+  const doc = new DOMParser().parseFromString(cleaned, "text/html");
+  return (doc.body.textContent || "").trim();
+};
+
+// Helper to extract first image from HTML/markdown content
+const extractFirstImage = (html: string): string | null => {
+  // Try HTML img tag first
+  const htmlImgMatch = html.match(/<img[^>]+src=["']([^"']+)["']/i);
+  if (htmlImgMatch) return htmlImgMatch[1];
+
+  // Try markdown image syntax - but skip base64 (too long)
+  const mdImgMatch = html.match(/!\[.*?\]\(((?!data:)[^)]+)\)/);
+  if (mdImgMatch) return mdImgMatch[1];
+  
+  // Try base64 image in markdown
+  const base64Match = html.match(/!\[.*?\]\((data:image\/[^)]+)\)/);
+  if (base64Match) return base64Match[1];
+
+  return null;
+};
+
+// Helper to render content properly - convert markdown images to HTML
+const renderContent = (content: string): string => {
+  if (!content) return "";
+  
+  // Convert markdown images ![alt](src) to HTML <img>
+  let rendered = content.replace(
+    /!\[([^\]]*)\]\(([^)]+)\)/g,
+    '<img src="$2" alt="$1" class="max-w-full h-auto rounded-xl my-3" style="max-height: 500px; object-fit: contain;" />'
+  );
+  
+  // If content already has HTML img tags, ensure they have proper styling
+  rendered = rendered.replace(
+    /<img([^>]*?)(?:class="[^"]*")?([^>]*)>/gi,
+    '<img$1 class="max-w-full h-auto rounded-xl my-3" style="max-height: 500px; object-fit: contain;"$2>'
+  );
+  
+  return rendered;
+};
+
 // Reaction types
 type ReactionType = "like" | "love" | "laugh" | "wow" | "sad" | "angry";
 
-const reactionConfig: { type: ReactionType; icon: React.ReactNode; emoji: string; label: string; color: string }[] = [
-  { type: "like", icon: <ThumbsUp size={16} />, emoji: "👍", label: "Thích", color: "text-blue-500" },
-  { type: "love", icon: <Heart size={16} />, emoji: "❤️", label: "Yêu thích", color: "text-red-500" },
-  { type: "laugh", icon: <Smile size={16} />, emoji: "😂", label: "Haha", color: "text-yellow-500" },
-  { type: "wow", icon: <AlertTriangle size={16} />, emoji: "😮", label: "Wow", color: "text-orange-500" },
-  { type: "sad", icon: <Frown size={16} />, emoji: "😢", label: "Buồn", color: "text-purple-500" },
-  { type: "angry", icon: <Meh size={16} />, emoji: "😠", label: "Phẫn nộ", color: "text-red-700" },
+const reactionConfig: {
+  type: ReactionType;
+  icon: React.ReactNode;
+  emoji: string;
+  label: string;
+  color: string;
+}[] = [
+  {
+    type: "like",
+    icon: <ThumbsUp size={16} />,
+    emoji: "👍",
+    label: "Thích",
+    color: "text-blue-500",
+  },
+  {
+    type: "love",
+    icon: <Heart size={16} />,
+    emoji: "❤️",
+    label: "Yêu thích",
+    color: "text-red-500",
+  },
+  {
+    type: "laugh",
+    icon: <Smile size={16} />,
+    emoji: "😂",
+    label: "Haha",
+    color: "text-yellow-500",
+  },
+  {
+    type: "wow",
+    icon: <AlertTriangle size={16} />,
+    emoji: "😮",
+    label: "Wow",
+    color: "text-orange-500",
+  },
+  {
+    type: "sad",
+    icon: <Frown size={16} />,
+    emoji: "😢",
+    label: "Buồn",
+    color: "text-purple-500",
+  },
+  {
+    type: "angry",
+    icon: <Meh size={16} />,
+    emoji: "😠",
+    label: "Phẫn nộ",
+    color: "text-red-700",
+  },
 ];
 
 // --- Utility Components ---
@@ -184,10 +273,11 @@ const UserHoverCard: React.FC<UserHoverCardProps> = ({
       <div
         className={`absolute top-full left-0 mt-2 w-80 bg-white rounded-xl shadow-2xl border border-slate-200 
                 transition-all duration-300 z-50 transform origin-top-left 
-                ${isVisible
-            ? "opacity-100 visible translate-y-0"
-            : "opacity-0 invisible -translate-y-2 pointer-events-none"
-          }
+                ${
+                  isVisible
+                    ? "opacity-100 visible translate-y-0"
+                    : "opacity-0 invisible -translate-y-2 pointer-events-none"
+                }
             `}
       >
         {/* Bridge to prevent closing when moving mouse from name to card */}
@@ -208,10 +298,11 @@ const UserHoverCard: React.FC<UserHoverCardProps> = ({
                 className="w-16 h-16 rounded-full border-4 border-white shadow-md object-cover bg-white cursor-pointer"
               />
               <span
-                className={`absolute bottom-1 right-1 w-3.5 h-3.5 border-2 border-white rounded-full ${userProfile.status === "Active"
-                  ? "bg-green-500"
-                  : "bg-slate-400"
-                  }`}
+                className={`absolute bottom-1 right-1 w-3.5 h-3.5 border-2 border-white rounded-full ${
+                  userProfile.status === "Active"
+                    ? "bg-green-500"
+                    : "bg-slate-400"
+                }`}
               ></span>
             </div>
             <div className="mb-1">
@@ -292,11 +383,17 @@ const PostActions = ({
   commentCount: number;
   onComment?: (e: React.MouseEvent) => void;
   onShare?: (e: React.MouseEvent) => void;
-  onReactionChange?: (reactions: Record<string, number>, userReaction: string | null) => void;
+  onReactionChange?: (
+    reactions: Record<string, number>,
+    userReaction: string | null
+  ) => void;
 }) => {
   const [showReactionPicker, setShowReactionPicker] = useState(false);
-  const [localReactions, setLocalReactions] = useState<Record<string, number>>(reactions);
-  const [localUserReaction, setLocalUserReaction] = useState<string | null>(userReaction);
+  const [localReactions, setLocalReactions] =
+    useState<Record<string, number>>(reactions);
+  const [localUserReaction, setLocalUserReaction] = useState<string | null>(
+    userReaction
+  );
   const pickerRef = useRef<HTMLDivElement>(null);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -308,7 +405,10 @@ const PostActions = ({
   // Close picker when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (pickerRef.current && !pickerRef.current.contains(event.target as Node)) {
+      if (
+        pickerRef.current &&
+        !pickerRef.current.contains(event.target as Node)
+      ) {
         setShowReactionPicker(false);
       }
     };
@@ -321,15 +421,25 @@ const PostActions = ({
     };
   }, [showReactionPicker]);
 
-  const handleReact = async (e: React.MouseEvent, reactionType: ReactionType) => {
+  const handleReact = async (
+    e: React.MouseEvent,
+    reactionType: ReactionType
+  ) => {
     e.stopPropagation();
     setShowReactionPicker(false);
 
     try {
-      const result = await forumService.toggleReaction("post", postId, reactionType);
+      const result = await forumService.toggleReaction(
+        "post",
+        postId,
+        reactionType
+      );
       setLocalReactions(result.reactions);
       setLocalUserReaction(result.reacted ? reactionType : null);
-      onReactionChange?.(result.reactions, result.reacted ? reactionType : null);
+      onReactionChange?.(
+        result.reactions,
+        result.reacted ? reactionType : null
+      );
     } catch (error) {
       console.error("Error toggling reaction:", error);
     }
@@ -348,16 +458,19 @@ const PostActions = ({
     }
   };
 
-  const totalReactions = Object.values(localReactions).reduce((sum, count) => sum + count, 0);
-  
+  const totalReactions = Object.values(localReactions).reduce(
+    (sum, count) => sum + count,
+    0
+  );
+
   // Get top 3 reactions for display
   const topReactions = reactionConfig
     .filter((r) => localReactions[r.type] > 0)
     .sort((a, b) => localReactions[b.type] - localReactions[a.type])
     .slice(0, 3);
 
-  const currentReactionConfig = localUserReaction 
-    ? reactionConfig.find((r) => r.type === localUserReaction) 
+  const currentReactionConfig = localUserReaction
+    ? reactionConfig.find((r) => r.type === localUserReaction)
     : null;
 
   return (
@@ -367,7 +480,9 @@ const PostActions = ({
         <div className="flex items-center gap-2 mb-2 text-xs text-slate-500">
           <div className="flex -space-x-1">
             {topReactions.map((r) => (
-              <span key={r.type} className="text-base">{r.emoji}</span>
+              <span key={r.type} className="text-base">
+                {r.emoji}
+              </span>
             ))}
           </div>
           <span>{totalReactions} người đã bày tỏ cảm xúc</span>
@@ -409,7 +524,7 @@ const PostActions = ({
 
           {/* Reaction picker popup */}
           {showReactionPicker && (
-            <div 
+            <div
               className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-2 bg-white rounded-full shadow-xl border border-slate-200 flex items-center gap-1 z-50 animate-fadeIn"
               onMouseEnter={() => {
                 if (hoverTimeoutRef.current) {
@@ -422,7 +537,9 @@ const PostActions = ({
                   key={config.type}
                   onClick={(e) => handleReact(e, config.type)}
                   className={`p-2 rounded-full hover:bg-slate-100 hover:scale-125 transition-all ${
-                    localUserReaction === config.type ? "bg-slate-100 scale-110" : ""
+                    localUserReaction === config.type
+                      ? "bg-slate-100 scale-110"
+                      : ""
                   }`}
                   title={config.label}
                 >
@@ -481,23 +598,26 @@ const PollWidget = ({ poll }: { poll: Poll }) => {
             <div
               key={opt.id}
               onClick={(e) => handleVote(opt.id, e)}
-              className={`relative border rounded-lg overflow-hidden h-10 flex items-center px-4 cursor-pointer transition-all ${votedOption === opt.id
-                ? "border-brand-500 ring-1 ring-brand-500"
-                : "border-slate-300 hover:border-brand-400"
-                }`}
+              className={`relative border rounded-lg overflow-hidden h-10 flex items-center px-4 cursor-pointer transition-all ${
+                votedOption === opt.id
+                  ? "border-brand-500 ring-1 ring-brand-500"
+                  : "border-slate-300 hover:border-brand-400"
+              }`}
             >
               {/* Progress Bar Background */}
               <div
-                className={`absolute top-0 left-0 h-full transition-all duration-1000 ${votedOption === opt.id ? "bg-brand-100" : "bg-slate-200"
-                  }`}
+                className={`absolute top-0 left-0 h-full transition-all duration-1000 ${
+                  votedOption === opt.id ? "bg-brand-100" : "bg-slate-200"
+                }`}
                 style={{ width: votedOption ? `${percent}%` : "0%" }}
               ></div>
 
               {/* Text Content */}
               <div className="relative z-10 flex justify-between w-full text-sm">
                 <span
-                  className={`font-medium ${votedOption === opt.id ? "text-brand-800" : "text-slate-700"
-                    }`}
+                  className={`font-medium ${
+                    votedOption === opt.id ? "text-brand-800" : "text-slate-700"
+                  }`}
                 >
                   {opt.text} {votedOption === opt.id && "(Đã chọn)"}
                 </span>
@@ -522,18 +642,26 @@ const CreatePostModal = ({ onClose }: { onClose: () => void }) => {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [categoryId, setCategoryId] = useState("");
-  const [categories, setCategories] = useState<Array<{ id: string; name: string }>>([]);
-  const [selectedCategory, setSelectedCategory] = useState<{ id: string; name: string } | null>(null);
+  const [categories, setCategories] = useState<
+    Array<{ id: string; name: string }>
+  >([]);
+  const [selectedCategory, setSelectedCategory] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
   const [flairs, setFlairs] = useState({
     oc: false,
     spoiler: false,
     nsfw: false,
   });
-  const [activeAttachment, setActiveAttachment] = useState<null | "image" | "poll">(null);
+  const [activeAttachment, setActiveAttachment] = useState<
+    null | "image" | "poll"
+  >(null);
   const [attachedImages, setAttachedImages] = useState<string[]>([]);
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showFontSizeMenu, setShowFontSizeMenu] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const contentEditableRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -579,21 +707,63 @@ const CreatePostModal = ({ onClose }: { onClose: () => void }) => {
     }
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (files) {
-      Array.from(files).forEach((file: File) => {
-        if (file.type.startsWith("image/")) {
+    if (!files) return;
+
+    const token = localStorage.getItem("token");
+    setIsUploadingImage(true);
+
+    for (const file of Array.from(files)) {
+      if (!file.type.startsWith("image/")) continue;
+
+      try {
+        const formData = new FormData();
+        formData.append("image", file);
+
+        const response = await fetch(
+          "http://localhost:5000/api/upload/forum-image",
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+            body: formData,
+          }
+        );
+
+        const result = await response.json();
+
+        if (result.success && result.data?.url) {
+          const imageUrl = result.data.url;
+          setAttachedImages((prev) => [...prev, imageUrl]);
+
+          // Insert image into editor với kích thước giới hạn
+          if (contentEditableRef.current) {
+            const img = document.createElement("img");
+            img.src = imageUrl;
+            img.style.maxWidth = "300px";
+            img.style.maxHeight = "200px";
+            img.style.objectFit = "contain";
+            img.className = "rounded-lg my-2 inline-block";
+            contentEditableRef.current.appendChild(img);
+            setContent(contentEditableRef.current.innerHTML);
+          }
+        } else {
+          // Fallback to base64 if server upload fails
+          console.warn("Server upload failed, using base64 fallback");
           const reader = new FileReader();
-          reader.onload = (event: ProgressEvent<FileReader>) => {
+          reader.onload = (event) => {
             const imageUrl = event.target?.result as string;
             if (imageUrl) {
               setAttachedImages((prev) => [...prev, imageUrl]);
-              // Insert image into editor
               if (contentEditableRef.current) {
                 const img = document.createElement("img");
                 img.src = imageUrl;
-                img.className = "max-w-full h-auto rounded-lg my-2";
+                img.style.maxWidth = "300px";
+                img.style.maxHeight = "200px";
+                img.style.objectFit = "contain";
+                img.className = "rounded-lg my-2 inline-block";
                 contentEditableRef.current.appendChild(img);
                 setContent(contentEditableRef.current.innerHTML);
               }
@@ -601,7 +771,34 @@ const CreatePostModal = ({ onClose }: { onClose: () => void }) => {
           };
           reader.readAsDataURL(file);
         }
-      });
+      } catch (error) {
+        console.error("Error uploading image:", error);
+        // Fallback to base64 on error
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const imageUrl = event.target?.result as string;
+          if (imageUrl) {
+            setAttachedImages((prev) => [...prev, imageUrl]);
+            if (contentEditableRef.current) {
+              const img = document.createElement("img");
+              img.src = imageUrl;
+              img.style.maxWidth = "300px";
+              img.style.maxHeight = "200px";
+              img.style.objectFit = "contain";
+              img.className = "rounded-lg my-2 inline-block";
+              contentEditableRef.current.appendChild(img);
+              setContent(contentEditableRef.current.innerHTML);
+            }
+          }
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+
+    setIsUploadingImage(false);
+    // Reset input để có thể chọn lại cùng file
+    if (e.target) {
+      e.target.value = "";
     }
   };
 
@@ -685,7 +882,10 @@ const CreatePostModal = ({ onClose }: { onClose: () => void }) => {
       return;
     }
 
-    if (activeAttachment === "poll" && (!pollQuestion || pollOptions.filter(o => o.trim()).length < 2)) {
+    if (
+      activeAttachment === "poll" &&
+      (!pollQuestion || pollOptions.filter((o) => o.trim()).length < 2)
+    ) {
       alert("Vui lòng nhập câu hỏi và ít nhất 2 lựa chọn cho thăm dò!");
       return;
     }
@@ -696,14 +896,23 @@ const CreatePostModal = ({ onClose }: { onClose: () => void }) => {
 
       // Add images to content if any
       if (attachedImages.length > 0) {
-        const imageMarkdown = attachedImages.map((img) => `![Image](${img})`).join("\n");
-        postContent = postContent ? `${postContent}\n\n${imageMarkdown}` : imageMarkdown;
+        const imageMarkdown = attachedImages
+          .map((img) => `![Image](${img})`)
+          .join("\n");
+        postContent = postContent
+          ? `${postContent}\n\n${imageMarkdown}`
+          : imageMarkdown;
       }
 
       // Add poll to content if exists
       if (activeAttachment === "poll" && pollQuestion) {
-        const pollMarkdown = `\n\n**Thăm dò: ${pollQuestion}**\n${pollOptions.filter(o => o.trim()).map((opt, idx) => `${idx + 1}. ${opt}`).join("\n")}`;
-        postContent = postContent ? `${postContent}${pollMarkdown}` : pollMarkdown;
+        const pollMarkdown = `\n\n**Thăm dò: ${pollQuestion}**\n${pollOptions
+          .filter((o) => o.trim())
+          .map((opt, idx) => `${idx + 1}. ${opt}`)
+          .join("\n")}`;
+        postContent = postContent
+          ? `${postContent}${pollMarkdown}`
+          : pollMarkdown;
       }
 
       await forumService.createPost({
@@ -719,11 +928,26 @@ const CreatePostModal = ({ onClose }: { onClose: () => void }) => {
       onClose();
     } catch (error: any) {
       console.error("Error creating post:", error);
-      alert(error.response?.data?.error || "Không thể đăng bài. Vui lòng thử lại.");
+      alert(
+        error.response?.data?.error || "Không thể đăng bài. Vui lòng thử lại."
+      );
     }
   };
 
-  const emojis = ["😀", "😂", "😍", "🤔", "👍", "❤️", "🔥", "💯", "🎉", "✨", "👏", "🙌"];
+  const emojis = [
+    "😀",
+    "😂",
+    "😍",
+    "🤔",
+    "👍",
+    "❤️",
+    "🔥",
+    "💯",
+    "🎉",
+    "✨",
+    "👏",
+    "🙌",
+  ];
 
   // Close emoji picker and font size menu when clicking outside
   useEffect(() => {
@@ -735,7 +959,8 @@ const CreatePostModal = ({ onClose }: { onClose: () => void }) => {
     };
     if (showEmojiPicker || showFontSizeMenu) {
       document.addEventListener("mousedown", handleClickOutside);
-      return () => document.removeEventListener("mousedown", handleClickOutside);
+      return () =>
+        document.removeEventListener("mousedown", handleClickOutside);
     }
   }, [showEmojiPicker, showFontSizeMenu]);
 
@@ -796,8 +1021,13 @@ const CreatePostModal = ({ onClose }: { onClose: () => void }) => {
                 maxLength={300}
                 autoFocus
               />
-              <span className={`text-xs font-medium px-2 py-1 rounded-full ${title.length > 250 ? "bg-red-50 text-red-500" : "bg-slate-100 text-slate-500"
-                }`}>
+              <span
+                className={`text-xs font-medium px-2 py-1 rounded-full ${
+                  title.length > 250
+                    ? "bg-red-50 text-red-500"
+                    : "bg-slate-100 text-slate-500"
+                }`}
+              >
                 {title.length}/300
               </span>
             </div>
@@ -900,19 +1130,21 @@ const CreatePostModal = ({ onClose }: { onClose: () => void }) => {
               </button>
               {showFontSizeMenu && (
                 <div className="absolute top-full left-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-10 p-2">
-                  {["12px", "14px", "16px", "18px", "20px", "24px"].map((size) => (
-                    <button
-                      key={size}
-                      onClick={() => {
-                        execCommand("fontSize", "7");
-                        document.execCommand("fontSize", false, size);
-                        setShowFontSizeMenu(false);
-                      }}
-                      className="block w-full text-left px-3 py-1.5 text-sm hover:bg-slate-100 rounded"
-                    >
-                      {size}
-                    </button>
-                  ))}
+                  {["12px", "14px", "16px", "18px", "20px", "24px"].map(
+                    (size) => (
+                      <button
+                        key={size}
+                        onClick={() => {
+                          execCommand("fontSize", "7");
+                          document.execCommand("fontSize", false, size);
+                          setShowFontSizeMenu(false);
+                        }}
+                        className="block w-full text-left px-3 py-1.5 text-sm hover:bg-slate-100 rounded"
+                      >
+                        {size}
+                      </button>
+                    )
+                  )}
                 </div>
               )}
             </div>
@@ -954,8 +1186,9 @@ const CreatePostModal = ({ onClose }: { onClose: () => void }) => {
             {/* Image Button */}
             <button
               onClick={handleToggleImageAttachment}
-              className={`p-1.5 hover:bg-slate-100 rounded text-slate-600 transition-colors ${activeAttachment === "image" ? "bg-slate-200" : ""
-                }`}
+              className={`p-1.5 hover:bg-slate-100 rounded text-slate-600 transition-colors ${
+                activeAttachment === "image" ? "bg-slate-200" : ""
+              }`}
               title="Thêm hình ảnh"
             >
               <FileImage size={18} strokeWidth={2.5} />
@@ -980,8 +1213,9 @@ const CreatePostModal = ({ onClose }: { onClose: () => void }) => {
             {/* Poll Button */}
             <button
               onClick={handleTogglePollAttachment}
-              className={`p-1.5 hover:bg-slate-100 rounded text-slate-600 transition-colors ${activeAttachment === "poll" ? "bg-slate-200" : ""
-                }`}
+              className={`p-1.5 hover:bg-slate-100 rounded text-slate-600 transition-colors ${
+                activeAttachment === "poll" ? "bg-slate-200" : ""
+              }`}
               title="Tạo thăm dò"
             >
               <BarChart2 size={18} strokeWidth={2.5} />
@@ -1024,7 +1258,9 @@ const CreatePostModal = ({ onClose }: { onClose: () => void }) => {
           {activeAttachment === "image" && (
             <div className="mt-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-slate-700">Thêm hình ảnh</h3>
+                <h3 className="text-sm font-semibold text-slate-700">
+                  Thêm hình ảnh
+                </h3>
                 <button
                   onClick={() => setActiveAttachment(null)}
                   className="text-slate-400 hover:text-slate-600"
@@ -1041,24 +1277,45 @@ const CreatePostModal = ({ onClose }: { onClose: () => void }) => {
                   onChange={handleImageUpload}
                   className="hidden"
                 />
-                <button
-                  onClick={() => imageInputRef.current?.click()}
-                  className="flex flex-col items-center gap-3 w-full"
-                >
-                  <FileImage size={48} className="text-slate-400" />
-                  <div>
-                    <p className="text-sm font-medium text-slate-700">Kéo thả hình ảnh vào đây</p>
-                    <p className="text-xs text-slate-500 mt-1">hoặc click để chọn tệp</p>
+                {isUploadingImage ? (
+                  <div className="flex flex-col items-center gap-3 w-full">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-600"></div>
+                    <p className="text-sm font-medium text-slate-700">
+                      Đang tải ảnh lên...
+                    </p>
                   </div>
-                </button>
+                ) : (
+                  <button
+                    onClick={() => imageInputRef.current?.click()}
+                    className="flex flex-col items-center gap-3 w-full"
+                  >
+                    <FileImage size={48} className="text-slate-400" />
+                    <div>
+                      <p className="text-sm font-medium text-slate-700">
+                        Kéo thả hình ảnh vào đây
+                      </p>
+                      <p className="text-xs text-slate-500 mt-1">
+                        hoặc click để chọn tệp
+                      </p>
+                    </div>
+                  </button>
+                )}
               </div>
               {attachedImages.length > 0 && (
                 <div className="mt-4 grid grid-cols-3 gap-4">
                   {attachedImages.map((img, idx) => (
                     <div key={idx} className="relative group">
-                      <img src={img} alt={`Upload ${idx + 1}`} className="w-full h-32 object-cover rounded-lg border border-slate-200" />
+                      <img
+                        src={img}
+                        alt={`Upload ${idx + 1}`}
+                        className="w-full h-32 object-cover rounded-lg border border-slate-200"
+                      />
                       <button
-                        onClick={() => setAttachedImages((prev) => prev.filter((_, i) => i !== idx))}
+                        onClick={() =>
+                          setAttachedImages((prev) =>
+                            prev.filter((_, i) => i !== idx)
+                          )
+                        }
                         className="absolute top-2 right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                         title="Xóa"
                       >
@@ -1075,7 +1332,9 @@ const CreatePostModal = ({ onClose }: { onClose: () => void }) => {
           {activeAttachment === "poll" && (
             <div className="mt-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-semibold text-slate-700">Tạo thăm dò</h3>
+                <h3 className="text-sm font-semibold text-slate-700">
+                  Tạo thăm dò
+                </h3>
                 <button
                   onClick={() => setActiveAttachment(null)}
                   className="text-slate-400 hover:text-slate-600"
@@ -1098,7 +1357,8 @@ const CreatePostModal = ({ onClose }: { onClose: () => void }) => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Các lựa chọn <span className="text-red-500">*</span> (tối thiểu 2)
+                    Các lựa chọn <span className="text-red-500">*</span> (tối
+                    thiểu 2)
                   </label>
                   <div className="space-y-2">
                     {pollOptions.map((option, idx) => (
@@ -1106,7 +1366,9 @@ const CreatePostModal = ({ onClose }: { onClose: () => void }) => {
                         <input
                           type="text"
                           value={option}
-                          onChange={(e) => handlePollOptionChange(idx, e.target.value)}
+                          onChange={(e) =>
+                            handlePollOptionChange(idx, e.target.value)
+                          }
                           placeholder={`Lựa chọn ${idx + 1}`}
                           className="flex-1 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none"
                         />
@@ -1137,7 +1399,9 @@ const CreatePostModal = ({ onClose }: { onClose: () => void }) => {
                   <input
                     type="number"
                     value={pollDuration}
-                    onChange={(e) => setPollDuration(parseInt(e.target.value) || 7)}
+                    onChange={(e) =>
+                      setPollDuration(parseInt(e.target.value) || 7)
+                    }
                     min={1}
                     max={30}
                     className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none"
@@ -1151,12 +1415,23 @@ const CreatePostModal = ({ onClose }: { onClose: () => void }) => {
           {attachedFiles.length > 0 && (
             <div className="mt-4 space-y-2">
               {attachedFiles.map((file, idx) => (
-                <div key={idx} className="flex items-center gap-2 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                <div
+                  key={idx}
+                  className="flex items-center gap-2 bg-slate-50 p-3 rounded-lg border border-slate-200"
+                >
                   <Paperclip size={16} className="text-slate-500" />
-                  <span className="text-sm text-slate-700 flex-1 truncate">{file.name}</span>
-                  <span className="text-xs text-slate-500">{(file.size / 1024).toFixed(1)} KB</span>
+                  <span className="text-sm text-slate-700 flex-1 truncate">
+                    {file.name}
+                  </span>
+                  <span className="text-xs text-slate-500">
+                    {(file.size / 1024).toFixed(1)} KB
+                  </span>
                   <button
-                    onClick={() => setAttachedFiles((prev) => prev.filter((_, i) => i !== idx))}
+                    onClick={() =>
+                      setAttachedFiles((prev) =>
+                        prev.filter((_, i) => i !== idx)
+                      )
+                    }
                     className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
                     title="Xóa"
                   >
@@ -1171,28 +1446,31 @@ const CreatePostModal = ({ onClose }: { onClose: () => void }) => {
           <div className="mt-6 pt-4 border-t border-slate-200 flex flex-wrap gap-2">
             <button
               onClick={() => setFlairs({ ...flairs, oc: !flairs.oc })}
-              className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-colors ${flairs.oc
-                ? "bg-orange-100 border-orange-300 text-orange-700"
-                : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
-                }`}
+              className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-colors ${
+                flairs.oc
+                  ? "bg-orange-100 border-orange-300 text-orange-700"
+                  : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+              }`}
             >
               + OC
             </button>
             <button
               onClick={() => setFlairs({ ...flairs, spoiler: !flairs.spoiler })}
-              className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-colors ${flairs.spoiler
-                ? "bg-yellow-100 border-yellow-300 text-yellow-700"
-                : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
-                }`}
+              className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-colors ${
+                flairs.spoiler
+                  ? "bg-yellow-100 border-yellow-300 text-yellow-700"
+                  : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+              }`}
             >
               + Spoiler
             </button>
             <button
               onClick={() => setFlairs({ ...flairs, nsfw: !flairs.nsfw })}
-              className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-colors ${flairs.nsfw
-                ? "bg-red-100 border-red-300 text-red-700"
-                : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
-                }`}
+              className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-colors ${
+                flairs.nsfw
+                  ? "bg-red-100 border-red-300 text-red-700"
+                  : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+              }`}
             >
               + NSFW
             </button>
@@ -1316,53 +1594,53 @@ const PostDetail = ({
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const currentUser = authService.getStoredUser();
+  
+  // Extract image from content for display
+  const postImage = extractFirstImage(post.content);
+  const textContent = stripHtmlTags(post.content);
 
   return (
-    <div className="animate-fadeIn max-w-4xl mx-auto">
-      {/* Main Content Only - Centered Reading Experience */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-visible mb-6">
-        <div className="p-6 md:p-8">
-          <div className="flex justify-between items-start mb-6">
-            <Button
-              variant="outline"
+    <div className="animate-fadeIn w-full max-w-2xl mx-auto">
+      {/* Facebook-style Post Card */}
+      <div className="bg-white rounded-lg shadow-md mb-4">
+        {/* Header */}
+        <div className="p-4">
+          {/* Back button and actions */}
+          <div className="flex justify-between items-center mb-4">
+            <button
               onClick={onBack}
-              className="h-9 px-3 mr-4 border-slate-300 text-slate-600"
+              className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium text-sm"
             >
-              <ArrowLeft size={16} className="mr-2" /> Quay lại
-            </Button>
-            <div className="flex items-center gap-2">
-              <Button
-                variant={isSubscribed ? "secondary" : "outline"}
+              <ArrowLeft size={18} /> Quay lại
+            </button>
+            <div className="flex items-center gap-1">
+              <button
                 onClick={() => setIsSubscribed(!isSubscribed)}
-                className={`text-xs h-8 px-3 ${isSubscribed ? "bg-slate-100 text-slate-700" : ""
-                  }`}
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  isSubscribed 
+                    ? "bg-gray-100 text-gray-700" 
+                    : "bg-blue-50 text-blue-600 hover:bg-blue-100"
+                }`}
               >
-                {isSubscribed ? (
-                  <BellRing size={14} className="mr-2 text-brand-600" />
-                ) : (
-                  <Bell size={14} className="mr-2" />
-                )}
+                {isSubscribed ? <BellRing size={16} /> : <Bell size={16} />}
                 {isSubscribed ? "Đang theo dõi" : "Theo dõi"}
-              </Button>
-              <Button
-                variant="ghost"
+              </button>
+              <button
                 onClick={() => setIsSaved(!isSaved)}
-                className={`h-8 w-8 p-0 ${isSaved ? "text-brand-600" : "text-slate-400"
-                  }`}
+                className={`p-2 rounded-md transition-colors ${
+                  isSaved ? "text-blue-600" : "text-gray-500 hover:bg-gray-100"
+                }`}
               >
-                <Bookmark
-                  size={18}
-                  fill={isSaved ? "currentColor" : "none"}
-                />
-              </Button>
-              <button className="h-8 w-8 flex items-center justify-center text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100">
+                <Bookmark size={18} fill={isSaved ? "currentColor" : "none"} />
+              </button>
+              <button className="p-2 text-gray-500 hover:bg-gray-100 rounded-md">
                 <MoreHorizontal size={18} />
               </button>
             </div>
           </div>
 
-          {/* Author Header */}
-          <div className="flex items-center gap-3 mb-6">
+          {/* Author Info - FB Style */}
+          <div className="flex items-start gap-3">
             <UserHoverCard
               name={post.authorName}
               avatar={post.authorAvatar}
@@ -1372,69 +1650,113 @@ const PostDetail = ({
               <img
                 src={post.authorAvatar}
                 alt=""
-                className="w-12 h-12 rounded-full border border-slate-100"
+                className="w-10 h-10 rounded-full cursor-pointer"
               />
             </UserHoverCard>
-            <div>
+            <div className="flex-1">
               <UserHoverCard
                 name={post.authorName}
                 avatar={post.authorAvatar}
                 dept={undefined}
                 onClick={() => onUserClick(post.authorName)}
               >
-                <h3 className="text-base font-bold text-slate-900 hover:underline cursor-pointer">
+                <h3 className="font-semibold text-gray-900 hover:underline cursor-pointer text-[15px]">
                   {post.authorName}
                 </h3>
               </UserHoverCard>
-              <p className="text-sm text-slate-500">
-                {new Date(post.createdAt).toLocaleDateString("vi-VN")}
-              </p>
+              <div className="flex items-center gap-1 text-xs text-gray-500">
+                <span>{new Date(post.createdAt).toLocaleDateString("vi-VN", {
+                  day: "numeric",
+                  month: "long",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit"
+                })}</span>
+                <span>·</span>
+                <Eye size={12} />
+                <span>{post.viewCount || 0}</span>
+              </div>
             </div>
           </div>
+        </div>
 
-          <h1 className="text-3xl font-bold text-slate-900 mb-4 leading-tight">
+        {/* Content */}
+        <div className="px-4 pb-3">
+          {/* Title */}
+          <h1 className="text-xl font-bold text-gray-900 mb-2">
             {post.title}
           </h1>
+          
+          {/* Tags */}
+          {post.tags && post.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1 mb-3">
+              {post.tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="text-blue-600 text-sm hover:underline cursor-pointer"
+                >
+                  #{tag}
+                </span>
+              ))}
+            </div>
+          )}
 
-          {post.tags.map((tag) => (
-            <span
-              key={tag}
-              className="inline-block bg-slate-100 text-slate-600 text-xs font-medium px-2.5 py-1 rounded-md mr-2 mb-6"
-            >
-              #{tag}
-            </span>
-          ))}
+          {/* Text Content */}
+          {textContent && (
+            <p className="text-gray-800 text-[15px] leading-relaxed whitespace-pre-wrap mb-3">
+              {textContent}
+            </p>
+          )}
+        </div>
 
-          <div className="prose prose-slate max-w-none text-slate-800 leading-relaxed mb-8">
-            {post.content}
+        {/* Image - FB Style (full width) */}
+        {postImage && (
+          <div className="w-full">
+            <img
+              src={postImage}
+              alt=""
+              className="w-full max-h-[600px] object-contain bg-gray-100"
+            />
           </div>
+        )}
 
-          {/* TODO: Implement poll display */}
+        {/* Reaction Stats Bar */}
+        <div className="px-4 py-2 flex items-center justify-between text-gray-500 text-sm border-b border-gray-100">
+          <div className="flex items-center gap-1">
+            <div className="flex -space-x-1">
+              <span className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs">👍</span>
+              <span className="w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs">❤️</span>
+            </div>
+            <span className="ml-1">{post.upvoteCount || 0}</span>
+          </div>
+          <div className="flex items-center gap-4">
+            <span>{post.commentCount || 0} bình luận</span>
+            <span>0 chia sẻ</span>
+          </div>
+        </div>
 
-          {/* Footer Actions */}
-          <PostActions
-            upvotes={post.upvoteCount || 0}
-            commentCount={post.commentCount}
-            isLiked={false}
-            onLike={() => { }}
-            onComment={() => { }}
-            onShare={() => { }}
+        {/* Action Buttons - FB Style */}
+        <div className="px-2 py-1 flex border-b border-gray-100">
+          <button className="flex-1 flex items-center justify-center gap-2 py-2.5 text-gray-600 hover:bg-gray-100 rounded-md transition-colors font-medium text-sm">
+            <ThumbsUp size={18} /> Thích
+          </button>
+          <button className="flex-1 flex items-center justify-center gap-2 py-2.5 text-gray-600 hover:bg-gray-100 rounded-md transition-colors font-medium text-sm">
+            <MessageSquare size={18} /> Bình luận
+          </button>
+          <button className="flex-1 flex items-center justify-center gap-2 py-2.5 text-gray-600 hover:bg-gray-100 rounded-md transition-colors font-medium text-sm">
+            <Share2 size={18} /> Chia sẻ
+          </button>
+        </div>
+
+        {/* Comments Section */}
+        <div className="p-4">
+          <CommentThread
+            type="forum_post"
+            id={post.id}
+            currentUserId={currentUser?.id}
+            canComment={true}
           />
         </div>
-      </div>
-
-      {/* Comment Section */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 md:p-8">
-        <h3 className="font-bold text-slate-900 mb-6 flex items-center gap-2">
-          <MessageSquare size={20} /> Thảo luận ({post.commentCount})
-        </h3>
-
-        <CommentThread
-          type="forum_post"
-          id={post.id}
-          currentUserId={currentUser?.id}
-          canComment={true}
-        />
       </div>
     </div>
   );
@@ -1457,7 +1779,9 @@ export const ForumModule = ({
   const [profileTargetId, setProfileTargetId] = useState<string>("me");
   const [posts, setPosts] = useState<ForumPost[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [categories, setCategories] = useState<Array<{ id: string; name: string }>>([]);
+  const [categories, setCategories] = useState<
+    Array<{ id: string; name: string }>
+  >([]);
   const [hotTopics, setHotTopics] = useState<ForumPost[]>([]);
   const [userStats, setUserStats] = useState<{
     postCount: number;
@@ -1465,7 +1789,12 @@ export const ForumModule = ({
     karmaPoints: number;
     joinDate: Date | null;
   } | null>(null);
-  const [postReactions, setPostReactions] = useState<Record<string, { reactions: Record<string, number>; userReaction: string | null }>>({});
+  const [postReactions, setPostReactions] = useState<
+    Record<
+      string,
+      { reactions: Record<string, number>; userReaction: string | null }
+    >
+  >({});
 
   const currentUser = authService.getStoredUser();
 
@@ -1500,15 +1829,28 @@ export const ForumModule = ({
         }
 
         // Load reactions for each post
-        const reactionsMap: Record<string, { reactions: Record<string, number>; userReaction: string | null }> = {};
+        const reactionsMap: Record<
+          string,
+          { reactions: Record<string, number>; userReaction: string | null }
+        > = {};
         for (const post of postsData.slice(0, 20)) {
           try {
-            const reactionData = await forumService.getReactions("post", post.id);
+            const reactionData = await forumService.getReactions(
+              "post",
+              post.id
+            );
             reactionsMap[post.id] = reactionData;
           } catch (e) {
-            reactionsMap[post.id] = { 
-              reactions: { like: 0, love: 0, laugh: 0, wow: 0, sad: 0, angry: 0 },
-              userReaction: null 
+            reactionsMap[post.id] = {
+              reactions: {
+                like: 0,
+                love: 0,
+                laugh: 0,
+                wow: 0,
+                sad: 0,
+                angry: 0,
+              },
+              userReaction: null,
             };
           }
         }
@@ -1550,7 +1892,10 @@ export const ForumModule = ({
     filteredPosts = [];
   } else if (feedSort === "hot") {
     filteredPosts = [...filteredPosts].sort(
-      (a, b) => (b.upvoteCount || 0) + (b.commentCount || 0) - ((a.upvoteCount || 0) + (a.commentCount || 0))
+      (a, b) =>
+        (b.upvoteCount || 0) +
+        (b.commentCount || 0) -
+        ((a.upvoteCount || 0) + (a.commentCount || 0))
     );
   }
 
@@ -1571,9 +1916,9 @@ export const ForumModule = ({
       )}
 
       {view === "feed" ? (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full max-w-7xl mx-auto">
           {/* Left Sidebar: Categories & Menu */}
-          <div className="lg:col-span-3 space-y-6">
+          <div className="lg:col-span-2 space-y-6 hidden lg:block">
             <Button
               className="w-full justify-start shadow-md shadow-brand-200"
               onClick={() => setShowCreateModal(true)}
@@ -1586,28 +1931,31 @@ export const ForumModule = ({
               <div className="space-y-1">
                 <button
                   onClick={() => setFeedSort("new")}
-                  className={`w-full flex items-center px-3 py-2 rounded-lg text-sm transition-colors ${feedSort === "new"
-                    ? "bg-slate-100 text-brand-600 font-bold"
-                    : "text-slate-600 hover:bg-slate-50"
-                    }`}
+                  className={`w-full flex items-center px-3 py-2 rounded-lg text-sm transition-colors ${
+                    feedSort === "new"
+                      ? "bg-slate-100 text-brand-600 font-bold"
+                      : "text-slate-600 hover:bg-slate-50"
+                  }`}
                 >
                   <Clock size={18} className="mr-3" /> Mới nhất
                 </button>
                 <button
                   onClick={() => setFeedSort("hot")}
-                  className={`w-full flex items-center px-3 py-2 rounded-lg text-sm transition-colors ${feedSort === "hot"
-                    ? "bg-slate-100 text-orange-600 font-bold"
-                    : "text-slate-600 hover:bg-slate-50"
-                    }`}
+                  className={`w-full flex items-center px-3 py-2 rounded-lg text-sm transition-colors ${
+                    feedSort === "hot"
+                      ? "bg-slate-100 text-orange-600 font-bold"
+                      : "text-slate-600 hover:bg-slate-50"
+                  }`}
                 >
                   <Flame size={18} className="mr-3" /> Nổi bật (Trending)
                 </button>
                 <button
                   onClick={() => setFeedSort("saved")}
-                  className={`w-full flex items-center px-3 py-2 rounded-lg text-sm transition-colors ${feedSort === "saved"
-                    ? "bg-slate-100 text-blue-600 font-bold"
-                    : "text-slate-600 hover:bg-slate-50"
-                    }`}
+                  className={`w-full flex items-center px-3 py-2 rounded-lg text-sm transition-colors ${
+                    feedSort === "saved"
+                      ? "bg-slate-100 text-blue-600 font-bold"
+                      : "text-slate-600 hover:bg-slate-50"
+                  }`}
                 >
                   <Bookmark size={18} className="mr-3" /> Đã lưu
                 </button>
@@ -1619,10 +1967,11 @@ export const ForumModule = ({
               <div className="space-y-1">
                 <button
                   onClick={() => setActiveCategory("all")}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors ${activeCategory === "all"
-                    ? "bg-slate-100 text-brand-600 font-bold"
-                    : "text-slate-600 hover:bg-slate-50"
-                    }`}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors ${
+                    activeCategory === "all"
+                      ? "bg-slate-100 text-brand-600 font-bold"
+                      : "text-slate-600 hover:bg-slate-50"
+                  }`}
                 >
                   <span className="flex items-center">
                     <MessageSquare size={18} className="mr-3" /> Tất cả
@@ -1632,10 +1981,11 @@ export const ForumModule = ({
                   <button
                     key={cat.id}
                     onClick={() => setActiveCategory(cat.id)}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors ${activeCategory === cat.id
-                      ? "bg-slate-100 text-brand-600 font-bold"
-                      : "text-slate-600 hover:bg-slate-50"
-                      }`}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors ${
+                      activeCategory === cat.id
+                        ? "bg-slate-100 text-brand-600 font-bold"
+                        : "text-slate-600 hover:bg-slate-50"
+                    }`}
                   >
                     <span className="flex items-center">
                       <span className={`mr-3 ${cat.color.split(" ")[1]}`}>
@@ -1650,7 +2000,7 @@ export const ForumModule = ({
           </div>
 
           {/* Center: Feed */}
-          <div className="lg:col-span-6 space-y-4">
+          <div className="lg:col-span-7 space-y-4">
             <div className="flex items-center gap-4 bg-white p-2 rounded-xl shadow-sm border border-slate-200">
               <Search size={20} className="text-slate-400 ml-2" />
               <input
@@ -1669,56 +2019,75 @@ export const ForumModule = ({
               </div>
             ) : filteredPosts.length === 0 ? (
               <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-12 text-center">
-                <p className="text-slate-500">Chưa có bài viết nào được duyệt.</p>
+                <p className="text-slate-500">
+                  Chưa có bài viết nào được duyệt.
+                </p>
               </div>
             ) : (
               filteredPosts.map((post) => (
                 <div
                   key={post.id}
                   onClick={() => handlePostClick(post)}
-                  className="bg-white rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow cursor-pointer group flex flex-col"
+                  className="bg-white rounded-lg shadow-sm border border-slate-200 hover:shadow-md transition-shadow cursor-pointer group"
                 >
-                  {/* Content */}
-                  <div className="p-5 flex-1">
-                    <div className="flex justify-between items-start mb-2">
-                      <div className="flex items-center gap-2">
-                        {post.isPinned && (
-                          <Pin
-                            size={14}
-                            className="text-brand-600 rotate-45"
-                            fill="currentColor"
-                          />
-                        )}
-                        <span className="text-xs font-bold text-slate-500 hover:underline">
-                          {post.categoryName || "Chưa phân loại"}
-                        </span>
-                        <span className="text-xs text-slate-400 flex items-center gap-1">
-                          • Đăng bởi
+                  {/* Header - FB Style */}
+                  <div className="p-4 pb-0">
+                    <div className="flex items-center gap-3 mb-3">
+                      <img
+                        src={
+                          post.authorAvatar ||
+                          `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                            post.authorName
+                          )}&background=random`
+                        }
+                        alt={post.authorName}
+                        className="w-10 h-10 rounded-full object-cover"
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
                           <UserHoverCard
                             name={post.authorName}
                             avatar={post.authorAvatar}
                             dept={undefined}
                             onClick={() => handleUserClick(post.authorName)}
                           >
-                            <span className="font-medium text-slate-600 hover:text-brand-600 hover:underline">
+                            <span className="font-semibold text-slate-900 hover:underline">
                               {post.authorName}
                             </span>
                           </UserHoverCard>
-                          • {new Date(post.createdAt).toLocaleDateString("vi-VN")}
-                        </span>
+                          {post.isPinned && (
+                            <Pin
+                              size={14}
+                              className="text-brand-600 rotate-45"
+                              fill="currentColor"
+                            />
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1 text-xs text-slate-500">
+                          <span>
+                            {new Date(post.createdAt).toLocaleDateString(
+                              "vi-VN"
+                            )}
+                          </span>
+                          <span>•</span>
+                          <span className="text-brand-600 font-medium">
+                            {post.categoryName || "Chưa phân loại"}
+                          </span>
+                        </div>
                       </div>
                     </div>
 
-                    <h2 className="text-lg font-bold text-slate-900 mb-2 leading-snug group-hover:text-brand-600 transition-colors">
+                    {/* Title */}
+                    <h2 className="text-[17px] font-bold text-slate-900 mb-2 leading-snug group-hover:text-brand-600 transition-colors">
                       {post.title}
                     </h2>
 
                     {post.tags && post.tags.length > 0 && (
-                      <div className="flex gap-2 mb-3">
+                      <div className="flex flex-wrap gap-1 mb-2">
                         {post.tags.map((tag) => (
                           <span
                             key={tag}
-                            className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full"
+                            className="text-xs text-brand-600 hover:underline"
                           >
                             #{tag}
                           </span>
@@ -1726,24 +2095,53 @@ export const ForumModule = ({
                       </div>
                     )}
 
-                    {/* Preview Content (truncated) */}
-                    <p className="text-slate-600 text-sm mb-4 line-clamp-3">
-                      {post.content}
-                    </p>
+                    {/* Content Preview - FB Style */}
+                    {stripHtmlTags(post.content) && (
+                      <p className="text-slate-800 text-[15px] leading-relaxed">
+                        {stripHtmlTags(post.content)}
+                      </p>
+                    )}
+                  </div>
 
-                    {/* TODO: Implement poll display */}
+                  {/* Image Preview - Full Width like FB */}
+                  {extractFirstImage(post.content) && (
+                    <div className="mt-2">
+                      <img
+                        src={extractFirstImage(post.content)!}
+                        alt=""
+                        className="w-full max-h-[500px] object-cover"
+                      />
+                    </div>
+                  )}
 
+                  {/* Actions - FB Style */}
+                  <div className="px-4 py-2 border-t border-slate-100">
                     <PostActions
                       postId={post.id}
-                      reactions={postReactions[post.id]?.reactions || { like: 0, love: 0, laugh: 0, wow: 0, sad: 0, angry: 0 }}
-                      userReaction={postReactions[post.id]?.userReaction || null}
+                      reactions={
+                        postReactions[post.id]?.reactions || {
+                          like: 0,
+                          love: 0,
+                          laugh: 0,
+                          wow: 0,
+                          sad: 0,
+                          angry: 0,
+                        }
+                      }
+                      userReaction={
+                        postReactions[post.id]?.userReaction || null
+                      }
                       commentCount={post.commentCount}
-                      onComment={(e) => { e.stopPropagation(); }}
-                      onShare={(e) => { e.stopPropagation(); }}
+                      onComment={(e) => {
+                        e.stopPropagation();
+                      }}
+                      onShare={(e) => {
+                        e.stopPropagation();
+                      }}
                       onReactionChange={(reactions, userReaction) => {
-                        setPostReactions(prev => ({
+                        setPostReactions((prev) => ({
                           ...prev,
-                          [post.id]: { reactions, userReaction }
+                          [post.id]: { reactions, userReaction },
                         }));
                       }}
                     />
@@ -1754,7 +2152,7 @@ export const ForumModule = ({
           </div>
 
           {/* Right Sidebar: Profile & Trending */}
-          <div className="lg:col-span-3 space-y-6">
+          <div className="lg:col-span-3 space-y-6 hidden lg:block">
             {/* User Karma Card */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
               <div className="h-16 bg-gradient-to-r from-brand-600 to-brand-500"></div>
@@ -1764,14 +2162,18 @@ export const ForumModule = ({
                   alt={currentUser?.full_name || "User"}
                   className="w-16 h-16 rounded-full border-4 border-white mb-2 object-cover bg-white"
                 />
-                <h3 className="font-bold text-slate-900">{currentUser?.full_name || "Người dùng"}</h3>
-                <p className="text-xs text-slate-500 mb-4">{currentUser?.position || "Nhân viên"}</p>
+                <h3 className="font-bold text-slate-900">
+                  {currentUser?.full_name || "Người dùng"}
+                </h3>
+                <p className="text-xs text-slate-500 mb-4">
+                  {currentUser?.position || "Nhân viên"}
+                </p>
 
                 <div className="grid grid-cols-2 gap-2 text-center border-t border-slate-100 pt-3">
                   <div>
                     <div className="font-bold text-lg text-brand-600">
-                      {userStats?.karmaPoints 
-                        ? userStats.karmaPoints >= 1000 
+                      {userStats?.karmaPoints
+                        ? userStats.karmaPoints >= 1000
                           ? `${(userStats.karmaPoints / 1000).toFixed(1)}k`
                           : userStats.karmaPoints
                         : "0"}
@@ -1783,8 +2185,11 @@ export const ForumModule = ({
                   </div>
                   <div>
                     <div className="font-bold text-lg text-slate-900">
-                      {userStats?.joinDate 
-                        ? new Date(userStats.joinDate).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" })
+                      {userStats?.joinDate
+                        ? new Date(userStats.joinDate).toLocaleDateString(
+                            "vi-VN",
+                            { day: "2-digit", month: "2-digit" }
+                          )
                         : "--/--"}
                     </div>
                     <div className="text-xs text-slate-500 flex items-center justify-center gap-1">
@@ -1793,7 +2198,7 @@ export const ForumModule = ({
                     </div>
                   </div>
                 </div>
-                
+
                 {/* Stats Row */}
                 <div className="flex items-center justify-center gap-4 mt-3 text-xs text-slate-500">
                   <span>{userStats?.postCount || 0} bài viết</span>
@@ -1826,7 +2231,9 @@ export const ForumModule = ({
                 Chủ đề nóng 24h
               </h3>
               {hotTopics.length === 0 ? (
-                <p className="text-sm text-slate-400 text-center py-4">Chưa có chủ đề nóng</p>
+                <p className="text-sm text-slate-400 text-center py-4">
+                  Chưa có chủ đề nóng
+                </p>
               ) : (
                 <ul className="space-y-4">
                   {hotTopics.map((p, idx) => (
