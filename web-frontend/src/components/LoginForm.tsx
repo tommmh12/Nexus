@@ -115,6 +115,15 @@ export const LoginForm: React.FC<LoginFormProps> = ({
 
   return (
     <div className="w-full max-w-md mx-auto animate-fadeIn">
+      {/* Back to News Button */}
+      <button
+        onClick={() => window.location.href = "/"}
+        className="text-sm text-slate-500 hover:text-brand-600 flex items-center gap-1 mb-6 transition-colors group"
+      >
+        <ArrowRight size={16} className="rotate-180 group-hover:-translate-x-1 transition-transform" />
+        Quay lại trang Bản tin
+      </button>
+      
       {/* Header */}
       <div className="mb-10 text-center lg:text-left">
         <div className="flex items-center justify-center lg:justify-start gap-2 mb-8">
@@ -287,6 +296,25 @@ export const LoginForm: React.FC<LoginFormProps> = ({
           </a>{" "}
           (Ext: 101)
         </span>
+      </div>
+      
+      {/* Contact Info for Support */}
+      <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+        <div className="flex items-start gap-3">
+          <div className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
+            <Mail size={16} className="text-amber-600" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-amber-800 mb-1">Chưa có tài khoản?</p>
+            <p className="text-xs text-amber-700 leading-relaxed">
+              Vui lòng liên hệ{" "}
+              <a href="mailto:hailechi97@gmail.com" className="font-semibold text-amber-900 hover:underline">
+                hailechi97@gmail.com
+              </a>{" "}
+              để được hỗ trợ cấp tài khoản cũng như đến và làm việc cùng chúng tôi.
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );
