@@ -12,7 +12,10 @@ router.get("/public/:articleId/comments", NewsController.getComments);
 router.post("/public/:articleId/comments", NewsController.createComment);
 
 // Check department access (public - for frontend menu check)
-router.get("/department-access/check/:departmentId", NewsController.checkDepartmentAccess);
+router.get(
+  "/department-access/check/:departmentId",
+  NewsController.checkDepartmentAccess
+);
 
 // Admin/Manager routes (require auth)
 router.use(authMiddleware);
@@ -21,7 +24,10 @@ router.use(authMiddleware);
 router.get("/department-access", NewsController.getDepartmentsWithAccess);
 router.get("/departments", NewsController.getAllDepartments);
 router.post("/department-access", NewsController.addDepartmentAccess);
-router.delete("/department-access/:departmentId", NewsController.removeDepartmentAccess);
+router.delete(
+  "/department-access/:departmentId",
+  NewsController.removeDepartmentAccess
+);
 
 // Comments moderation
 router.post("/comments/:commentId/moderate", NewsController.moderateComment);
@@ -38,4 +44,3 @@ router.get("/:articleId/comments", NewsController.getComments);
 router.post("/:articleId/comments", NewsController.createComment);
 
 export default router;
-

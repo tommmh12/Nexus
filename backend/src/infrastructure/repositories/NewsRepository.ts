@@ -189,7 +189,10 @@ export class NewsRepository {
 
     // Update tags if provided
     if (article.tags !== undefined) {
-      await this.db.query(`DELETE FROM news_article_tags WHERE article_id = ?`, [id]);
+      await this.db.query(
+        `DELETE FROM news_article_tags WHERE article_id = ?`,
+        [id]
+      );
       for (const tag of article.tags) {
         await this.db.query(
           `INSERT INTO news_article_tags (id, article_id, tag_name) VALUES (?, ?, ?)`,
@@ -213,14 +216,29 @@ export class NewsRepository {
     );
   }
 
-  async recordView(articleId: string, userId?: string, userIp?: string, userAgent?: string): Promise<void> {
+  async recordView(
+    articleId: string,
+    userId?: string,
+    userIp?: string,
+    userAgent?: string
+  ): Promise<void> {
     await this.db.query(
       `INSERT INTO news_views (id, article_id, user_id, user_ip, user_agent) VALUES (?, ?, ?, ?, ?)`,
-      [crypto.randomUUID(), articleId, userId || null, userIp || null, userAgent || null]
+      [
+        crypto.randomUUID(),
+        articleId,
+        userId || null,
+        userIp || null,
+        userAgent || null,
+      ]
     );
   }
 
-  async toggleLike(articleId: string, userId?: string, userIp?: string): Promise<{ liked: boolean; likeCount: number }> {
+  async toggleLike(
+    articleId: string,
+    userId?: string,
+    userIp?: string
+  ): Promise<{ liked: boolean; likeCount: number }> {
     // Check if already liked
     const [existing] = await this.db.query<RowDataPacket[]>(
       `SELECT id FROM news_likes WHERE article_id = ? AND (user_id = ? OR user_ip = ?)`,
@@ -295,7 +313,12 @@ export class NewsRepository {
     return this.mapRowToComment(rows[0]);
   }
 
-  async moderateComment(commentId: string, status: "Approved" | "Rejected", moderatedBy: string, notes?: string): Promise<void> {
+  async moderateComment(
+    commentId: string,
+    status: "Approved" | "Rejected",
+    moderatedBy: string,
+    notes?: string
+  ): Promise<void> {
     await this.db.query(
       `UPDATE news_comments SET moderation_status = ?, moderated_by = ?, moderated_at = NOW() WHERE id = ?`,
       [status, moderatedBy, commentId]
@@ -353,14 +376,16 @@ export class NewsRepository {
 
   // ==================== Department Access Management ====================
 
-  async getDepartmentsWithAccess(): Promise<Array<{
-    id: string;
-    departmentId: string;
-    departmentName: string;
-    departmentCode: string;
-    createdAt: Date;
-    createdBy: string | null;
-  }>> {
+  async getDepartmentsWithAccess(): Promise<
+    Array<{
+      id: string;
+      departmentId: string;
+      departmentName: string;
+      departmentCode: string;
+      createdAt: Date;
+      createdBy: string | null;
+    }>
+  > {
     const [rows] = await this.db.query<RowDataPacket[]>(`
       SELECT 
         nda.id,
@@ -373,17 +398,20 @@ export class NewsRepository {
       JOIN departments d ON nda.department_id = d.id
       ORDER BY d.name ASC
     `);
-    return rows.map(row => ({
+    return rows.map((row) => ({
       id: row.id,
       departmentId: row.department_id,
       departmentName: row.department_name,
       departmentCode: row.department_code,
       createdAt: new Date(row.created_at),
-      createdBy: row.created_by
+      createdBy: row.created_by,
     }));
   }
 
-  async addDepartmentAccess(departmentId: string, createdBy: string): Promise<void> {
+  async addDepartmentAccess(
+    departmentId: string,
+    createdBy: string
+  ): Promise<void> {
     const id = crypto.randomUUID();
     await this.db.query(
       `INSERT IGNORE INTO news_department_access (id, department_id, created_by) VALUES (?, ?, ?)`,
@@ -406,22 +434,23 @@ export class NewsRepository {
     return rows.length > 0;
   }
 
-  async getAllDepartments(): Promise<Array<{
-    id: string;
-    name: string;
-    departmentCode: string;
-  }>> {
+  async getAllDepartments(): Promise<
+    Array<{
+      id: string;
+      name: string;
+      departmentCode: string;
+    }>
+  > {
     const [rows] = await this.db.query<RowDataPacket[]>(`
       SELECT id, name, department_code
       FROM departments
       WHERE deleted_at IS NULL
       ORDER BY name ASC
     `);
-    return rows.map(row => ({
+    return rows.map((row) => ({
       id: row.id,
       name: row.name,
-      departmentCode: row.department_code
+      departmentCode: row.department_code,
     }));
   }
 }
-

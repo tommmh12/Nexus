@@ -61,7 +61,9 @@ export const newsService = {
     return response.data;
   },
 
-  toggleLike: async (id: string): Promise<{ liked: boolean; likeCount: number }> => {
+  toggleLike: async (
+    id: string
+  ): Promise<{ liked: boolean; likeCount: number }> => {
     const response = await axios.post(
       `${API_URL}/news/public/${id}/like`,
       {},
@@ -71,11 +73,21 @@ export const newsService = {
   },
 
   getComments: async (articleId: string): Promise<NewsComment[]> => {
-    const response = await axios.get(`${API_URL}/news/public/${articleId}/comments`);
+    const response = await axios.get(
+      `${API_URL}/news/public/${articleId}/comments`
+    );
     return response.data;
   },
 
-  createComment: async (articleId: string, comment: { content: string; authorName: string; authorEmail?: string; parentId?: string }): Promise<NewsComment> => {
+  createComment: async (
+    articleId: string,
+    comment: {
+      content: string;
+      authorName: string;
+      authorEmail?: string;
+      parentId?: string;
+    }
+  ): Promise<NewsComment> => {
     const response = await axios.post(
       `${API_URL}/news/public/${articleId}/comments`,
       comment,
@@ -107,25 +119,30 @@ export const newsService = {
     return response.data;
   },
 
-  createArticle: async (article: Partial<NewsArticle>): Promise<NewsArticle> => {
-    const response = await axios.post(
-      `${API_URL}/news`,
-      article,
-      { headers: getAuthHeader() }
-    );
+  createArticle: async (
+    article: Partial<NewsArticle>
+  ): Promise<NewsArticle> => {
+    const response = await axios.post(`${API_URL}/news`, article, {
+      headers: getAuthHeader(),
+    });
     return response.data;
   },
 
-  updateArticle: async (id: string, article: Partial<NewsArticle>): Promise<NewsArticle> => {
-    const response = await axios.put(
-      `${API_URL}/news/${id}`,
-      article,
-      { headers: getAuthHeader() }
-    );
+  updateArticle: async (
+    id: string,
+    article: Partial<NewsArticle>
+  ): Promise<NewsArticle> => {
+    const response = await axios.put(`${API_URL}/news/${id}`, article, {
+      headers: getAuthHeader(),
+    });
     return response.data;
   },
 
-  moderateArticle: async (id: string, status: "Approved" | "Rejected", notes?: string): Promise<NewsArticle> => {
+  moderateArticle: async (
+    id: string,
+    status: "Approved" | "Rejected",
+    notes?: string
+  ): Promise<NewsArticle> => {
     const response = await axios.post(
       `${API_URL}/news/${id}/moderate`,
       { status, notes },
@@ -140,7 +157,11 @@ export const newsService = {
     });
   },
 
-  moderateComment: async (commentId: string, status: "Approved" | "Rejected", notes?: string): Promise<void> => {
+  moderateComment: async (
+    commentId: string,
+    status: "Approved" | "Rejected",
+    notes?: string
+  ): Promise<void> => {
     await axios.post(
       `${API_URL}/news/comments/${commentId}/moderate`,
       { status, notes },
@@ -149,25 +170,29 @@ export const newsService = {
   },
 
   // Department Access Management
-  getDepartmentsWithAccess: async (): Promise<Array<{
-    id: string;
-    departmentId: string;
-    departmentName: string;
-    departmentCode: string;
-    createdAt: Date;
-    createdBy: string | null;
-  }>> => {
+  getDepartmentsWithAccess: async (): Promise<
+    Array<{
+      id: string;
+      departmentId: string;
+      departmentName: string;
+      departmentCode: string;
+      createdAt: Date;
+      createdBy: string | null;
+    }>
+  > => {
     const response = await axios.get(`${API_URL}/news/department-access`, {
       headers: getAuthHeader(),
     });
     return response.data;
   },
 
-  getAllDepartments: async (): Promise<Array<{
-    id: string;
-    name: string;
-    departmentCode: string;
-  }>> => {
+  getAllDepartments: async (): Promise<
+    Array<{
+      id: string;
+      name: string;
+      departmentCode: string;
+    }>
+  > => {
     const response = await axios.get(`${API_URL}/news/departments`, {
       headers: getAuthHeader(),
     });
@@ -189,8 +214,9 @@ export const newsService = {
   },
 
   checkDepartmentAccess: async (departmentId: string): Promise<boolean> => {
-    const response = await axios.get(`${API_URL}/news/department-access/check/${departmentId}`);
+    const response = await axios.get(
+      `${API_URL}/news/department-access/check/${departmentId}`
+    );
     return response.data.hasAccess;
   },
 };
-

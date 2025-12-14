@@ -1,0 +1,5 @@
+{
+  "name": "Nexus Admin Portal",
+  "description": "High-fidelity admin dashboard for the Nexus Internal Portal system, featuring user management, analytics, and system oversight.",
+  "requestFramePermissions": []
+}

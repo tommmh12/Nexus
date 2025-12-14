@@ -2,7 +2,7 @@ import { dbPool } from "./src/infrastructure/database/connection.js";
 
 async function createTable() {
   console.log("🔧 Tạo bảng news_department_access...");
-  
+
   try {
     await dbPool.query(`
       CREATE TABLE IF NOT EXISTS news_department_access (
@@ -16,7 +16,7 @@ async function createTable() {
     `);
     console.log("✅ Đã tạo bảng news_department_access");
   } catch (error: any) {
-    if (error.code === 'ER_TABLE_EXISTS_ERROR') {
+    if (error.code === "ER_TABLE_EXISTS_ERROR") {
       console.log("ℹ️ Bảng đã tồn tại");
     } else {
       console.error("❌ Lỗi:", error.message);

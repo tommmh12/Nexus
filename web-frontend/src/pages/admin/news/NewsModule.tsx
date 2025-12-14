@@ -499,8 +499,12 @@ interface Department {
   departmentCode: string;
 }
 
-export const DepartmentAccessManager = ({ onClose }: DepartmentAccessManagerProps) => {
-  const [departmentsWithAccess, setDepartmentsWithAccess] = useState<DepartmentWithAccess[]>([]);
+export const DepartmentAccessManager = ({
+  onClose,
+}: DepartmentAccessManagerProps) => {
+  const [departmentsWithAccess, setDepartmentsWithAccess] = useState<
+    DepartmentWithAccess[]
+  >([]);
   const [allDepartments, setAllDepartments] = useState<Department[]>([]);
   const [selectedDeptId, setSelectedDeptId] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -545,7 +549,8 @@ export const DepartmentAccessManager = ({ onClose }: DepartmentAccessManagerProp
   };
 
   const handleRemoveDepartment = async (departmentId: string) => {
-    if (!window.confirm("Bạn có chắc muốn xóa phòng ban này khỏi danh sách?")) return;
+    if (!window.confirm("Bạn có chắc muốn xóa phòng ban này khỏi danh sách?"))
+      return;
 
     try {
       setIsSaving(true);
@@ -562,7 +567,8 @@ export const DepartmentAccessManager = ({ onClose }: DepartmentAccessManagerProp
 
   // Filter out departments that already have access
   const availableDepartments = allDepartments.filter(
-    (dept) => !departmentsWithAccess.some((access) => access.departmentId === dept.id)
+    (dept) =>
+      !departmentsWithAccess.some((access) => access.departmentId === dept.id)
   );
 
   return (
@@ -583,7 +589,11 @@ export const DepartmentAccessManager = ({ onClose }: DepartmentAccessManagerProp
               </p>
             </div>
           </div>
-          <Button variant="ghost" onClick={onClose} className="hover:bg-slate-100">
+          <Button
+            variant="ghost"
+            onClick={onClose}
+            className="hover:bg-slate-100"
+          >
             <X size={20} className="text-slate-500" />
           </Button>
         </div>
@@ -631,7 +641,10 @@ export const DepartmentAccessManager = ({ onClose }: DepartmentAccessManagerProp
                 </h3>
                 {departmentsWithAccess.length === 0 ? (
                   <div className="text-center py-8 bg-slate-50 rounded-lg border border-dashed border-slate-200">
-                    <Building2 size={32} className="mx-auto text-slate-300 mb-2" />
+                    <Building2
+                      size={32}
+                      className="mx-auto text-slate-300 mb-2"
+                    />
                     <p className="text-slate-500 text-sm">
                       Chưa có phòng ban nào được chọn
                     </p>
@@ -659,7 +672,9 @@ export const DepartmentAccessManager = ({ onClose }: DepartmentAccessManagerProp
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleRemoveDepartment(dept.departmentId)}
+                          onClick={() =>
+                            handleRemoveDepartment(dept.departmentId)
+                          }
                           disabled={isSaving}
                           className="text-red-500 hover:text-red-700 hover:bg-red-50"
                         >

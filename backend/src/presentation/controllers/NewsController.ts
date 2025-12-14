@@ -7,10 +7,12 @@ const newsRepository = new NewsRepository();
 const newsService = new NewsService(newsRepository);
 
 const getIpAddress = (req: Request): string => {
-  return (req.headers["x-forwarded-for"] as string)?.split(",")[0] || 
-         (req.headers["x-real-ip"] as string) || 
-         req.socket.remoteAddress || 
-         "unknown";
+  return (
+    (req.headers["x-forwarded-for"] as string)?.split(",")[0] ||
+    (req.headers["x-real-ip"] as string) ||
+    req.socket.remoteAddress ||
+    "unknown"
+  );
 };
 
 // Public endpoints (no auth required for viewing)
@@ -37,13 +39,23 @@ export const getPublicArticleById = async (req: Request, res: Response) => {
     const ipAddress = getIpAddress(req);
     const userAgent = req.headers["user-agent"];
 
-    const article = await newsService.getArticleById(id, true, userId, ipAddress, userAgent);
+    const article = await newsService.getArticleById(
+      id,
+      true,
+      userId,
+      ipAddress,
+      userAgent
+    );
     if (!article) {
       return res.status(404).json({ error: "Article not found" });
     }
 
     // Only return if public and approved
-    if (!article.isPublic || article.moderationStatus !== "Approved" || article.status !== "Published") {
+    if (
+      !article.isPublic ||
+      article.moderationStatus !== "Approved" ||
+      article.status !== "Published"
+    ) {
       return res.status(404).json({ error: "Article not found" });
     }
 
@@ -60,7 +72,10 @@ export const getAllArticles = async (req: Request, res: Response) => {
     const articles = await newsService.getAllArticles({
       status: req.query.status as string,
       moderationStatus: req.query.moderationStatus as string,
-      isPublic: req.query.isPublic !== undefined ? req.query.isPublic === "true" : undefined,
+      isPublic:
+        req.query.isPublic !== undefined
+          ? req.query.isPublic === "true"
+          : undefined,
       category: req.query.category as string,
       limit: parseInt(req.query.limit as string) || 100,
       offset: parseInt(req.query.offset as string) || 0,
@@ -173,12 +188,19 @@ export const moderateArticle = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Invalid moderation status" });
     }
 
-    const article = await newsService.moderateArticle(id, status, userId, notes);
+    const article = await newsService.moderateArticle(
+      id,
+      status,
+      userId,
+      notes
+    );
 
     await auditLogger.log({
       userId,
       type: "content_moderation",
-      content: `${status === "Approved" ? "Duyệt" : "Từ chối"} bài viết bản tin: ${article.title}`,
+      content: `${
+        status === "Approved" ? "Duyệt" : "Từ chối"
+      } bài viết bản tin: ${article.title}`,
       target: article.title,
       ipAddress,
       meta: {
@@ -416,4 +438,3 @@ export const checkDepartmentAccess = async (req: Request, res: Response) => {
     res.status(500).json({ error: error.message });
   }
 };
-

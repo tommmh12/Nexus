@@ -7,6 +7,7 @@ import {
   useLocation,
 } from "react-router-dom";
 import { Dashboard } from "../components/Dashboard";
+import EmployeeLayout from "../layouts/EmployeeLayout";
 import { UserRole } from "../types";
 
 interface AppRouterProps {
@@ -98,47 +99,58 @@ export const AppRouter: React.FC<AppRouterProps> = ({ user, onLogout }) => {
             />
             <Route
               path="/"
-              element={<Navigate to="/manager/overview" replace />}
+              element={<Navigate to="/manager/dept-overview" replace />}
             />
             {/* Redirect wrong role paths to manager */}
             <Route
               path="/admin/*"
-              element={<Navigate to="/manager/overview" replace />}
+              element={<Navigate to="/manager/dept-overview" replace />}
             />
             <Route
               path="/employee/*"
-              element={<Navigate to="/manager/overview" replace />}
+              element={<Navigate to="/manager/dept-overview" replace />}
             />
           </>
         )}
 
-        {/* Employee Routes */}
+        {/* Employee Routes - Uses separate EmployeeLayout with top navbar */}
         {isEmployee && (
           <>
             <Route
               path="/employee/*"
-              element={<Dashboard user={user} onLogout={onLogout} />}
+              element={<EmployeeLayout user={user} onLogout={onLogout} />}
             />
             <Route
               path="/"
-              element={<Navigate to="/employee/overview" replace />}
+              element={<Navigate to="/employee/dashboard" replace />}
             />
             {/* Redirect wrong role paths to employee */}
             <Route
               path="/admin/*"
-              element={<Navigate to="/employee/overview" replace />}
+              element={<Navigate to="/employee/dashboard" replace />}
             />
             <Route
               path="/manager/*"
-              element={<Navigate to="/employee/overview" replace />}
+              element={<Navigate to="/employee/dashboard" replace />}
             />
           </>
         )}
 
-        {/* Catch all - redirect to correct role prefix */}
+        {/* Catch all - redirect to correct role prefix with correct default page */}
         <Route
           path="*"
-          element={<Navigate to={`${rolePrefix}/overview`} replace />}
+          element={
+            <Navigate
+              to={`${rolePrefix}/${
+                isEmployee
+                  ? "dashboard"
+                  : isManager
+                  ? "dept-overview"
+                  : "overview"
+              }`}
+              replace
+            />
+          }
         />
       </Routes>
     </BrowserRouter>

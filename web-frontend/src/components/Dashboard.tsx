@@ -5,8 +5,9 @@ import {
   NavLink,
   useNavigate,
   useLocation,
+  Navigate,
 } from "react-router-dom";
-import { User, Notification } from "../types";
+import type { User as UserType, Notification } from "../types";
 import { notificationService } from "../services/notificationService";
 import { newsService } from "../services/newsService";
 import { Button } from "./system/ui/Button";
@@ -38,6 +39,7 @@ import {
   Key,
   HelpCircle,
   Newspaper,
+  User,
 } from "lucide-react";
 
 // Stable components for routes to prevent remounting
@@ -86,9 +88,20 @@ import { AccountSettingsPage } from "../pages/admin/account/AccountSettingsPage"
 import { DeptOverview } from "../pages/manager/dashboard/DeptOverview";
 import { DeptReport } from "../pages/manager/dashboard/DeptReport";
 import { MyDepartment } from "../pages/manager/organization/MyDepartment";
+// Employee Pages
+import {
+  EmployeeDashboard,
+  EmployeeBookingModule,
+  EmployeeNewsModule,
+  EmployeeChatManager,
+  EmployeeForumModule,
+  EmployeeProjectModule,
+  EmployeeMeetingModule,
+  EmployeeUserProfile,
+} from "../pages/employee";
 
 interface DashboardProps {
-  user: User;
+  user: UserType;
   onLogout: () => void;
 }
 
@@ -192,7 +205,10 @@ const MENU_ITEMS: MenuItem[] = [
 ];
 
 // Function to filter menu items based on user role
-const getFilteredMenuItems = (role: string, hasDeptNewsAccess: boolean = false): MenuItem[] => {
+const getFilteredMenuItems = (
+  role: string,
+  hasDeptNewsAccess: boolean = false
+): MenuItem[] => {
   // Menu groups that Admin can access but Manager cannot
   const adminOnlyGroups = ["content-cms", "moderation", "system"];
 
@@ -266,34 +282,46 @@ const getFilteredMenuItems = (role: string, hasDeptNewsAccess: boolean = false):
 
   // Employee role - chỉ xem các chức năng cơ bản
   if (role === "employee") {
-    const employeeAllowedGroups = [
-      "dashboard",
-      "community",
-      "communication",
-      "workspace",
+    const employeeMenuItems: MenuItem[] = [
+      {
+        id: "dashboard",
+        label: "Dashboard",
+        icon: LayoutDashboard,
+        children: [{ id: "emp-dashboard", label: "Trang chủ" }],
+      },
+      {
+        id: "community",
+        label: "Cộng đồng",
+        icon: Users,
+        children: [
+          { id: "emp-news", label: "Bản tin Công ty" },
+          { id: "emp-forum", label: "Diễn đàn Nội bộ" },
+        ],
+      },
+      {
+        id: "communication",
+        label: "Giao tiếp",
+        icon: MessageCircle,
+        children: [{ id: "emp-chat", label: "Tin nhắn" }],
+      },
+      {
+        id: "workspace",
+        label: "Công việc",
+        icon: Briefcase,
+        children: [
+          { id: "emp-tasks", label: "Công việc của tôi" },
+          { id: "emp-booking", label: "Đặt phòng họp" },
+          { id: "emp-meetings", label: "Họp Online" },
+        ],
+      },
+      {
+        id: "account",
+        label: "Tài khoản",
+        icon: User,
+        children: [{ id: "emp-profile", label: "Hồ sơ cá nhân" }],
+      },
     ];
-    const employeeAllowedItems: Record<string, string[]> = {
-      dashboard: ["overview"],
-      workspace: ["online-meetings", "room-booking", "event-manager"],
-    };
-
-    return MENU_ITEMS.filter((group) => {
-      return employeeAllowedGroups.includes(group.id);
-    })
-      .map((group) => {
-        if (employeeAllowedItems[group.id] && group.children) {
-          return {
-            ...group,
-            children: group.children.filter((child) =>
-              employeeAllowedItems[group.id].includes(child.id)
-            ),
-          };
-        }
-        return group;
-      })
-      .filter((group) => {
-        return !group.children || group.children.length > 0;
-      });
+    return employeeMenuItems;
   }
 
   return MENU_ITEMS;
@@ -347,17 +375,15 @@ const isRouteAllowed = (route: string, role: string): boolean => {
 
   // Routes dành cho Employee
   const employeeAllowedRoutes = [
-    "overview",
-    "online-meetings",
-    "room-booking",
-    "event-manager",
-    "chat",
-    "forum",
-    "news",
+    "emp-dashboard",
+    "emp-news",
+    "emp-forum",
+    "emp-chat",
+    "emp-tasks",
+    "emp-booking",
+    "emp-meetings",
+    "emp-profile",
     "notifications",
-    "profile",
-    "change-password",
-    "account-settings",
   ];
 
   if (role === "manager" || role === "department-manager") {
@@ -391,10 +417,12 @@ const RoleGuard: React.FC<{
     if (!isRouteAllowed(route, role)) {
       console.log(`🚫 Access denied to ${route} for role ${role}`);
       // Redirect to appropriate default page
-      const defaultPage =
-        role === "manager" || role === "department-manager"
-          ? "dept-overview"
-          : "overview";
+      let defaultPage = "overview";
+      if (role === "manager" || role === "department-manager") {
+        defaultPage = "dept-overview";
+      } else if (role === "employee") {
+        defaultPage = "emp-dashboard";
+      }
       navigate(`${rolePrefix}/${defaultPage}`, { replace: true });
     }
   }, [route, role, navigate, rolePrefix]);
@@ -550,25 +578,33 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
   // State
   const [activeMenu, setActiveMenu] = useState<string>("overview");
 
-  // Handle redirect to overview if at base path - run when userRole changes
+  // Handle redirect to correct dashboard based on role
   useEffect(() => {
     const currentPath = location.pathname;
     const isBasePath =
       currentPath === rolePrefix || currentPath === `${rolePrefix}/`;
-    const isWrongOverview =
-      currentPath === `${rolePrefix}/overview` &&
-      (userRole === "manager" || userRole === "department-manager");
+    const isOverviewPath = currentPath === `${rolePrefix}/overview`;
 
-    if (isBasePath || isWrongOverview) {
-      // Manager được redirect về dept-overview, còn Admin về overview
-      const defaultPage =
-        userRole === "manager" || userRole === "department-manager"
-          ? "dept-overview"
-          : "overview";
+    // Employee và Manager không được vào /overview
+    const shouldRedirect =
+      isBasePath ||
+      (isOverviewPath &&
+        (userRole === "manager" ||
+          userRole === "department-manager" ||
+          userRole === "employee"));
+
+    if (shouldRedirect) {
+      // Manager được redirect về dept-overview, Employee về emp-dashboard, Admin về overview
+      let defaultPage = "overview";
+      if (userRole === "manager" || userRole === "department-manager") {
+        defaultPage = "dept-overview";
+      } else if (userRole === "employee") {
+        defaultPage = "emp-dashboard";
+      }
       console.log("🔀 Redirecting to", defaultPage, "userRole:", userRole);
       navigate(defaultPage, { replace: true });
     }
-  }, [userRole, rolePrefix]); // Run when userRole or rolePrefix changes
+  }, [userRole, rolePrefix, location.pathname, navigate]); // Added location.pathname and navigate
 
   // Sync activeMenu with URL changes
   React.useEffect(() => {
@@ -1331,12 +1367,33 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
             className={`mx-auto h-full ${isFullWidthView ? "" : "max-w-7xl"}`}
           >
             <Routes>
-              {/* Dashboard Routes */}
-              <Route path="overview" element={<OverviewPage />} />
+              {/* Dashboard Routes - Admin only */}
+              <Route
+                path="overview"
+                element={
+                  userRole === "employee" ? (
+                    <Navigate to="emp-dashboard" replace />
+                  ) : userRole === "manager" ||
+                    userRole === "department-manager" ? (
+                    <Navigate to="dept-overview" replace />
+                  ) : (
+                    <OverviewPage />
+                  )
+                }
+              />
               <Route path="resources" element={<ResourceManagement />} />
               {/* Manager Dashboard Routes */}
               <Route path="dept-overview" element={<DeptOverview />} />
               <Route path="dept-report" element={<DeptReport />} />
+              {/* Employee Dashboard Routes */}
+              <Route path="emp-dashboard" element={<EmployeeDashboard />} />
+              <Route path="emp-booking" element={<EmployeeBookingModule />} />
+              <Route path="emp-news" element={<EmployeeNewsModule />} />
+              <Route path="emp-chat" element={<EmployeeChatManager />} />
+              <Route path="emp-forum" element={<EmployeeForumModule />} />
+              <Route path="emp-tasks" element={<EmployeeProjectModule />} />
+              <Route path="emp-meetings" element={<EmployeeMeetingModule />} />
+              <Route path="emp-profile" element={<EmployeeUserProfile />} />
 
               {/* Project Management Routes */}
               <Route path="pm-projects" element={<ProjectModule />} />
