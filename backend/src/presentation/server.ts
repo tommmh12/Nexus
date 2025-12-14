@@ -25,6 +25,7 @@ import bookingRoutes from "./routes/booking.routes.js";
 import onlineMeetingRoutes from "./routes/onlineMeeting.routes.js";
 import activityLogRoutes from "./routes/activityLog.routes.js";
 import alertRuleRoutes from "./routes/alertRule.routes.js";
+import managerRoutes from "./routes/manager.routes.js";
 import { SocketManager } from "../infrastructure/socket/SocketManager.js";
 import { alertSchedulerService } from "../application/services/AlertSchedulerService.js";
 
@@ -86,6 +87,7 @@ app.use("/api/bookings", bookingRoutes);
 app.use("/api/meetings", onlineMeetingRoutes);
 app.use("/api/activity-logs", activityLogRoutes);
 app.use("/api/alert-rules", alertRuleRoutes);
+app.use("/api/manager", managerRoutes);
 
 // Serve uploaded files with CORS
 app.use(

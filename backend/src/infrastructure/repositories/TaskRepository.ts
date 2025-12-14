@@ -383,4 +383,68 @@ export class TaskRepository {
     ]);
     return rows;
   }
+
+  async getTasksByDepartment(
+    departmentId: string,
+    startDate?: string,
+    endDate?: string
+  ) {
+    let query = `
+      SELECT 
+        t.id,
+        t.title,
+        t.description,
+        t.status,
+        t.priority,
+        t.assigned_to,
+        u.full_name as assigned_to_name,
+        t.created_by,
+        t.due_date,
+        t.progress,
+        t.checklist,
+        t.department_id,
+        (SELECT COUNT(*) FROM comments WHERE task_id = t.id) as comments_count,
+        t.created_at,
+        t.updated_at
+      FROM tasks t
+      LEFT JOIN users u ON t.assigned_to = u.id
+      WHERE t.department_id = ? AND t.deleted_at IS NULL
+    `;
+
+    const params: any[] = [departmentId];
+
+    if (startDate) {
+      query += ` AND DATE(t.created_at) >= ?`;
+      params.push(startDate);
+    }
+
+    if (endDate) {
+      query += ` AND DATE(t.created_at) <= ?`;
+      params.push(endDate);
+    }
+
+    query += ` ORDER BY t.due_date ASC, t.priority DESC`;
+
+    const [rows] = await this.db.query<RowDataPacket[]>(query, params);
+    return rows as any[];
+  }
+
+  async addComment(taskId: string, commentData: any) {
+    const commentId = crypto.randomUUID();
+    await this.db.query(
+      `INSERT INTO comments (id, task_id, user_id, content, created_at) VALUES (?, ?, ?, ?, ?)`,
+      [
+        commentId,
+        taskId,
+        commentData.user_id,
+        commentData.content,
+        commentData.created_at,
+      ]
+    );
+
+    return {
+      id: commentId,
+      content: commentData.content,
+    };
+  }
 }

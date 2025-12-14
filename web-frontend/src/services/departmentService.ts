@@ -63,7 +63,7 @@ export const departmentService = {
 
   updateDepartment: async (
     id: string,
-    department: CreateDepartmentRequest
+    department: Partial<CreateDepartmentRequest>
   ): Promise<Department> => {
     const response = await axios.put(
       `${API_URL}/departments/${id}`,

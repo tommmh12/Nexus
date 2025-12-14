@@ -80,6 +80,10 @@ import NotificationsPage from "../pages/NotificationsPage";
 import { ProfilePage } from "../pages/admin/account/ProfilePage";
 import { ChangePasswordPage } from "../pages/admin/account/ChangePasswordPage";
 import { AccountSettingsPage } from "../pages/admin/account/AccountSettingsPage";
+// Manager Dashboard Pages
+import { DeptOverview } from "../pages/manager/dashboard/DeptOverview";
+import { DeptReport } from "../pages/manager/dashboard/DeptReport";
+import { MyDepartment } from "../pages/manager/organization/MyDepartment";
 
 interface DashboardProps {
   user: User;
@@ -184,6 +188,217 @@ const MENU_ITEMS: MenuItem[] = [
     children: [{ id: "general-settings", label: "Cài đặt chung" }],
   },
 ];
+
+// Function to filter menu items based on user role
+const getFilteredMenuItems = (role: string): MenuItem[] => {
+  // Menu groups that Admin can access but Manager cannot
+  const adminOnlyGroups = ["content-cms", "moderation", "system"];
+
+  // Menu items within groups that are admin-only
+  const adminOnlyItems: Record<string, string[]> = {
+    organization: ["departments", "users"], // Manager chỉ xem sơ đồ tổ chức và phòng ban của mình
+    workspace: ["floor-management", "meeting-admin", "booking-approval"], // Manager không quản lý phòng
+    "project-management": ["pm-settings"], // Manager không cấu hình hệ thống
+  };
+
+  // Additional menu items for Manager that don't exist in admin menu
+  const managerExtraItems: Record<string, MenuItem[]> = {
+    organization: [{ id: "my-department", label: "Phòng ban của tôi" }],
+  };
+
+  // Manager-specific dashboard items (thay thế dashboard của Admin)
+  const managerDashboardItems = [
+    { id: "dept-overview", label: "Tổng quan Phòng ban" },
+    { id: "dept-report", label: "Xuất báo cáo Phòng ban" },
+  ];
+
+  if (role === "admin") {
+    return MENU_ITEMS;
+  }
+
+  if (role === "manager" || role === "department-manager") {
+    return MENU_ITEMS.filter((group) => {
+      // Loại bỏ toàn bộ group admin-only
+      if (adminOnlyGroups.includes(group.id)) {
+        return false;
+      }
+      return true;
+    })
+      .map((group) => {
+        // Thay thế dashboard items cho Manager
+        if (group.id === "dashboard") {
+          return {
+            ...group,
+            children: managerDashboardItems,
+          };
+        }
+        // Lọc các children items trong group và thêm extra items cho Manager
+        let filteredChildren = group.children || [];
+
+        // Lọc bỏ admin-only items
+        if (adminOnlyItems[group.id] && group.children) {
+          filteredChildren = group.children.filter(
+            (child) => !adminOnlyItems[group.id].includes(child.id)
+          );
+        }
+
+        // Thêm extra items cho Manager
+        if (managerExtraItems[group.id]) {
+          filteredChildren = [
+            ...filteredChildren,
+            ...managerExtraItems[group.id],
+          ];
+        }
+
+        return {
+          ...group,
+          children: filteredChildren,
+        };
+      })
+      .filter((group) => {
+        // Loại bỏ group nếu không còn children nào
+        return !group.children || group.children.length > 0;
+      });
+  }
+
+  // Employee role - chỉ xem các chức năng cơ bản
+  if (role === "employee") {
+    const employeeAllowedGroups = [
+      "dashboard",
+      "community",
+      "communication",
+      "workspace",
+    ];
+    const employeeAllowedItems: Record<string, string[]> = {
+      dashboard: ["overview"],
+      workspace: ["online-meetings", "room-booking", "event-manager"],
+    };
+
+    return MENU_ITEMS.filter((group) => {
+      return employeeAllowedGroups.includes(group.id);
+    })
+      .map((group) => {
+        if (employeeAllowedItems[group.id] && group.children) {
+          return {
+            ...group,
+            children: group.children.filter((child) =>
+              employeeAllowedItems[group.id].includes(child.id)
+            ),
+          };
+        }
+        return group;
+      })
+      .filter((group) => {
+        return !group.children || group.children.length > 0;
+      });
+  }
+
+  return MENU_ITEMS;
+};
+
+// Function to check if a route is allowed for a role
+const isRouteAllowed = (route: string, role: string): boolean => {
+  // Admin có thể truy cập tất cả
+  if (role === "admin") return true;
+
+  // Routes chỉ dành cho Admin
+  const adminOnlyRoutes = [
+    "audit-logs",
+    "alert-manager",
+    "general-settings",
+    "departments",
+    "users",
+    "floor-management",
+    "meeting-admin",
+    "booking-approval",
+    "pm-settings",
+    "news-manager",
+    "forum-manager",
+    "content-admin",
+  ];
+
+  // Routes dành cho Manager và Admin
+  const managerAllowedRoutes = [
+    "dept-overview",
+    "dept-report",
+    "overview",
+    "resources",
+    "pm-projects",
+    "pm-workflows",
+    "my-department",
+    "org-chart",
+    "online-meetings",
+    "room-booking",
+    "event-manager",
+    "chat",
+    "forum",
+    "news",
+    "notifications",
+    "profile",
+    "change-password",
+    "account-settings",
+  ];
+
+  // Routes dành cho Employee
+  const employeeAllowedRoutes = [
+    "overview",
+    "online-meetings",
+    "room-booking",
+    "event-manager",
+    "chat",
+    "forum",
+    "news",
+    "notifications",
+    "profile",
+    "change-password",
+    "account-settings",
+  ];
+
+  if (role === "manager" || role === "department-manager") {
+    // Manager không được truy cập routes admin-only
+    if (adminOnlyRoutes.includes(route)) return false;
+    return true; // Cho phép các routes còn lại
+  }
+
+  if (role === "employee") {
+    return employeeAllowedRoutes.includes(route);
+  }
+
+  return false;
+};
+
+// RoleGuard Component - redirects if route not allowed
+const RoleGuard: React.FC<{
+  route: string;
+  role: string;
+  children: React.ReactNode;
+}> = ({ route, role, children }) => {
+  const navigate = useNavigate();
+  const rolePrefix =
+    role === "admin"
+      ? "/admin"
+      : role === "department-manager" || role === "manager"
+      ? "/manager"
+      : "/employee";
+
+  React.useEffect(() => {
+    if (!isRouteAllowed(route, role)) {
+      console.log(`🚫 Access denied to ${route} for role ${role}`);
+      // Redirect to appropriate default page
+      const defaultPage =
+        role === "manager" || role === "department-manager"
+          ? "dept-overview"
+          : "overview";
+      navigate(`${rolePrefix}/${defaultPage}`, { replace: true });
+    }
+  }, [route, role, navigate, rolePrefix]);
+
+  if (!isRouteAllowed(route, role)) {
+    return null; // Don't render while redirecting
+  }
+
+  return <>{children}</>;
+};
 
 // Content Management Wrapper Component
 const ContentAdminDashboard = ({
@@ -293,17 +508,33 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
 
   console.log("👤 User role:", user.role, "rolePrefix:", rolePrefix);
 
+  // Get filtered menu items based on role
+  const filteredMenuItems = React.useMemo(() => {
+    return getFilteredMenuItems(userRole);
+  }, [userRole]);
+
   // State
   const [activeMenu, setActiveMenu] = useState<string>("overview");
 
-  // Handle redirect to overview if at base path - run once on mount
+  // Handle redirect to overview if at base path - run when userRole changes
   useEffect(() => {
     const currentPath = location.pathname;
-    if (currentPath === rolePrefix || currentPath === `${rolePrefix}/`) {
-      console.log("🔀 Redirecting from base path to overview");
-      navigate(`overview`, { replace: true });
+    const isBasePath =
+      currentPath === rolePrefix || currentPath === `${rolePrefix}/`;
+    const isWrongOverview =
+      currentPath === `${rolePrefix}/overview` &&
+      (userRole === "manager" || userRole === "department-manager");
+
+    if (isBasePath || isWrongOverview) {
+      // Manager được redirect về dept-overview, còn Admin về overview
+      const defaultPage =
+        userRole === "manager" || userRole === "department-manager"
+          ? "dept-overview"
+          : "overview";
+      console.log("🔀 Redirecting to", defaultPage, "userRole:", userRole);
+      navigate(defaultPage, { replace: true });
     }
-  }, []); // Empty deps - only run once on mount
+  }, [userRole, rolePrefix]); // Run when userRole or rolePrefix changes
 
   // Sync activeMenu with URL changes
   React.useEffect(() => {
@@ -328,6 +559,30 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
       return current;
     });
   }, [location.pathname]); // Only depend on pathname
+
+  // Route guard - check permission for current route
+  React.useEffect(() => {
+    const pathParts = location.pathname.split("/").filter(Boolean);
+    const currentRoute =
+      pathParts.length >= 2 ? pathParts[pathParts.length - 1] : "overview";
+
+    // Skip check for project detail routes (contains UUID)
+    const isDetailRoute = pathParts.some((part) =>
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        part
+      )
+    );
+    if (isDetailRoute) return;
+
+    if (!isRouteAllowed(currentRoute, userRole)) {
+      console.log(`🚫 Access denied: ${currentRoute} for role ${userRole}`);
+      const defaultPage =
+        userRole === "manager" || userRole === "department-manager"
+          ? "dept-overview"
+          : "overview";
+      navigate(`${rolePrefix}/${defaultPage}`, { replace: true });
+    }
+  }, [location.pathname, userRole, rolePrefix, navigate]);
 
   const [expandedMenus, setExpandedMenus] = useState<string[]>([
     "dashboard",
@@ -489,7 +744,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
             )}
 
             <nav className="space-y-1">
-              {MENU_ITEMS.map((item) => (
+              {filteredMenuItems.map((item) => (
                 <div key={item.id}>
                   <button
                     onClick={() =>
@@ -612,7 +867,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
       {/* Main Content Wrapper */}
       <div className="flex-1 flex flex-col overflow-hidden w-full">
         {/* Top Header */}
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 sm:px-6 lg:px-8 z-10">
+        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 sm:px-6 lg:px-8">
           <div className="flex items-center">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -1045,6 +1300,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
               {/* Dashboard Routes */}
               <Route path="overview" element={<OverviewPage />} />
               <Route path="resources" element={<ResourceManagement />} />
+              {/* Manager Dashboard Routes */}
+              <Route path="dept-overview" element={<DeptOverview />} />
+              <Route path="dept-report" element={<DeptReport />} />
 
               {/* Project Management Routes */}
               <Route path="pm-projects" element={<ProjectModule />} />
@@ -1055,6 +1313,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
               {/* Organization Routes */}
               <Route path="departments" element={<DepartmentManager />} />
               <Route path="org-chart" element={<OrgChart />} />
+              <Route path="my-department" element={<MyDepartment />} />
               <Route path="users" element={<UserManager />} />
 
               {/* Workspace Routes */}

@@ -43,10 +43,16 @@ export class ProjectRepository {
   async getProjectDepartments(projectId: string) {
     const query = `
       SELECT 
-        pd.*,
-        d.name as departmentName
+        d.id,
+        d.name,
+        d.code,
+        pd.role,
+        pd.assigned_at,
+        u.full_name as managerName,
+        (SELECT COUNT(*) FROM users WHERE department_id = d.id AND status = 'Active') as memberCount
       FROM project_departments pd
       LEFT JOIN departments d ON pd.department_id = d.id
+      LEFT JOIN users u ON d.manager_id = u.id
       WHERE pd.project_id = ?
       ORDER BY pd.assigned_at
     `;

@@ -1,10 +1,5 @@
 import React, { useState, useEffect } from "react";
-import {
-  DragDropContext,
-  Droppable,
-  Draggable,
-  DropResult,
-} from "@hello-pangea/dnd";
+import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "../../../components/system/ui/Button";
 import { Input } from "../../../components/system/ui/Input";
@@ -33,7 +28,6 @@ import {
   Check,
   User,
   Building,
-  Building2,
   SendHorizontal,
   ThumbsUp,
   ThumbsDown,
@@ -45,10 +39,7 @@ import {
 } from "lucide-react";
 import { taskService, TaskDetail } from "../../../services/taskService";
 import { reportService, ProjectReport } from "../../../services/reportService";
-import {
-  projectService,
-  workflowService,
-} from "../../../services/projectService";
+import { projectService, workflowService } from "../../../services/projectService";
 import { authService } from "../../../services/authService";
 import { CommentThread } from "../../../components/comments/CommentThread";
 import {
@@ -67,12 +58,7 @@ interface Project {
   manager_id?: string;
   workflow_id?: string;
   workflowName?: string;
-  workflowStatuses?: {
-    id: string;
-    name: string;
-    color?: string;
-    order: number;
-  }[];
+  workflowStatuses?: { id: string; name: string; color?: string; order: number }[];
   status: string;
   priority: string;
   progress: number;
@@ -131,16 +117,14 @@ const CreateTaskModal = ({
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      const newFiles: ProjectDocument[] = Array.from(files).map(
-        (file: File) => ({
-          name: file.name,
-          url: URL.createObjectURL(file),
-          date: new Date().toLocaleDateString("vi-VN"),
-          type: "file",
-          source: "Task",
-          uploader: "Admin",
-        })
-      );
+      const newFiles: ProjectDocument[] = Array.from(files).map((file: File) => ({
+        name: file.name,
+        url: URL.createObjectURL(file),
+        date: new Date().toLocaleDateString("vi-VN"),
+        type: "file",
+        source: "Task",
+        uploader: "Admin",
+      }));
       setAttachedFiles([...attachedFiles, ...newFiles]);
     }
   };
@@ -193,30 +177,25 @@ const CreateTaskModal = ({
 
   const toggleAssignee = (userId: string) => {
     if (selectedassigneeIds.includes(userId)) {
-      setSelectedAssigneeIds((prev) => prev.filter((id) => id !== userId));
+      setSelectedAssigneeIds(prev => prev.filter(id => id !== userId));
     } else {
-      setSelectedAssigneeIds((prev) => [...prev, userId]);
+      setSelectedAssigneeIds(prev => [...prev, userId]);
     }
   };
 
   // Filter members
-  const filteredMembers =
-    members?.filter((m) => {
-      const nameMatch = m.userName
-        .toLowerCase()
-        .includes(memberSearchTerm.toLowerCase());
-      const deptMatch = memberDeptFilter
-        ? m.departmentName === memberDeptFilter
-        : true; // Assuming departmentName matches filter value
-      // Note: m.departmentName might differ from departments.name slightly depending on data source, but usually consistent.
-      // Better to match by ID if available, but Member interface relies on departmentName usually populated from backend query?
-      // Let's check Member interface in ProjectDetailView.tsx:
-      // interface Member { ... departmentName?: string; ... }
-      return nameMatch && deptMatch;
-    }) || [];
+  const filteredMembers = members?.filter(m => {
+    const nameMatch = m.userName.toLowerCase().includes(memberSearchTerm.toLowerCase());
+    const deptMatch = memberDeptFilter ? m.departmentName === memberDeptFilter : true; // Assuming departmentName matches filter value
+    // Note: m.departmentName might differ from departments.name slightly depending on data source, but usually consistent.
+    // Better to match by ID if available, but Member interface relies on departmentName usually populated from backend query?
+    // Let's check Member interface in ProjectDetailView.tsx:
+    // interface Member { ... departmentName?: string; ... }
+    return nameMatch && deptMatch;
+  }) || [];
 
   return (
-    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden animate-fadeIn flex flex-col max-h-[90vh]">
         <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
           <h3 className="font-bold text-slate-900">Tạo công việc mới</h3>
@@ -261,16 +240,12 @@ const CreateTaskModal = ({
           {/* Assignees Section with Search & Filter */}
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-2">
-              Người thực hiện <span className="text-red-500">*</span> (
-              {selectedassigneeIds.length})
+              Người thực hiện <span className="text-red-500">*</span> ({selectedassigneeIds.length})
             </label>
 
             <div className="flex gap-2 mb-2">
               <div className="relative flex-1">
-                <Search
-                  className="absolute left-2.5 top-2.5 text-slate-400"
-                  size={14}
-                />
+                <Search className="absolute left-2.5 top-2.5 text-slate-400" size={14} />
                 <input
                   type="text"
                   placeholder="Tìm nhân viên..."
@@ -285,10 +260,8 @@ const CreateTaskModal = ({
                 onChange={(e) => setMemberDeptFilter(e.target.value)}
               >
                 <option value="">Tất cả PB</option>
-                {departments.map((d) => (
-                  <option key={d.id} value={d.name}>
-                    {d.name}
-                  </option>
+                {departments.map(d => (
+                  <option key={d.id} value={d.name}>{d.name}</option>
                 ))}
               </select>
             </div>
@@ -296,39 +269,24 @@ const CreateTaskModal = ({
             <div className="border border-slate-200 rounded-lg p-2 max-h-40 overflow-y-auto bg-slate-50">
               {filteredMembers.length > 0 ? (
                 <div className="space-y-1">
-                  {filteredMembers.map((m) => (
-                    <label
-                      key={m.user_id}
-                      className="flex items-center gap-2 p-1.5 hover:bg-white rounded cursor-pointer transition-colors"
-                    >
+                  {filteredMembers.map(m => (
+                    <label key={m.user_id} className="flex items-center gap-2 p-1.5 hover:bg-white rounded cursor-pointer transition-colors">
                       <input
                         type="checkbox"
                         checked={selectedassigneeIds.includes(m.user_id)}
                         onChange={() => toggleAssignee(m.user_id)}
                         className="rounded text-brand-600 focus:ring-brand-500"
                       />
-                      <img
-                        src={
-                          m.avatar_url ||
-                          "https://ui-avatars.com/api/?name=" + m.userName
-                        }
-                        className="w-6 h-6 rounded-full bg-slate-200 object-cover"
-                      />
+                      <img src={m.avatar_url || "https://ui-avatars.com/api/?name=" + m.userName} className="w-6 h-6 rounded-full bg-slate-200 object-cover" />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-slate-700 truncate">
-                          {m.userName}
-                        </p>
-                        <p className="text-[10px] text-slate-500 truncate">
-                          {m.departmentName || "Thành viên"}
-                        </p>
+                        <p className="text-sm font-medium text-slate-700 truncate">{m.userName}</p>
+                        <p className="text-[10px] text-slate-500 truncate">{m.departmentName || "Thành viên"}</p>
                       </div>
                     </label>
                   ))}
                 </div>
               ) : (
-                <p className="text-xs text-slate-400 p-4 text-center">
-                  Không tìm thấy thành viên nào.
-                </p>
+                <p className="text-xs text-slate-400 p-4 text-center">Không tìm thấy thành viên nào.</p>
               )}
             </div>
           </div>
@@ -449,7 +407,7 @@ const SubmitReportModal = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
         <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
           <FileText size={20} className="text-brand-600" /> Nộp báo cáo tiến độ
@@ -566,7 +524,7 @@ const ReportReviewModal = ({
   const [feedback, setFeedback] = useState(report.feedback || "");
 
   return (
-    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
         <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
           <h3 className="font-bold text-slate-900">Duyệt báo cáo</h3>
@@ -669,16 +627,10 @@ const TaskDetailPanel = ({
   const [status, setStatus] = useState(task.status);
   const [priority, setPriority] = useState(task.priority);
   const [assigneeDept, setAssigneeDept] = useState(task.assigneeDepartment);
-  const [assigneeIds, setAssigneeIds] = useState<string[]>(
-    task.assignees?.map((a) => a.id) || []
-  );
+  const [assigneeIds, setAssigneeIds] = useState<string[]>(task.assignees?.map(a => a.id) || []);
   // Handle both snake_case (from DB) and camelCase (from frontend)
-  const [startDate, setStartDate] = useState(
-    (task as any).start_date || task.startDate
-  );
-  const [dueDate, setDueDate] = useState(
-    (task as any).due_date || task.dueDate
-  );
+  const [startDate, setStartDate] = useState((task as any).start_date || task.startDate);
+  const [dueDate, setDueDate] = useState((task as any).due_date || task.dueDate);
 
   // Permission Check
   const user = JSON.parse(localStorage.getItem("user") || "{}");
@@ -690,11 +642,11 @@ const TaskDetailPanel = ({
     setStatus(task.status);
     setPriority(task.priority);
     setAssigneeDept(task.assigneeDepartment);
-    setAssigneeIds(task.assignees?.map((a) => a.id) || []);
+    setAssigneeIds(task.assignees?.map(a => a.id) || []);
     const start = (task as any).start_date || task.startDate;
-    setStartDate(start ? new Date(start).toISOString().split("T")[0] : "");
+    setStartDate(start ? new Date(start).toISOString().split('T')[0] : "");
     const due = (task as any).due_date || task.dueDate;
-    setDueDate(due ? new Date(due).toISOString().split("T")[0] : "");
+    setDueDate(due ? new Date(due).toISOString().split('T')[0] : "");
   }, [task]);
 
   const handleSave = async () => {
@@ -720,9 +672,9 @@ const TaskDetailPanel = ({
 
   const toggleAssignee = (userId: string) => {
     if (assigneeIds.includes(userId)) {
-      setAssigneeIds((prev) => prev.filter((id) => id !== userId));
+      setAssigneeIds(prev => prev.filter(id => id !== userId));
     } else {
-      setAssigneeIds((prev) => [...prev, userId]);
+      setAssigneeIds(prev => [...prev, userId]);
     }
   };
 
@@ -738,14 +690,9 @@ const TaskDetailPanel = ({
     }
   };
 
-  const handleToggleChecklist = async (
-    itemId: string,
-    currentStatus: boolean
-  ) => {
+  const handleToggleChecklist = async (itemId: string, currentStatus: boolean) => {
     try {
-      await taskService.updateChecklistItem(itemId, {
-        isCompleted: !currentStatus,
-      });
+      await taskService.updateChecklistItem(itemId, { isCompleted: !currentStatus });
       const updatedTask = await taskService.getTaskById(task.id);
       onUpdate(updatedTask);
     } catch (e) {
@@ -765,12 +712,7 @@ const TaskDetailPanel = ({
   };
 
   const handleDeleteTask = async () => {
-    if (
-      !confirm(
-        "Bạn có chắc muốn xóa task này? Hành động này không thể hoàn tác!"
-      )
-    )
-      return;
+    if (!confirm("Bạn có chắc muốn xóa task này? Hành động này không thể hoàn tác!")) return;
     try {
       await taskService.deleteTask(task.id);
       alert("✅ Đã xóa task!");
@@ -783,7 +725,7 @@ const TaskDetailPanel = ({
   };
 
   return (
-    <div className="fixed inset-y-0 right-0 w-full md:w-[600px] bg-white shadow-2xl z-[9999] transform transition-transform duration-300 ease-in-out border-l border-slate-200 flex flex-col">
+    <div className="fixed inset-y-0 right-0 w-full md:w-[600px] bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out border-l border-slate-200 flex flex-col">
       {/* Header */}
       <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-start bg-slate-50/50">
         <div className="flex-1 pr-8">
@@ -795,13 +737,9 @@ const TaskDetailPanel = ({
               <select
                 value={priority}
                 onChange={(e) => setPriority(e.target.value as any)}
-                className={`px-2 py-0.5 rounded-full text-xs font-semibold border-none outline-none cursor-pointer ${
-                  priority === "Critical"
-                    ? "bg-red-100 text-red-700"
-                    : priority === "High"
-                    ? "bg-orange-100 text-orange-700"
-                    : "bg-blue-100 text-blue-700"
-                }`}
+                className={`px-2 py-0.5 rounded-full text-xs font-semibold border-none outline-none cursor-pointer ${priority === "Critical" ? "bg-red-100 text-red-700" :
+                  priority === "High" ? "bg-orange-100 text-orange-700" : "bg-blue-100 text-blue-700"
+                  }`}
               >
                 <option value="Low">Low Priority</option>
                 <option value="Medium">Medium Priority</option>
@@ -810,13 +748,9 @@ const TaskDetailPanel = ({
               </select>
             ) : (
               <span
-                className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-                  priority === "Critical"
-                    ? "bg-red-100 text-red-700"
-                    : priority === "High"
-                    ? "bg-orange-100 text-orange-700"
-                    : "bg-blue-100 text-blue-700"
-                }`}
+                className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${priority === "Critical" ? "bg-red-100 text-red-700" :
+                  priority === "High" ? "bg-orange-100 text-orange-700" : "bg-blue-100 text-blue-700"
+                  }`}
               >
                 {priority} Priority
               </span>
@@ -828,12 +762,9 @@ const TaskDetailPanel = ({
                 onChange={(e) => setStatus(e.target.value)}
                 className="px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 border-none outline-none cursor-pointer"
               >
-                {project.workflowStatuses &&
-                project.workflowStatuses.length > 0 ? (
+                {project.workflowStatuses && project.workflowStatuses.length > 0 ? (
                   project.workflowStatuses.map((ws: any) => (
-                    <option key={ws.id || ws.name} value={ws.name}>
-                      {ws.name}
-                    </option>
+                    <option key={ws.id || ws.name} value={ws.name}>{ws.name}</option>
                   ))
                 ) : (
                   <>
@@ -864,11 +795,7 @@ const TaskDetailPanel = ({
                 {title}
               </h2>
               {isAdmin && !isEditing && (
-                <button
-                  onClick={() => setIsEditing(true)}
-                  className="p-1 hover:bg-slate-100 rounded text-slate-400 hover:text-brand-600 transition-colors"
-                  title="Chỉnh sửa"
-                >
+                <button onClick={() => setIsEditing(true)} className="p-1 hover:bg-slate-100 rounded text-slate-400 hover:text-brand-600 transition-colors" title="Chỉnh sửa">
                   <Edit2 size={16} />
                 </button>
               )}
@@ -906,48 +833,29 @@ const TaskDetailPanel = ({
               <div className="border border-slate-200 rounded-lg p-2 bg-slate-50 max-h-40 overflow-y-auto">
                 {members && members.length > 0 ? (
                   <div className="space-y-1">
-                    {members.map((m) => (
-                      <label
-                        key={m.user_id}
-                        className="flex items-center gap-2 p-1 hover:bg-white rounded cursor-pointer"
-                      >
+                    {members.map(m => (
+                      <label key={m.user_id} className="flex items-center gap-2 p-1 hover:bg-white rounded cursor-pointer">
                         <input
                           type="checkbox"
                           checked={assigneeIds.includes(m.user_id)}
                           onChange={() => toggleAssignee(m.user_id)}
                           className="rounded text-brand-600 focus:ring-brand-500"
                         />
-                        <img
-                          src={
-                            m.avatar_url ||
-                            "https://ui-avatars.com/api/?name=" + m.userName
-                          }
-                          className="w-6 h-6 rounded-full"
-                        />
-                        <span className="text-sm text-slate-700">
-                          {m.userName}
-                        </span>
+                        <img src={m.avatar_url || "https://ui-avatars.com/api/?name=" + m.userName} className="w-6 h-6 rounded-full" />
+                        <span className="text-sm text-slate-700">{m.userName}</span>
                       </label>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-xs text-slate-400 p-2">
-                    Chưa có thành viên nào trong dự án.
-                  </p>
+                  <p className="text-xs text-slate-400 p-2">Chưa có thành viên nào trong dự án.</p>
                 )}
               </div>
             ) : (
               <div className="flex items-center gap-2 flex-wrap">
                 {Array.isArray(task.assignees) && task.assignees.length > 0 ? (
-                  task.assignees.map((a) => (
+                  task.assignees.map(a => (
                     <div key={a.id} title={a.name} className="relative">
-                      <img
-                        src={
-                          a.avatarUrl ||
-                          "https://ui-avatars.com/api/?name=" + a.name
-                        }
-                        className="w-8 h-8 rounded-full border-2 border-white"
-                      />
+                      <img src={a.avatarUrl || "https://ui-avatars.com/api/?name=" + a.name} className="w-8 h-8 rounded-full border-2 border-white" />
                     </div>
                   ))
                 ) : (
@@ -964,19 +872,9 @@ const TaskDetailPanel = ({
             </label>
             {isAdmin && isEditing ? (
               <div className="flex items-center gap-2">
-                <input
-                  type="date"
-                  value={startDate || ""}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="text-xs border rounded p-1"
-                />
+                <input type="date" value={startDate || ""} onChange={(e) => setStartDate(e.target.value)} className="text-xs border rounded p-1" />
                 <span>-</span>
-                <input
-                  type="date"
-                  value={dueDate || ""}
-                  onChange={(e) => setDueDate(e.target.value)}
-                  className="text-xs border rounded p-1"
-                />
+                <input type="date" value={dueDate || ""} onChange={(e) => setDueDate(e.target.value)} className="text-xs border rounded p-1" />
               </div>
             ) : (
               <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 cursor-pointer border border-transparent hover:border-slate-200 transition-colors">
@@ -985,12 +883,8 @@ const TaskDetailPanel = ({
                 </div>
                 <div>
                   <p className="text-sm font-medium text-slate-900">
-                    {startDate && dueDate
-                      ? `${new Date(startDate)
-                          .toLocaleDateString("vi-VN")
-                          .slice(0, 5)} - ${new Date(
-                          dueDate
-                        ).toLocaleDateString("vi-VN")}`
+                    {(startDate && dueDate)
+                      ? `${new Date(startDate).toLocaleDateString("vi-VN").slice(0, 5)} - ${new Date(dueDate).toLocaleDateString("vi-VN")}`
                       : "Chưa thiết lập"}
                   </p>
                 </div>
@@ -1022,10 +916,9 @@ const TaskDetailPanel = ({
           <h3 className="text-sm font-bold text-slate-900 mb-2 flex items-center gap-2">
             <Paperclip size={16} className="text-slate-400" /> Tài liệu đính kèm
           </h3>
-          <p className="text-xs text-slate-400 italic">
-            Không có tài liệu đính kèm.
-          </p>
+          <p className="text-xs text-slate-400 italic">Không có tài liệu đính kèm.</p>
         </div>
+
 
         {/* Checklist */}
         <div>
@@ -1042,15 +935,7 @@ const TaskDetailPanel = ({
           <div className="w-full bg-slate-100 h-1.5 rounded-full mb-4 overflow-hidden">
             <div
               className="bg-brand-500 h-full transition-all duration-500"
-              style={{
-                width: `${
-                  task.checklist && task.checklist.length > 0
-                    ? (task.checklist.filter((i) => i.isCompleted).length /
-                        task.checklist.length) *
-                      100
-                    : 0
-                }%`,
-              }}
+              style={{ width: `${task.checklist && task.checklist.length > 0 ? (task.checklist.filter(i => i.isCompleted).length / task.checklist.length) * 100 : 0}%` }}
             ></div>
           </div>
 
@@ -1081,34 +966,21 @@ const TaskDetailPanel = ({
               >
                 <button
                   type="button"
-                  onClick={() =>
-                    handleToggleChecklist(item.id, item.isCompleted)
-                  }
-                  className={`mt-0.5 w-4 h-4 rounded border flex items-center justify-center transition-colors ${
-                    item.isCompleted
-                      ? "bg-brand-500 border-brand-500 text-white"
-                      : "border-slate-300 hover:border-brand-500"
-                  }`}
+                  onClick={() => handleToggleChecklist(item.id, item.isCompleted)}
+                  className={`mt-0.5 w-4 h-4 rounded border flex items-center justify-center transition-colors ${item.isCompleted
+                    ? "bg-brand-500 border-brand-500 text-white"
+                    : "border-slate-300 hover:border-brand-500"
+                    }`}
                 >
                   {item.isCompleted && <Check size={10} strokeWidth={4} />}
                 </button>
                 <div className="flex-1">
-                  <p
-                    className={`text-sm ${
-                      item.isCompleted
-                        ? "text-slate-400 line-through"
-                        : "text-slate-700"
-                    }`}
-                  >
+                  <p className={`text-sm ${item.isCompleted ? "text-slate-400 line-through" : "text-slate-700"}`}>
                     {item.text}
                   </p>
                 </div>
                 {isAdmin && (
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteChecklist(item.id)}
-                    className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 p-1"
-                  >
+                  <button type="button" onClick={() => handleDeleteChecklist(item.id)} className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 p-1">
                     <Trash2 size={14} />
                   </button>
                 )}
@@ -1136,13 +1008,8 @@ const TaskDetailPanel = ({
       <div className="p-4 border-t border-slate-200 bg-white flex justify-end gap-3">
         {isAdmin && isEditing ? (
           <>
-            <Button variant="outline" onClick={() => setIsEditing(false)}>
-              Hủy
-            </Button>
-            <Button
-              className="bg-brand-600 hover:bg-brand-700"
-              onClick={handleSave}
-            >
+            <Button variant="outline" onClick={() => setIsEditing(false)}>Hủy</Button>
+            <Button className="bg-brand-600 hover:bg-brand-700" onClick={handleSave}>
               Lưu thay đổi
             </Button>
           </>
@@ -1181,33 +1048,19 @@ export const ProjectDetailView = ({
   const [memberDepartmentFilter, setMemberDepartmentFilter] = useState("");
 
   // View State - Initialize from URL hash
-  const getInitialTab = ():
-    | "overview"
-    | "tasks"
-    | "departments"
-    | "files"
-    | "reports" => {
+  const getInitialTab = (): "overview" | "tasks" | "departments" | "files" | "reports" => {
     const hash = location.hash.replace("#", "");
     if (hash.startsWith("task-")) {
       return "tasks";
     }
-    if (
-      [
-        "overview",
-        "tasks",
-        "members",
-        "departments",
-        "files",
-        "reports",
-      ].includes(hash)
-    ) {
+    if (["overview", "tasks", "members", "files", "reports"].includes(hash)) {
       return hash as any;
     }
     return "overview";
   };
 
   const [activeTab, setActiveTab] = useState<
-    "overview" | "tasks" | "members" | "departments" | "files" | "reports"
+    "overview" | "tasks" | "members" | "files" | "reports"
   >(getInitialTab());
   const [taskViewMode, setTaskViewMode] = useState<"list" | "kanban">("list");
 
@@ -1248,10 +1101,7 @@ export const ProjectDetailView = ({
     }
 
     // Check for Tab Name in hash
-    if (
-      hash &&
-      ["overview", "tasks", "members", "files", "reports"].includes(hash)
-    ) {
+    if (hash && ["overview", "tasks", "members", "files", "reports"].includes(hash)) {
       if (activeTab !== hash) {
         setActiveTab(hash as any);
       }
@@ -1298,10 +1148,7 @@ export const ProjectDetailView = ({
 
   useEffect(() => {
     if (showAddMemberModal) {
-      userService
-        .getAllUsers()
-        .then((users) => setAvailableUsers(users))
-        .catch((err) => console.error("Failed to load users", err));
+      userService.getAllUsers().then(users => setAvailableUsers(users)).catch(err => console.error("Failed to load users", err));
     }
   }, [showAddMemberModal]);
 
@@ -1319,9 +1166,7 @@ export const ProjectDetailView = ({
     // URL hash will be updated by useEffect
   };
 
-  const handleTabChange = (
-    tabId: "overview" | "tasks" | "members" | "files" | "reports"
-  ) => {
+  const handleTabChange = (tabId: "overview" | "tasks" | "members" | "files" | "reports") => {
     isUserActionRef.current = true;
     setActiveTab(tabId);
     // Close task detail when switching tabs (except tasks tab)
@@ -1333,11 +1178,11 @@ export const ProjectDetailView = ({
   // ==================== ADMIN PERMISSION CHECK ====================
   // Check if current user is admin or project manager
   const currentUser = authService.getStoredUser();
-  const isAdmin =
-    currentUser &&
-    (currentUser.role === "Admin" ||
-      currentUser.role === "Manager" ||
-      localProject.manager_id === currentUser.id);
+  const isAdmin = currentUser && (
+    currentUser.role === 'Admin' ||
+    currentUser.role === 'Manager' ||
+    localProject.manager_id === currentUser.id
+  );
 
   // ==================== DRAG & DROP HANDLER ====================
   const handleDragEnd = async (result: DropResult) => {
@@ -1353,15 +1198,15 @@ export const ProjectDetailView = ({
 
     // Find status name for optimistic update
     const workflowStatuses = localProject.workflowStatuses || [];
-    const newStatus = workflowStatuses.find(
-      (s) => s.id === newStatusId || s.name === newStatusId
-    );
+    const newStatus = workflowStatuses.find(s => s.id === newStatusId || s.name === newStatusId);
     const newStatusName = newStatus?.name || newStatusId;
 
     // Optimistic update - immediately update UI
-    setTasks((prevTasks) =>
-      prevTasks.map((t) =>
-        t.id === taskId ? { ...t, status: newStatusName } : t
+    setTasks(prevTasks =>
+      prevTasks.map(t =>
+        t.id === taskId
+          ? { ...t, status: newStatusName }
+          : t
       )
     );
 
@@ -1411,18 +1256,14 @@ export const ProjectDetailView = ({
         // Load workflow statuses if project has workflow_id
         if (workflowId) {
           try {
-            const workflowData = await workflowService.getWorkflowById(
-              workflowId
-            );
+            const workflowData = await workflowService.getWorkflowById(workflowId);
             if (workflowData && workflowData.statuses) {
-              updatedProject.workflowStatuses = workflowData.statuses.map(
-                (s: any) => ({
-                  id: s.id,
-                  name: s.name,
-                  color: s.color,
-                  order: s.order,
-                })
-              );
+              updatedProject.workflowStatuses = workflowData.statuses.map((s: any) => ({
+                id: s.id,
+                name: s.name,
+                color: s.color,
+                order: s.order
+              }));
             }
           } catch (error) {
             console.warn("Could not load workflow statuses:", error);
@@ -1447,7 +1288,7 @@ export const ProjectDetailView = ({
           comments: task.comments || [],
         }));
 
-        // If we have a selected task, we expect the UI to manage its state independently or via onUpdate,
+        // If we have a selected task, we expect the UI to manage its state independently or via onUpdate, 
         // but background refreshes update the 'tasks' list.
         setTasks(tasksWithDefaults);
       } catch (error) {
@@ -1501,10 +1342,7 @@ export const ProjectDetailView = ({
     } catch (error: any) {
       console.error("Lỗi tạo task:", error);
       console.error("Error details:", error.response?.data);
-      alert(
-        "❌ Có lỗi xảy ra khi tạo task: " +
-          (error.response?.data?.message || error.message)
-      );
+      alert("❌ Có lỗi xảy ra khi tạo task: " + (error.response?.data?.message || error.message));
     }
   };
 
@@ -1540,8 +1378,7 @@ export const ProjectDetailView = ({
       setReports((prev) => prev.map((r) => (r.id === id ? updatedReport : r)));
       setReviewReport(null);
       alert(
-        `✅ ${
-          status === "Approved" ? "Phê duyệt" : "Từ chối"
+        `✅ ${status === "Approved" ? "Phê duyệt" : "Từ chối"
         } báo cáo thành công!`
       );
     } catch (error) {
@@ -1549,6 +1386,8 @@ export const ProjectDetailView = ({
       alert("❌ Có lỗi xảy ra");
     }
   };
+
+
 
   const handleProjectFileUpload = () => {
     projectFileInputRef.current?.click();
@@ -1581,7 +1420,7 @@ export const ProjectDetailView = ({
       {selectedTask && (
         <>
           <div
-            className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-[9998] transition-opacity"
+            className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-40 transition-opacity"
             onClick={handleCloseTaskDetail}
           ></div>
           <TaskDetailPanel
@@ -1589,15 +1428,13 @@ export const ProjectDetailView = ({
             onClose={handleCloseTaskDetail}
             onUpdate={(updatedTask) => {
               setSelectedTask(updatedTask);
-              setTasks((prev) =>
-                prev.map((t) => (t.id === updatedTask.id ? updatedTask : t))
-              );
+              setTasks(prev => prev.map(t => t.id === updatedTask.id ? updatedTask : t));
               // Reload project to update progress
               loadProjectData(true);
             }}
             onDelete={(taskId) => {
               // Remove task from tasks state
-              setTasks((prev) => prev.filter((t) => t.id !== taskId));
+              setTasks(prev => prev.filter(t => t.id !== taskId));
               setSelectedTask(null);
               // Reload project to update progress
               loadProjectData(true);
@@ -1633,16 +1470,11 @@ export const ProjectDetailView = ({
         />
       )}
       {showAddMemberModal && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl flex flex-col max-h-[90vh]">
             <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50 rounded-t-xl">
-              <h3 className="text-lg font-bold text-slate-900">
-                Thêm thành viên
-              </h3>
-              <button
-                onClick={() => setShowAddMemberModal(false)}
-                className="p-2 hover:bg-slate-200 rounded-full text-slate-500"
-              >
+              <h3 className="text-lg font-bold text-slate-900">Thêm thành viên</h3>
+              <button onClick={() => setShowAddMemberModal(false)} className="p-2 hover:bg-slate-200 rounded-full text-slate-500">
                 <X size={20} />
               </button>
             </div>
@@ -1650,15 +1482,12 @@ export const ProjectDetailView = ({
             <div className="p-4 border-b border-slate-200 grid grid-cols-1 md:grid-cols-2 gap-4 bg-white">
               {/* Search Input */}
               <div className="relative">
-                <Search
-                  className="absolute left-3 top-2.5 text-slate-400"
-                  size={18}
-                />
+                <Search className="absolute left-3 top-2.5 text-slate-400" size={18} />
                 <input
                   type="text"
                   placeholder="Tìm theo tên hoặc email..."
                   value={memberSearchTerm}
-                  onChange={(e) => setMemberSearchTerm(e.target.value)}
+                  onChange={e => setMemberSearchTerm(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none"
                 />
               </div>
@@ -1666,94 +1495,49 @@ export const ProjectDetailView = ({
               {/* Department Filter */}
               <select
                 value={memberDepartmentFilter}
-                onChange={(e) => setMemberDepartmentFilter(e.target.value)}
+                onChange={e => setMemberDepartmentFilter(e.target.value)}
                 className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white"
               >
                 <option value="">Tất cả phòng ban</option>
-                {allDepartments.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name}
-                  </option>
-                ))}
+                {allDepartments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
               </select>
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-slate-50/50">
               {availableUsers
-                .filter((u) => {
-                  const matchesName =
-                    (u.full_name || "")
-                      .toLowerCase()
-                      .includes(memberSearchTerm.toLowerCase()) ||
-                    (u.email || "")
-                      .toLowerCase()
-                      .includes(memberSearchTerm.toLowerCase());
-                  const matchesDept = memberDepartmentFilter
-                    ? u.department_id === memberDepartmentFilter
-                    : true;
+                .filter(u => {
+                  const matchesName = (u.full_name || "").toLowerCase().includes(memberSearchTerm.toLowerCase()) || (u.email || "").toLowerCase().includes(memberSearchTerm.toLowerCase());
+                  const matchesDept = memberDepartmentFilter ? u.department_id === memberDepartmentFilter : true;
                   // Check if already a member
                   // Check if already a member
-                  const isNotMember =
-                    Array.isArray(members) &&
-                    !members.find((m) => m.user_id === u.id);
+                  const isNotMember = Array.isArray(members) && !members.find(m => m.user_id === u.id);
                   return matchesName && matchesDept && isNotMember;
                 })
-                .map((user) => (
-                  <div
-                    key={user.id}
-                    className="flex items-center justify-between p-3 border border-slate-200 rounded-lg hover:border-brand-300 hover:bg-brand-50 transition-all bg-white shadow-sm"
-                  >
+                .map(user => (
+                  <div key={user.id} className="flex items-center justify-between p-3 border border-slate-200 rounded-lg hover:border-brand-300 hover:bg-brand-50 transition-all bg-white shadow-sm">
                     <div className="flex items-center gap-3">
-                      <img
-                        src={
-                          user.avatar_url ||
-                          `https://ui-avatars.com/api/?name=${user.full_name}`
-                        }
-                        className="w-10 h-10 rounded-full bg-slate-200"
-                        alt=""
-                      />
+                      <img src={user.avatar_url || `https://ui-avatars.com/api/?name=${user.full_name}`} className="w-10 h-10 rounded-full bg-slate-200" alt="" />
                       <div>
-                        <p className="font-bold text-slate-900">
-                          {user.full_name}
-                        </p>
-                        <p className="text-xs text-slate-500">
-                          {user.email} •{" "}
-                          {allDepartments.find(
-                            (d) => d.id === user.department_id
-                          )?.name || "Chưa có phòng ban"}
-                        </p>
+                        <p className="font-bold text-slate-900">{user.full_name}</p>
+                        <p className="text-xs text-slate-500">{user.email} • {allDepartments.find(d => d.id === user.department_id)?.name || "Chưa có phòng ban"}</p>
                       </div>
                     </div>
-                    <Button
-                      size="sm"
-                      onClick={() => {
-                        projectService
-                          .addMember(project.id, user.id)
-                          .then((newMembers) => {
-                            setMembers(newMembers);
-                            // alert Removed to be less annoying, or maybe toast
-                          })
-                          .catch((err) => alert("Lỗi thêm thành viên: " + err));
-                      }}
-                    >
+                    <Button size="sm" onClick={() => {
+                      projectService.addMember(project.id, user.id).then(newMembers => {
+                        setMembers(newMembers);
+                        // alert Removed to be less annoying, or maybe toast
+                      }).catch(err => alert("Lỗi thêm thành viên: " + err));
+                    }}>
                       <Plus size={14} className="mr-1" /> Thêm
                     </Button>
                   </div>
-                ))}
-              {availableUsers.length === 0 && (
-                <p className="text-center text-slate-500 py-8">
-                  Đang tải biểu mẫu...
-                </p>
-              )}
+                ))
+              }
+              {availableUsers.length === 0 && <p className="text-center text-slate-500 py-8">Đang tải biểu mẫu...</p>}
             </div>
 
             <div className="p-4 border-t border-slate-200 flex justify-end">
-              <Button
-                variant="outline"
-                onClick={() => setShowAddMemberModal(false)}
-              >
-                Đóng
-              </Button>
+              <Button variant="outline" onClick={() => setShowAddMemberModal(false)}>Đóng</Button>
             </div>
           </div>
         </div>
@@ -1775,15 +1559,14 @@ export const ProjectDetailView = ({
                 {localProject.code}
               </span>
               <span
-                className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-                  localProject.status === "Done"
-                    ? "bg-green-100 text-green-700"
-                    : localProject.status === "Review"
+                className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${localProject.status === "Done"
+                  ? "bg-green-100 text-green-700"
+                  : localProject.status === "Review"
                     ? "bg-purple-100 text-purple-700"
                     : localProject.status === "In Progress"
-                    ? "bg-blue-100 text-blue-700"
-                    : "bg-yellow-100 text-yellow-700"
-                }`}
+                      ? "bg-blue-100 text-blue-700"
+                      : "bg-yellow-100 text-yellow-700"
+                  }`}
               >
                 {localProject.status}
               </span>
@@ -1809,18 +1592,16 @@ export const ProjectDetailView = ({
           { id: "overview", label: "Tổng quan", icon: PieChart },
           { id: "tasks", label: "Công việc", icon: Layers },
           { id: "members", label: "Thành viên", icon: Users },
-          { id: "departments", label: "Phòng ban", icon: Building2 },
           { id: "files", label: "Tài liệu", icon: Paperclip },
           { id: "reports", label: "Báo cáo", icon: FileText },
         ].map((tab) => (
           <button
             key={tab.id}
             onClick={() => handleTabChange(tab.id as any)}
-            className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap flex items-center gap-2 ${
-              activeTab === tab.id
-                ? "border-brand-600 text-brand-600"
-                : "border-transparent text-slate-500 hover:text-slate-700"
-            }`}
+            className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap flex items-center gap-2 ${activeTab === tab.id
+              ? "border-brand-600 text-brand-600"
+              : "border-transparent text-slate-500 hover:text-slate-700"
+              }`}
           >
             <tab.icon size={16} /> {tab.label}
           </button>
@@ -1904,8 +1685,8 @@ export const ProjectDetailView = ({
                   <Clock size={14} className="text-green-500" /> Start:{" "}
                   {localProject.startDate
                     ? new Date(localProject.startDate).toLocaleDateString(
-                        "vi-VN"
-                      )
+                      "vi-VN"
+                    )
                     : "Chưa đặt"}
                 </div>
                 <div className="flex items-center gap-2 text-sm text-slate-700">
@@ -1963,22 +1744,20 @@ export const ProjectDetailView = ({
                 <div className="flex bg-white border border-slate-200 rounded-md p-1">
                   <button
                     onClick={() => setTaskViewMode("kanban")}
-                    className={`p-1.5 rounded transition-colors ${
-                      taskViewMode === "kanban"
-                        ? "bg-slate-100 text-slate-900 shadow-sm"
-                        : "text-slate-400 hover:bg-slate-50"
-                    }`}
+                    className={`p-1.5 rounded transition-colors ${taskViewMode === "kanban"
+                      ? "bg-slate-100 text-slate-900 shadow-sm"
+                      : "text-slate-400 hover:bg-slate-50"
+                      }`}
                     title="Kanban Board"
                   >
                     <Kanban size={18} />
                   </button>
                   <button
                     onClick={() => setTaskViewMode("list")}
-                    className={`p-1.5 rounded transition-colors ${
-                      taskViewMode === "list"
-                        ? "bg-slate-100 text-slate-900 shadow-sm"
-                        : "text-slate-400 hover:bg-slate-50"
-                    }`}
+                    className={`p-1.5 rounded transition-colors ${taskViewMode === "list"
+                      ? "bg-slate-100 text-slate-900 shadow-sm"
+                      : "text-slate-400 hover:bg-slate-50"
+                      }`}
                     title="List View"
                   >
                     <List size={18} />
@@ -2038,19 +1817,17 @@ export const ProjectDetailView = ({
                           <td className="px-6 py-4">
                             <div className="flex items-start gap-3">
                               <div
-                                className={`mt-1 flex-shrink-0 w-2 h-2 rounded-full ${
-                                  task.priority === "Critical"
-                                    ? "bg-red-500"
-                                    : task.priority === "High"
+                                className={`mt-1 flex-shrink-0 w-2 h-2 rounded-full ${task.priority === "Critical"
+                                  ? "bg-red-500"
+                                  : task.priority === "High"
                                     ? "bg-orange-500"
                                     : "bg-blue-500"
-                                }`}
+                                  }`}
                               ></div>
                               <div>
                                 <p
-                                  className={`text-sm font-semibold group-hover:text-brand-600 transition-colors ${
-                                    isLate ? "text-red-600" : "text-slate-900"
-                                  }`}
+                                  className={`text-sm font-semibold group-hover:text-brand-600 transition-colors ${isLate ? "text-red-600" : "text-slate-900"
+                                    }`}
                                 >
                                   {task.title}
                                 </p>
@@ -2059,11 +1836,10 @@ export const ProjectDetailView = ({
                                     #{task.id}
                                   </span>
                                   <span
-                                    className={`text-xs flex items-center gap-1 ${
-                                      isLate
-                                        ? "text-red-500 font-bold"
-                                        : "text-slate-400"
-                                    }`}
+                                    className={`text-xs flex items-center gap-1 ${isLate
+                                      ? "text-red-500 font-bold"
+                                      : "text-slate-400"
+                                      }`}
                                   >
                                     <Calendar size={10} /> {task.dueDate}
                                   </span>
@@ -2092,11 +1868,10 @@ export const ProjectDetailView = ({
                               <div className="w-full max-w-[120px]">
                                 <div className="w-full bg-slate-100 rounded-full h-1.5">
                                   <div
-                                    className={`h-1.5 rounded-full ${
-                                      progress === 100
-                                        ? "bg-green-500"
-                                        : "bg-brand-500"
-                                    }`}
+                                    className={`h-1.5 rounded-full ${progress === 100
+                                      ? "bg-green-500"
+                                      : "bg-brand-500"
+                                      }`}
                                     style={{ width: `${progress}%` }}
                                   ></div>
                                 </div>
@@ -2112,128 +1887,99 @@ export const ProjectDetailView = ({
                     })}
                   </tbody>
                 </table>
-              ) : // Kanban View with Drag-Drop
-              localProject.workflowStatuses &&
-                localProject.workflowStatuses.length > 0 ? (
-                <DragDropContext onDragEnd={handleDragEnd}>
-                  <div className="flex gap-4 h-full overflow-x-auto pb-2">
-                    {/* Dynamic columns based on project workflow */}
-                    {localProject.workflowStatuses.map((wfStatus: any) => (
-                      <Droppable
-                        key={wfStatus.id || wfStatus.name}
-                        droppableId={wfStatus.id || wfStatus.name}
-                        isDropDisabled={!isAdmin}
-                      >
-                        {(provided, snapshot) => (
-                          <div
-                            ref={provided.innerRef}
-                            {...provided.droppableProps}
-                            className={`min-w-[280px] w-[300px] bg-slate-100 rounded-lg flex flex-col transition-colors ${
-                              snapshot.isDraggingOver
-                                ? "bg-blue-50 ring-2 ring-blue-300"
-                                : ""
-                            }`}
-                          >
-                            <div className="p-3 font-bold text-slate-700 border-b border-slate-200 flex justify-between items-center">
-                              <div className="flex items-center gap-2">
-                                <div
-                                  className={`w-2 h-2 rounded-full ${
-                                    wfStatus.color || "bg-slate-500"
-                                  }`}
-                                ></div>
-                                {wfStatus.name}
+              ) : (
+                // Kanban View with Drag-Drop
+                localProject.workflowStatuses && localProject.workflowStatuses.length > 0 ? (
+                  <DragDropContext onDragEnd={handleDragEnd}>
+                    <div className="flex gap-4 h-full overflow-x-auto pb-2">
+                      {/* Dynamic columns based on project workflow */}
+                      {localProject.workflowStatuses.map((wfStatus: any) => (
+                        <Droppable key={wfStatus.id || wfStatus.name} droppableId={wfStatus.id || wfStatus.name} isDropDisabled={!isAdmin}>
+                          {(provided, snapshot) => (
+                            <div
+                              ref={provided.innerRef}
+                              {...provided.droppableProps}
+                              className={`min-w-[280px] w-[300px] bg-slate-100 rounded-lg flex flex-col transition-colors ${snapshot.isDraggingOver ? 'bg-blue-50 ring-2 ring-blue-300' : ''
+                                }`}
+                            >
+                              <div className="p-3 font-bold text-slate-700 border-b border-slate-200 flex justify-between items-center">
+                                <div className="flex items-center gap-2">
+                                  <div className={`w-2 h-2 rounded-full ${wfStatus.color || 'bg-slate-500'}`}></div>
+                                  {wfStatus.name}
+                                </div>
+                                <span className="bg-white text-xs px-2 py-0.5 rounded-full">
+                                  {tasks.filter((t) => t.status === wfStatus.name).length}
+                                </span>
                               </div>
-                              <span className="bg-white text-xs px-2 py-0.5 rounded-full">
-                                {
-                                  tasks.filter(
-                                    (t) => t.status === wfStatus.name
-                                  ).length
-                                }
-                              </span>
-                            </div>
-                            <div className="p-2 space-y-2 flex-1 min-h-[100px]">
-                              {tasks
-                                .filter((t) => t.status === wfStatus.name)
-                                .map((task, index) => (
-                                  <Draggable
-                                    key={task.id}
-                                    draggableId={task.id}
-                                    index={index}
-                                    isDragDisabled={!isAdmin}
-                                  >
-                                    {(dragProvided, dragSnapshot) => (
-                                      <div
-                                        ref={dragProvided.innerRef}
-                                        {...dragProvided.draggableProps}
-                                        {...dragProvided.dragHandleProps}
-                                        onClick={() =>
-                                          handleOpenTaskDetail(task)
-                                        }
-                                        className={`bg-white p-3 rounded shadow-sm border cursor-pointer transition-all ${
-                                          dragSnapshot.isDragging
-                                            ? "shadow-lg border-blue-300 rotate-2"
-                                            : "border-slate-200 hover:shadow-md"
-                                        } ${
-                                          !isAdmin
-                                            ? "cursor-pointer"
-                                            : "cursor-grab active:cursor-grabbing"
-                                        }`}
-                                      >
-                                        <p className="text-sm font-medium text-slate-900 mb-2">
-                                          {task.title}
-                                        </p>
+                              <div className="p-2 space-y-2 flex-1 min-h-[100px]">
+                                {tasks
+                                  .filter((t) => t.status === wfStatus.name)
+                                  .map((task, index) => (
+                                    <Draggable
+                                      key={task.id}
+                                      draggableId={task.id}
+                                      index={index}
+                                      isDragDisabled={!isAdmin}
+                                    >
+                                      {(dragProvided, dragSnapshot) => (
+                                        <div
+                                          ref={dragProvided.innerRef}
+                                          {...dragProvided.draggableProps}
+                                          {...dragProvided.dragHandleProps}
+                                          onClick={() => handleOpenTaskDetail(task)}
+                                          className={`bg-white p-3 rounded shadow-sm border cursor-pointer transition-all ${dragSnapshot.isDragging
+                                            ? 'shadow-lg border-blue-300 rotate-2'
+                                            : 'border-slate-200 hover:shadow-md'
+                                            } ${!isAdmin ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'}`}
+                                        >
+                                          <p className="text-sm font-medium text-slate-900 mb-2">
+                                            {task.title}
+                                          </p>
 
-                                        {/* Assignee & Dept Badge */}
-                                        <div className="flex items-center gap-2 mb-2 bg-slate-50 p-1.5 rounded">
-                                          <Building
-                                            size={12}
-                                            className="text-slate-400"
-                                          />
-                                          <div className="overflow-hidden">
-                                            <p className="text-xs font-medium text-slate-700 truncate">
-                                              {task.assigneeDepartment}
-                                            </p>
+                                          {/* Assignee & Dept Badge */}
+                                          <div className="flex items-center gap-2 mb-2 bg-slate-50 p-1.5 rounded">
+                                            <Building size={12} className="text-slate-400" />
+                                            <div className="overflow-hidden">
+                                              <p className="text-xs font-medium text-slate-700 truncate">
+                                                {task.assigneeDepartment}
+                                              </p>
+                                            </div>
                                           </div>
-                                        </div>
 
-                                        <div className="flex justify-between items-center mt-2">
-                                          <span
-                                            className={`text-[10px] px-1.5 py-0.5 rounded ${
-                                              task.priority === "High" ||
-                                              task.priority === "Critical"
+                                          <div className="flex justify-between items-center mt-2">
+                                            <span
+                                              className={`text-[10px] px-1.5 py-0.5 rounded ${task.priority === "High" || task.priority === "Critical"
                                                 ? "bg-orange-100 text-orange-700"
                                                 : "bg-slate-100 text-slate-600"
-                                            }`}
-                                          >
-                                            {task.priority}
-                                          </span>
-                                          <span className="text-[10px] text-slate-400">
-                                            {task.dueDate}
-                                          </span>
+                                                }`}
+                                            >
+                                              {task.priority}
+                                            </span>
+                                            <span className="text-[10px] text-slate-400">
+                                              {task.dueDate}
+                                            </span>
+                                          </div>
                                         </div>
-                                      </div>
-                                    )}
-                                  </Draggable>
-                                ))}
-                              {provided.placeholder}
+                                      )}
+                                    </Draggable>
+                                  ))}
+                                {provided.placeholder}
+                              </div>
                             </div>
-                          </div>
-                        )}
-                      </Droppable>
-                    ))}
+                          )}
+                        </Droppable>
+                      ))}
+                    </div>
+                  </DragDropContext>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full min-h-[400px] border-2 border-dashed border-slate-200 rounded-xl bg-slate-50/50">
+                    <GitBranch size={48} className="text-slate-300 mb-4" />
+                    <h3 className="text-lg font-semibold text-slate-700 mb-2">Chưa thiết lập Quy trình</h3>
+                    <p className="text-slate-500 max-w-md text-center mb-6">
+                      Dự án này chưa có quy trình làm việc (Workflow). Vui lòng chọn workflow cho dự án này để hiển thị bảng công việc.
+                    </p>
                   </div>
-                </DragDropContext>
-              ) : (
-                <div className="flex flex-col items-center justify-center h-full min-h-[400px] border-2 border-dashed border-slate-200 rounded-xl bg-slate-50/50">
-                  <GitBranch size={48} className="text-slate-300 mb-4" />
-                  <h3 className="text-lg font-semibold text-slate-700 mb-2">
-                    Chưa thiết lập Quy trình
-                  </h3>
-                  <p className="text-slate-500 max-w-md text-center mb-6">
-                    Dự án này chưa có quy trình làm việc (Workflow). Vui lòng
-                    chọn workflow cho dự án này để hiển thị bảng công việc.
-                  </p>
-                </div>
+                )
               )}
             </div>
           </div>
@@ -2253,106 +1999,36 @@ export const ProjectDetailView = ({
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {Array.isArray(members) &&
-                members.map((member) => (
-                  <div
-                    key={member.id}
-                    className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm relative group flex items-center gap-4"
-                  >
-                    <button
-                      onClick={() => {
-                        if (confirm("Xóa thành viên này?")) {
-                          projectService
-                            .removeMember(project.id, member.user_id)
-                            .then((newMembers) => {
-                              setMembers(newMembers);
-                            });
-                        }
-                      }}
-                      className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 text-slate-400 hover:text-red-600 bg-white hover:bg-red-50 rounded-full border border-slate-200 shadow-sm"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-
-                    <img
-                      src={
-                        member.avatar_url ||
-                        "https://ui-avatars.com/api/?name=" + member.userName
+              {Array.isArray(members) && members.map((member) => (
+                <div
+                  key={member.id}
+                  className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm relative group flex items-center gap-4"
+                >
+                  <button
+                    onClick={() => {
+                      if (confirm("Xóa thành viên này?")) {
+                        projectService.removeMember(project.id, member.user_id).then(newMembers => {
+                          setMembers(newMembers);
+                        });
                       }
-                      className="w-12 h-12 rounded-full bg-slate-100"
-                    />
+                    }}
+                    className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 text-slate-400 hover:text-red-600 bg-white hover:bg-red-50 rounded-full border border-slate-200 shadow-sm"
+                  >
+                    <Trash2 size={14} />
+                  </button>
 
-                    <div>
-                      <h4 className="font-bold text-slate-900">
-                        {member.userName}
-                      </h4>
-                      <p className="text-xs text-slate-500">
-                        {member.departmentName || "Thành viên"}
-                      </p>
-                      <span className="text-[10px] bg-slate-100 px-2 py-0.5 rounded text-slate-600 border border-slate-200 mt-1 inline-block">
-                        {member.role}
-                      </span>
-                    </div>
+                  <img src={member.avatar_url || "https://ui-avatars.com/api/?name=" + member.userName} className="w-12 h-12 rounded-full bg-slate-100" />
+
+                  <div>
+                    <h4 className="font-bold text-slate-900">{member.userName}</h4>
+                    <p className="text-xs text-slate-500">{member.departmentName || "Thành viên"}</p>
+                    <span className="text-[10px] bg-slate-100 px-2 py-0.5 rounded text-slate-600 border border-slate-200 mt-1 inline-block">{member.role}</span>
                   </div>
-                ))}
+                </div>
+              ))}
               {members.length === 0 && (
                 <div className="col-span-3 text-center py-10 bg-slate-50 rounded-xl border border-dashed border-slate-300 text-slate-500">
                   Chưa có thành viên nào.
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {activeTab === "departments" && (
-          <div className="animate-fadeIn">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-bold text-slate-900">
-                Phòng ban tham gia
-              </h3>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {localProject.departments &&
-              localProject.departments.length > 0 ? (
-                localProject.departments.map((dept: any) => (
-                  <div
-                    key={dept.id}
-                    className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-lg">
-                        {dept.name?.charAt(0) || "P"}
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="font-bold text-slate-900">
-                          {dept.name}
-                        </h4>
-                        <p className="text-xs text-slate-500">
-                          {dept.code || "—"}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="mt-4 pt-4 border-t border-slate-100">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-slate-500">Quản lý:</span>
-                        <span className="font-medium text-slate-700">
-                          {dept.managerName || "Chưa gán"}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between text-sm mt-2">
-                        <span className="text-slate-500">Số thành viên:</span>
-                        <span className="font-medium text-slate-700">
-                          {dept.memberCount || 0}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="col-span-3 text-center py-10 bg-slate-50 rounded-xl border border-dashed border-slate-300 text-slate-500">
-                  <Building2 size={48} className="mx-auto mb-3 opacity-50" />
-                  <p>Chưa có phòng ban nào tham gia dự án.</p>
                 </div>
               )}
             </div>
@@ -2469,13 +2145,12 @@ export const ProjectDetailView = ({
                       </p>
                     </div>
                     <span
-                      className={`px-3 py-1 rounded-full text-xs font-bold border ${
-                        report.status === "Approved"
-                          ? "bg-green-50 text-green-700 border-green-100"
-                          : report.status === "Rejected"
+                      className={`px-3 py-1 rounded-full text-xs font-bold border ${report.status === "Approved"
+                        ? "bg-green-50 text-green-700 border-green-100"
+                        : report.status === "Rejected"
                           ? "bg-red-50 text-red-700 border-red-100"
                           : "bg-yellow-50 text-yellow-700 border-yellow-100"
-                      }`}
+                        }`}
                     >
                       {report.status}
                     </span>

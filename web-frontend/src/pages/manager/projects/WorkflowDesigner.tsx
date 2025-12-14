@@ -1,17 +1,8 @@
-import React, { useEffect, useState, useMemo } from "react";
-import {
-  GitBranch,
-  Plus,
-  Edit2,
-  Trash2,
-  Loader2,
-  X,
-  ShieldAlert,
-} from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { GitBranch, Plus, Edit2, Trash2, Loader2, X } from "lucide-react";
 import { workflowService } from "../../../services/projectService";
 import { Button } from "../../../components/system/ui/Button";
 import { Input } from "../../../components/system/ui/Input";
-import { useNavigate } from "react-router-dom";
 
 interface Workflow {
   id: string;
@@ -197,20 +188,6 @@ const WorkflowModal = ({
 };
 
 export const WorkflowDesigner = () => {
-  // Check if user is Admin
-  const isAdmin = useMemo(() => {
-    try {
-      const userData = localStorage.getItem("user");
-      if (userData) {
-        const user = JSON.parse(userData);
-        return user.role?.toLowerCase() === "admin";
-      }
-    } catch {
-      return false;
-    }
-    return false;
-  }, []);
-
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -333,12 +310,10 @@ export const WorkflowDesigner = () => {
             Định nghĩa các luồng làm việc tự động cho từng phòng ban và dự án.
           </p>
         </div>
-        {isAdmin && (
-          <Button onClick={() => setShowCreateModal(true)}>
-            <Plus size={18} className="mr-2" />
-            Tạo quy trình
-          </Button>
-        )}
+        <Button onClick={() => setShowCreateModal(true)}>
+          <Plus size={18} className="mr-2" />
+          Tạo quy trình
+        </Button>
       </div>
 
       {workflows.length === 0 ? (
@@ -348,16 +323,12 @@ export const WorkflowDesigner = () => {
             Chưa có quy trình nào
           </h3>
           <p className="text-slate-500 mb-6">
-            {isAdmin
-              ? "Tạo quy trình làm việc đầu tiên để quản lý task hiệu quả hơn"
-              : "Hiện chưa có quy trình nào được tạo"}
+            Tạo quy trình làm việc đầu tiên để quản lý task hiệu quả hơn
           </p>
-          {isAdmin && (
-            <Button onClick={() => setShowCreateModal(true)}>
-              <Plus size={18} className="mr-2" />
-              Tạo quy trình đầu tiên
-            </Button>
-          )}
+          <Button onClick={() => setShowCreateModal(true)}>
+            <Plus size={18} className="mr-2" />
+            Tạo quy trình đầu tiên
+          </Button>
         </div>
       ) : (
         <div className="grid gap-6">
@@ -392,23 +363,19 @@ export const WorkflowDesigner = () => {
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  {isAdmin && (
-                    <>
-                      <button
-                        onClick={() => setEditingWorkflow(wf)}
-                        className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                      >
-                        <Edit2 size={16} />
-                      </button>
-                      {!wf.isDefault && (wf.usageCount || 0) === 0 && (
-                        <button
-                          onClick={() => handleDeleteWorkflow(wf.id)}
-                          className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      )}
-                    </>
+                  <button
+                    onClick={() => setEditingWorkflow(wf)}
+                    className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                  >
+                    <Edit2 size={16} />
+                  </button>
+                  {!wf.isDefault && (wf.usageCount || 0) === 0 && (
+                    <button
+                      onClick={() => handleDeleteWorkflow(wf.id)}
+                      className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                    >
+                      <Trash2 size={16} />
+                    </button>
                   )}
                 </div>
               </div>

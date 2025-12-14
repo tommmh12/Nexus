@@ -1,10 +1,4 @@
-import React, {
-  useState,
-  useRef,
-  useEffect,
-  useCallback,
-  useMemo,
-} from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   departmentService,
   Department,
@@ -247,7 +241,6 @@ const DepartmentNode = ({
   onEdit,
   onAddChild,
   onDelete,
-  isAdmin = false,
 }: {
   dept: DepartmentTreeNode;
   employees: Employee[];
@@ -258,7 +251,6 @@ const DepartmentNode = ({
   onEdit: (dept: Department) => void;
   onAddChild: (dept: Department) => void;
   onDelete: (dept: Department) => void;
-  isAdmin?: boolean;
 }) => {
   const isCompact = scale < 0.6;
   const hasChildren = dept.children.length > 0;
@@ -301,41 +293,39 @@ const DepartmentNode = ({
           }`}
         />
 
-        {/* Action Buttons - Only show for Admin */}
-        {isAdmin && (
-          <div className="absolute -top-3 -right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onAddChild(dept);
-              }}
-              className="p-1.5 bg-green-500 text-white rounded-full shadow-md hover:bg-green-600 transition-colors"
-              title="Thêm phòng ban con"
-            >
-              <Plus size={14} />
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onEdit(dept);
-              }}
-              className="p-1.5 bg-blue-500 text-white rounded-full shadow-md hover:bg-blue-600 transition-colors"
-              title="Chỉnh sửa"
-            >
-              <Edit2 size={14} />
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete(dept);
-              }}
-              className="p-1.5 bg-red-500 text-white rounded-full shadow-md hover:bg-red-600 transition-colors"
-              title="Xóa"
-            >
-              <Trash2 size={14} />
-            </button>
-          </div>
-        )}
+        {/* Action Buttons */}
+        <div className="absolute -top-3 -right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onAddChild(dept);
+            }}
+            className="p-1.5 bg-green-500 text-white rounded-full shadow-md hover:bg-green-600 transition-colors"
+            title="Thêm phòng ban con"
+          >
+            <Plus size={14} />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit(dept);
+            }}
+            className="p-1.5 bg-blue-500 text-white rounded-full shadow-md hover:bg-blue-600 transition-colors"
+            title="Chỉnh sửa"
+          >
+            <Edit2 size={14} />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(dept);
+            }}
+            className="p-1.5 bg-red-500 text-white rounded-full shadow-md hover:bg-red-600 transition-colors"
+            title="Xóa"
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
 
         {/* Header with Manager */}
         <div className="flex items-center gap-3 pl-2">
@@ -480,7 +470,6 @@ const DepartmentNode = ({
                     onEdit={onEdit}
                     onAddChild={onAddChild}
                     onDelete={onDelete}
-                    isAdmin={isAdmin}
                   />
                 </div>
               ))}
@@ -694,21 +683,6 @@ const DeleteConfirmModal = ({
 
 // --- Main Component ---
 export const OrgChart = () => {
-  // Get current user role for permission check
-  const currentUserRole = useMemo(() => {
-    try {
-      const userData = localStorage.getItem("user");
-      if (userData) {
-        const user = JSON.parse(userData);
-        return user.role?.toLowerCase() || "employee";
-      }
-    } catch {
-      return "employee";
-    }
-    return "employee";
-  }, []);
-  const isAdmin = currentUserRole === "admin";
-
   // Data State
   const [departments, setDepartments] = useState<Department[]>([]);
   const [treeData, setTreeData] = useState<DepartmentTreeNode[]>([]);
@@ -958,12 +932,10 @@ export const OrgChart = () => {
             {showEmployeesGlobal ? "Ẩn nhân viên" : "Hiện nhân viên"}
           </Button>
 
-          {isAdmin && (
-            <Button onClick={() => setShowAddModal(true)} variant="outline">
-              <Plus size={18} className="mr-2" />
-              Thêm mới
-            </Button>
-          )}
+          <Button onClick={() => setShowAddModal(true)} variant="outline">
+            <Plus size={18} className="mr-2" />
+            Thêm mới
+          </Button>
 
           <Button variant="outline" onClick={fetchData}>
             <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
@@ -1175,7 +1147,6 @@ export const OrgChart = () => {
                         onEdit={setEditingDept}
                         onAddChild={setAddingChildTo}
                         onDelete={setDeletingDept}
-                        isAdmin={isAdmin}
                       />
                     </div>
                   ))}

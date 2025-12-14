@@ -1595,19 +1595,14 @@ const PostDetail = ({
   onUserClick: (name: string) => void;
   reactions?: Record<string, number>;
   userReaction?: string | null;
-  onReactionChange?: (
-    reactions: Record<string, number>,
-    userReaction: string | null
-  ) => void;
+  onReactionChange?: (reactions: Record<string, number>, userReaction: string | null) => void;
 }) => {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [localReactions, setLocalReactions] = useState<Record<string, number>>(
     reactions || { like: 0, love: 0, laugh: 0, wow: 0, sad: 0, angry: 0 }
   );
-  const [localUserReaction, setLocalUserReaction] = useState<string | null>(
-    userReaction || null
-  );
+  const [localUserReaction, setLocalUserReaction] = useState<string | null>(userReaction || null);
   const currentUser = authService.getStoredUser();
 
   // Update local state when props change
@@ -1623,10 +1618,7 @@ const PostDetail = ({
   const textContent = stripHtmlTags(post.content);
 
   // Calculate total reactions
-  const totalReactions = Object.values(localReactions).reduce(
-    (sum, count) => sum + count,
-    0
-  );
+  const totalReactions = Object.values(localReactions).reduce((sum, count) => sum + count, 0);
 
   // Get top reactions for display
   const topReactions = reactionConfig
@@ -1634,10 +1626,7 @@ const PostDetail = ({
     .sort((a, b) => localReactions[b.type] - localReactions[a.type])
     .slice(0, 3);
 
-  const handleReactionChange = (
-    newReactions: Record<string, number>,
-    newUserReaction: string | null
-  ) => {
+  const handleReactionChange = (newReactions: Record<string, number>, newUserReaction: string | null) => {
     setLocalReactions(newReactions);
     setLocalUserReaction(newUserReaction);
     onReactionChange?.(newReactions, newUserReaction);
@@ -1771,9 +1760,7 @@ const PostDetail = ({
               <>
                 <div className="flex -space-x-1">
                   {topReactions.map((r) => (
-                    <span key={r.type} className="text-base">
-                      {r.emoji}
-                    </span>
+                    <span key={r.type} className="text-base">{r.emoji}</span>
                   ))}
                 </div>
                 <span className="ml-1">{totalReactions}</span>
@@ -2341,12 +2328,9 @@ export const ForumModule = ({
           reactions={postReactions[selectedPost.id]?.reactions}
           userReaction={postReactions[selectedPost.id]?.userReaction}
           onReactionChange={(newReactions, newUserReaction) => {
-            setPostReactions((prev) => ({
+            setPostReactions(prev => ({
               ...prev,
-              [selectedPost.id]: {
-                reactions: newReactions,
-                userReaction: newUserReaction,
-              },
+              [selectedPost.id]: { reactions: newReactions, userReaction: newUserReaction }
             }));
           }}
         />
