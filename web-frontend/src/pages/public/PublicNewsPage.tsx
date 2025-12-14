@@ -32,7 +32,9 @@ interface NewsArticle {
 }
 
 // --- Header Component ---
-const PublicHeader: React.FC<{ onLoginClick: () => void }> = ({ onLoginClick }) => {
+const PublicHeader: React.FC<{ onLoginClick: () => void }> = ({
+  onLoginClick,
+}) => {
   return (
     <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-slate-200 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -50,9 +52,21 @@ const PublicHeader: React.FC<{ onLoginClick: () => void }> = ({ onLoginClick }) 
 
           {/* Navigation */}
           <nav className="hidden md:flex items-center gap-8">
-            <a href="#" className="text-brand-600 font-medium">Bản tin</a>
-            <a href="#about" className="text-slate-600 hover:text-brand-600 transition">Giới thiệu</a>
-            <a href="#contact" className="text-slate-600 hover:text-brand-600 transition">Liên hệ</a>
+            <a href="#" className="text-brand-600 font-medium">
+              Bản tin
+            </a>
+            <a
+              href="#about"
+              className="text-slate-600 hover:text-brand-600 transition"
+            >
+              Giới thiệu
+            </a>
+            <a
+              href="#contact"
+              className="text-slate-600 hover:text-brand-600 transition"
+            >
+              Liên hệ
+            </a>
           </nav>
 
           {/* Login Button */}
@@ -70,7 +84,10 @@ const PublicHeader: React.FC<{ onLoginClick: () => void }> = ({ onLoginClick }) 
 };
 
 // --- News Card Component ---
-const NewsCard: React.FC<{ article: NewsArticle; onClick: () => void }> = ({ article, onClick }) => {
+const NewsCard: React.FC<{ article: NewsArticle; onClick: () => void }> = ({
+  article,
+  onClick,
+}) => {
   return (
     <div
       onClick={onClick}
@@ -78,7 +95,10 @@ const NewsCard: React.FC<{ article: NewsArticle; onClick: () => void }> = ({ art
     >
       <div className="relative h-48 overflow-hidden">
         <img
-          src={article.coverImage || "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&q=80&w=600"}
+          src={
+            article.coverImage ||
+            "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&q=80&w=600"
+          }
           alt={article.title}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
         />
@@ -92,7 +112,9 @@ const NewsCard: React.FC<{ article: NewsArticle; onClick: () => void }> = ({ art
         <h3 className="text-lg font-bold text-slate-900 mb-2 group-hover:text-brand-600 transition line-clamp-2">
           {article.title}
         </h3>
-        <p className="text-slate-600 text-sm mb-4 line-clamp-2">{article.summary}</p>
+        <p className="text-slate-600 text-sm mb-4 line-clamp-2">
+          {article.summary}
+        </p>
         <div className="flex items-center justify-between text-xs text-slate-500">
           <div className="flex items-center gap-4">
             <span className="flex items-center gap-1">
@@ -115,14 +137,20 @@ const NewsCard: React.FC<{ article: NewsArticle; onClick: () => void }> = ({ art
 };
 
 // --- Featured Article Component ---
-const FeaturedArticle: React.FC<{ article: NewsArticle; onClick: () => void }> = ({ article, onClick }) => {
+const FeaturedArticle: React.FC<{
+  article: NewsArticle;
+  onClick: () => void;
+}> = ({ article, onClick }) => {
   return (
     <div
       onClick={onClick}
       className="group relative h-[500px] rounded-2xl overflow-hidden cursor-pointer shadow-xl"
     >
       <img
-        src={article.coverImage || "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&q=80&w=1200"}
+        src={
+          article.coverImage ||
+          "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&q=80&w=1200"
+        }
         alt={article.title}
         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
       />
@@ -134,11 +162,18 @@ const FeaturedArticle: React.FC<{ article: NewsArticle; onClick: () => void }> =
         <h2 className="text-3xl md:text-4xl font-bold text-white mb-4 group-hover:text-brand-200 transition">
           {article.title}
         </h2>
-        <p className="text-white/80 text-lg mb-6 line-clamp-2 max-w-3xl">{article.summary}</p>
+        <p className="text-white/80 text-lg mb-6 line-clamp-2 max-w-3xl">
+          {article.summary}
+        </p>
         <div className="flex items-center gap-6 text-white/70 text-sm">
           <div className="flex items-center gap-2">
             <img
-              src={article.authorAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(article.authorName)}&background=random`}
+              src={
+                article.authorAvatar ||
+                `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                  article.authorName
+                )}&background=random`
+              }
               alt=""
               className="w-8 h-8 rounded-full"
             />
@@ -159,7 +194,10 @@ const FeaturedArticle: React.FC<{ article: NewsArticle; onClick: () => void }> =
 };
 
 // --- Article Detail Component ---
-const ArticleDetail: React.FC<{ article: NewsArticle; onBack: () => void }> = ({ article, onBack }) => {
+const ArticleDetail: React.FC<{ article: NewsArticle; onBack: () => void }> = ({
+  article,
+  onBack,
+}) => {
   return (
     <div className="animate-fadeIn">
       {/* Hero */}
@@ -170,7 +208,7 @@ const ArticleDetail: React.FC<{ article: NewsArticle; onBack: () => void }> = ({
           className="w-full h-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent"></div>
-        
+
         <button
           onClick={onBack}
           className="absolute top-6 left-6 flex items-center gap-2 px-4 py-2 bg-white/90 hover:bg-white rounded-lg shadow-sm transition z-10"
@@ -183,11 +221,18 @@ const ArticleDetail: React.FC<{ article: NewsArticle; onBack: () => void }> = ({
             <span className="inline-block px-4 py-1.5 bg-brand-600 text-white text-sm font-medium rounded-full mb-4">
               {article.category}
             </span>
-            <h1 className="text-4xl font-bold text-white mb-4">{article.title}</h1>
+            <h1 className="text-4xl font-bold text-white mb-4">
+              {article.title}
+            </h1>
             <div className="flex items-center gap-6 text-white/80 text-sm">
               <div className="flex items-center gap-2">
                 <img
-                  src={article.authorAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(article.authorName)}&background=random`}
+                  src={
+                    article.authorAvatar ||
+                    `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                      article.authorName
+                    )}&background=random`
+                  }
                   alt=""
                   className="w-8 h-8 rounded-full"
                 />
@@ -251,7 +296,9 @@ const ArticleDetail: React.FC<{ article: NewsArticle; onBack: () => void }> = ({
 export const PublicNewsPage: React.FC = () => {
   const [articles, setArticles] = useState<NewsArticle[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedArticle, setSelectedArticle] = useState<NewsArticle | null>(null);
+  const [selectedArticle, setSelectedArticle] = useState<NewsArticle | null>(
+    null
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
 
@@ -264,23 +311,27 @@ export const PublicNewsPage: React.FC = () => {
       setIsLoading(true);
       // Use public endpoint - no auth required
       const data = await newsService.getPublicArticles(50, 0);
-      setArticles(data.map((a: any) => ({
-        id: a.id,
-        title: a.title,
-        summary: a.summary,
-        content: a.content,
-        category: a.category,
-        coverImage: a.cover_image || a.coverImage,
-        authorName: a.author_name || a.authorName || "Admin",
-        authorAvatar: a.author_avatar || a.authorAvatar,
-        publishDate: a.published_at ? new Date(a.published_at).toLocaleDateString("vi-VN") : 
-                     a.publish_date ? new Date(a.publish_date).toLocaleDateString("vi-VN") : 
-                     a.publishDate || new Date().toLocaleDateString("vi-VN"),
-        readTime: a.read_time || a.readTime || "5 phút đọc",
-        status: a.status,
-        tags: a.tags || [],
-        views: a.view_count || a.views || 0,
-      })));
+      setArticles(
+        data.map((a: any) => ({
+          id: a.id,
+          title: a.title,
+          summary: a.summary,
+          content: a.content,
+          category: a.category,
+          coverImage: a.cover_image || a.coverImage,
+          authorName: a.author_name || a.authorName || "Admin",
+          authorAvatar: a.author_avatar || a.authorAvatar,
+          publishDate: a.published_at
+            ? new Date(a.published_at).toLocaleDateString("vi-VN")
+            : a.publish_date
+            ? new Date(a.publish_date).toLocaleDateString("vi-VN")
+            : a.publishDate || new Date().toLocaleDateString("vi-VN"),
+          readTime: a.read_time || a.readTime || "5 phút đọc",
+          status: a.status,
+          tags: a.tags || [],
+          views: a.view_count || a.views || 0,
+        }))
+      );
     } catch (error) {
       console.error("Error loading articles:", error);
     } finally {
@@ -294,13 +345,15 @@ export const PublicNewsPage: React.FC = () => {
   };
 
   // Get unique categories
-  const categories = ["all", ...new Set(articles.map(a => a.category))];
+  const categories = ["all", ...new Set(articles.map((a) => a.category))];
 
   // Filter articles
-  const filteredArticles = articles.filter(article => {
-    const matchesSearch = article.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         article.summary.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategory === "all" || article.category === selectedCategory;
+  const filteredArticles = articles.filter((article) => {
+    const matchesSearch =
+      article.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      article.summary.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory =
+      selectedCategory === "all" || article.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
@@ -312,7 +365,10 @@ export const PublicNewsPage: React.FC = () => {
     return (
       <div className="min-h-screen bg-slate-50">
         <PublicHeader onLoginClick={handleLoginClick} />
-        <ArticleDetail article={selectedArticle} onBack={() => setSelectedArticle(null)} />
+        <ArticleDetail
+          article={selectedArticle}
+          onBack={() => setSelectedArticle(null)}
+        />
       </div>
     );
   }
@@ -332,11 +388,11 @@ export const PublicNewsPage: React.FC = () => {
           />
           <div className="absolute inset-0 bg-gradient-to-br from-brand-900/95 via-brand-800/90 to-slate-900/95"></div>
         </div>
-        
+
         {/* Decorative Elements */}
         <div className="absolute top-10 left-10 w-72 h-72 bg-brand-500/20 rounded-full blur-3xl"></div>
         <div className="absolute bottom-10 right-10 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl"></div>
-        
+
         {/* Content */}
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28">
           <div className="text-center max-w-4xl mx-auto">
@@ -345,14 +401,18 @@ export const PublicNewsPage: React.FC = () => {
               <Newspaper size={16} className="text-brand-300" />
               Cập nhật mới nhất từ công ty
             </div>
-            
+
             <h1 className="text-4xl md:text-6xl font-bold mb-6 text-white leading-tight">
-              Bản tin <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-300 to-blue-300">Công ty</span>
+              Bản tin{" "}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-300 to-blue-300">
+                Công ty
+              </span>
             </h1>
             <p className="text-xl md:text-2xl text-white/70 mb-10 max-w-2xl mx-auto leading-relaxed">
-              Cập nhật tin tức, sự kiện và những điểm nổi bật từ NEXUS Corporation
+              Cập nhật tin tức, sự kiện và những điểm nổi bật từ NEXUS
+              Corporation
             </p>
-            
+
             {/* Search */}
             <div className="relative max-w-2xl mx-auto">
               <div className="absolute inset-0 bg-white/10 backdrop-blur-sm rounded-2xl"></div>
@@ -367,19 +427,27 @@ export const PublicNewsPage: React.FC = () => {
                 />
               </div>
             </div>
-            
+
             {/* Stats */}
             <div className="flex flex-wrap justify-center gap-8 mt-12 pt-8 border-t border-white/10">
               <div className="text-center">
-                <p className="text-3xl font-bold text-white">{articles.length}</p>
+                <p className="text-3xl font-bold text-white">
+                  {articles.length}
+                </p>
                 <p className="text-sm text-white/60">Bài viết</p>
               </div>
               <div className="text-center">
-                <p className="text-3xl font-bold text-white">{categories.length - 1}</p>
+                <p className="text-3xl font-bold text-white">
+                  {categories.length - 1}
+                </p>
                 <p className="text-sm text-white/60">Chuyên mục</p>
               </div>
               <div className="text-center">
-                <p className="text-3xl font-bold text-white">{articles.reduce((sum, a) => sum + (a.views || 0), 0).toLocaleString()}</p>
+                <p className="text-3xl font-bold text-white">
+                  {articles
+                    .reduce((sum, a) => sum + (a.views || 0), 0)
+                    .toLocaleString()}
+                </p>
                 <p className="text-sm text-white/60">Lượt xem</p>
               </div>
             </div>
@@ -413,8 +481,12 @@ export const PublicNewsPage: React.FC = () => {
         ) : filteredArticles.length === 0 ? (
           <div className="text-center py-20">
             <Newspaper size={64} className="mx-auto mb-4 text-slate-300" />
-            <h3 className="text-xl font-semibold text-slate-700 mb-2">Chưa có bài viết</h3>
-            <p className="text-slate-500">Hiện tại chưa có bài viết nào được xuất bản.</p>
+            <h3 className="text-xl font-semibold text-slate-700 mb-2">
+              Chưa có bài viết
+            </h3>
+            <p className="text-slate-500">
+              Hiện tại chưa có bài viết nào được xuất bản.
+            </p>
           </div>
         ) : (
           <>
@@ -462,15 +534,28 @@ export const PublicNewsPage: React.FC = () => {
                 <span className="text-xl font-bold">NEXUS</span>
               </div>
               <p className="text-slate-400">
-                Cổng thông tin nội bộ doanh nghiệp - Kết nối, Chia sẻ, Phát triển
+                Cổng thông tin nội bộ doanh nghiệp - Kết nối, Chia sẻ, Phát
+                triển
               </p>
             </div>
             <div>
               <h4 className="font-semibold mb-4">Liên kết</h4>
               <ul className="space-y-2 text-slate-400">
-                <li><a href="#" className="hover:text-white transition">Trang chủ</a></li>
-                <li><a href="#" className="hover:text-white transition">Giới thiệu</a></li>
-                <li><a href="#" className="hover:text-white transition">Liên hệ</a></li>
+                <li>
+                  <a href="#" className="hover:text-white transition">
+                    Trang chủ
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="hover:text-white transition">
+                    Giới thiệu
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="hover:text-white transition">
+                    Liên hệ
+                  </a>
+                </li>
               </ul>
             </div>
             <div>

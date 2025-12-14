@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { NewsArticle } from "../../../types";
 import { Button } from "../../../components/system/ui/Button";
-import { newsService, NewsArticle as NewsArticleAPI } from "../../../services/newsService";
+import {
+  newsService,
+  NewsArticle as NewsArticleAPI,
+} from "../../../services/newsService";
 import {
   ArrowLeft,
   Calendar,
@@ -25,22 +28,34 @@ import {
   Check,
   MoreHorizontal,
   ThumbsUp,
-  MessageSquare
+  MessageSquare,
+  Building2,
+  Settings,
 } from "lucide-react";
 
 // --- Utility Components ---
 
-const Badge = ({ children, variant = "default", className = "" }: { children: React.ReactNode, variant?: "default" | "success" | "warning" | "danger" | "outline", className?: string }) => {
+const Badge = ({
+  children,
+  variant = "default",
+  className = "",
+}: {
+  children: React.ReactNode;
+  variant?: "default" | "success" | "warning" | "danger" | "outline";
+  className?: string;
+}) => {
   const variants = {
     default: "bg-slate-100 text-slate-700 border-slate-200",
     success: "bg-emerald-50 text-emerald-700 border-emerald-200",
     warning: "bg-amber-50 text-amber-700 border-amber-200",
     danger: "bg-rose-50 text-rose-700 border-rose-200",
-    outline: "bg-white text-slate-600 border-slate-200"
+    outline: "bg-white text-slate-600 border-slate-200",
   };
 
   return (
-    <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${variants[variant]} ${className}`}>
+    <span
+      className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${variants[variant]} ${className}`}
+    >
       {children}
     </span>
   );
@@ -78,7 +93,10 @@ export const NewsDetail = ({
 
         <div className="absolute bottom-0 left-0 p-8 w-full z-10">
           <div className="max-w-4xl mx-auto">
-            <Badge variant="success" className="mb-4 bg-brand-600 text-white border-none py-1 px-3">
+            <Badge
+              variant="success"
+              className="mb-4 bg-brand-600 text-white border-none py-1 px-3"
+            >
               {article.category}
             </Badge>
             <h1 className="text-4xl md:text-5xl font-bold text-white mb-6 leading-tight tracking-tight shadow-black/10 text-shadow-sm">
@@ -146,10 +164,16 @@ export const NewsDetail = ({
                   Chia sẻ bài viết
                 </h4>
                 <div className="space-y-3">
-                  <Button variant="outline" className="w-full justify-start text-slate-600 hover:text-brand-600 hover:border-brand-200 bg-white">
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start text-slate-600 hover:text-brand-600 hover:border-brand-200 bg-white"
+                  >
                     <Share2 size={16} className="mr-3" /> Sao chép liên kết
                   </Button>
-                  <Button variant="outline" className="w-full justify-start text-slate-600 hover:text-brand-600 hover:border-brand-200 bg-white">
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start text-slate-600 hover:text-brand-600 hover:border-brand-200 bg-white"
+                  >
                     <Printer size={16} className="mr-3" /> In bài viết
                   </Button>
                 </div>
@@ -179,11 +203,13 @@ export const NewsEditorModal = ({
     summary: "",
     content: "",
     category: "Announcement",
-    coverImage: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&q=80&w=2070",
+    coverImage:
+      "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&q=80&w=2070",
     status: "Draft",
     tags: [],
     authorName: "Admin", // Mock default
-    authorAvatar: "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=100&h=100",
+    authorAvatar:
+      "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=100&h=100",
     publishDate: new Date().toLocaleDateString("vi-VN"),
     readTime: "5 phút đọc",
   });
@@ -222,13 +248,16 @@ export const NewsEditorModal = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-[90vw] h-[90vh] flex flex-col overflow-hidden ring-1 ring-slate-200">
-
         {/* Toolbar Header */}
         <div className="h-16 px-6 border-b border-slate-200 flex justify-between items-center bg-white shrink-0 z-20">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" onClick={onClose} className="hover:bg-slate-100 -ml-2">
+            <Button
+              variant="ghost"
+              onClick={onClose}
+              className="hover:bg-slate-100 -ml-2"
+            >
               <X size={20} className="text-slate-500" />
             </Button>
             <div>
@@ -236,8 +265,14 @@ export const NewsEditorModal = ({
                 {article ? "Chỉnh sửa bài viết" : "Soạn bài viết mới"}
               </h2>
               <div className="flex items-center gap-2 text-xs text-slate-500">
-                <span className={formData.status === 'Published' ? 'text-emerald-600 font-medium' : 'text-slate-500'}>
-                  {formData.status === 'Published' ? 'Đã xuất bản' : 'Bản nháp'}
+                <span
+                  className={
+                    formData.status === "Published"
+                      ? "text-emerald-600 font-medium"
+                      : "text-slate-500"
+                  }
+                >
+                  {formData.status === "Published" ? "Đã xuất bản" : "Bản nháp"}
                 </span>
                 <span>•</span>
                 <span>Lưu lần cuối: Vừa xong</span>
@@ -265,8 +300,11 @@ export const NewsEditorModal = ({
 
         {/* Main Editor Area */}
         <div className="flex-1 flex overflow-hidden">
-          <form id="news-form" onSubmit={handleSubmit} className="flex-1 flex flex-col lg:flex-row h-full">
-
+          <form
+            id="news-form"
+            onSubmit={handleSubmit}
+            className="flex-1 flex flex-col lg:flex-row h-full"
+          >
             {/* Editor Canvas */}
             <div className="flex-1 overflow-y-auto bg-slate-50/50 p-8 custom-scrollbar">
               <div className="max-w-4xl mx-auto bg-white min-h-full rounded-xl shadow-sm border border-slate-200 p-12">
@@ -280,7 +318,9 @@ export const NewsEditorModal = ({
                 />
 
                 <div className="mb-8">
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-2">Sapo / Tóm tắt</label>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-2">
+                    Sapo / Tóm tắt
+                  </label>
                   <textarea
                     className="w-full bg-slate-50 border-l-4 border-slate-200 hover:border-brand-500 focus:border-brand-500 p-4 text-lg text-slate-600 italic outline-none resize-none transition-colors rounded-r-lg"
                     value={formData.summary}
@@ -311,7 +351,9 @@ export const NewsEditorModal = ({
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="col-span-2">
-                    <label className="text-xs font-semibold text-slate-500 mb-1.5 block">Trạng thái</label>
+                    <label className="text-xs font-semibold text-slate-500 mb-1.5 block">
+                      Trạng thái
+                    </label>
                     <select
                       className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all"
                       value={formData.status}
@@ -324,7 +366,9 @@ export const NewsEditorModal = ({
                   </div>
 
                   <div className="col-span-2">
-                    <label className="text-xs font-semibold text-slate-500 mb-1.5 block">Chuyên mục</label>
+                    <label className="text-xs font-semibold text-slate-500 mb-1.5 block">
+                      Chuyên mục
+                    </label>
                     <select
                       className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all"
                       value={formData.category}
@@ -338,12 +382,16 @@ export const NewsEditorModal = ({
                   </div>
 
                   <div className="col-span-2">
-                    <label className="text-xs font-semibold text-slate-500 mb-1.5 block">Ngày xuất bản</label>
+                    <label className="text-xs font-semibold text-slate-500 mb-1.5 block">
+                      Ngày xuất bản
+                    </label>
                     <input
                       type="text"
                       className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all"
                       value={formData.publishDate}
-                      onChange={(e) => handleChange("publishDate", e.target.value)}
+                      onChange={(e) =>
+                        handleChange("publishDate", e.target.value)
+                      }
                       placeholder="DD/MM/YYYY"
                     />
                   </div>
@@ -357,7 +405,9 @@ export const NewsEditorModal = ({
                 </h3>
 
                 <div>
-                  <label className="text-xs font-semibold text-slate-500 mb-1.5 block">Ảnh đại diện (URL)</label>
+                  <label className="text-xs font-semibold text-slate-500 mb-1.5 block">
+                    Ảnh đại diện (URL)
+                  </label>
                   <input
                     type="text"
                     className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all"
@@ -368,7 +418,11 @@ export const NewsEditorModal = ({
 
                   <div className="mt-3 aspect-video rounded-lg border border-slate-200 bg-slate-50 overflow-hidden relative group">
                     {formData.coverImage ? (
-                      <img src={formData.coverImage} className="w-full h-full object-cover" alt="Preview" />
+                      <img
+                        src={formData.coverImage}
+                        className="w-full h-full object-cover"
+                        alt="Preview"
+                      />
                     ) : (
                       <div className="flex items-center justify-center h-full text-slate-400">
                         <Image size={24} />
@@ -386,9 +440,16 @@ export const NewsEditorModal = ({
 
                 <div className="flex flex-wrap gap-2 min-h-[40px]">
                   {formData.tags?.map((tag) => (
-                    <span key={tag} className="inline-flex items-center px-2 py-1 bg-brand-50 text-brand-700 rounded text-xs font-medium group">
+                    <span
+                      key={tag}
+                      className="inline-flex items-center px-2 py-1 bg-brand-50 text-brand-700 rounded text-xs font-medium group"
+                    >
                       {tag}
-                      <button type="button" onClick={() => removeTag(tag)} className="ml-1 text-brand-400 hover:text-red-500">
+                      <button
+                        type="button"
+                        onClick={() => removeTag(tag)}
+                        className="ml-1 text-brand-400 hover:text-red-500"
+                      >
                         <X size={12} />
                       </button>
                     </span>
@@ -404,12 +465,224 @@ export const NewsEditorModal = ({
                     onChange={(e) => setTagInput(e.target.value)}
                     onKeyDown={handleAddTag}
                   />
-                  <Plus size={14} className="absolute left-2.5 top-2.5 text-slate-400" />
+                  <Plus
+                    size={14}
+                    className="absolute left-2.5 top-2.5 text-slate-400"
+                  />
+                </div>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// --- Sub-component: Department Access Manager Modal ---
+interface DepartmentAccessManagerProps {
+  onClose: () => void;
+}
+
+interface DepartmentWithAccess {
+  id: string;
+  departmentId: string;
+  departmentName: string;
+  departmentCode: string;
+  createdAt: Date;
+  createdBy: string | null;
+}
+
+interface Department {
+  id: string;
+  name: string;
+  departmentCode: string;
+}
+
+export const DepartmentAccessManager = ({ onClose }: DepartmentAccessManagerProps) => {
+  const [departmentsWithAccess, setDepartmentsWithAccess] = useState<DepartmentWithAccess[]>([]);
+  const [allDepartments, setAllDepartments] = useState<Department[]>([]);
+  const [selectedDeptId, setSelectedDeptId] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setIsLoading(true);
+      const [access, depts] = await Promise.all([
+        newsService.getDepartmentsWithAccess(),
+        newsService.getAllDepartments(),
+      ]);
+      setDepartmentsWithAccess(access);
+      setAllDepartments(depts);
+    } catch (error) {
+      console.error("Error loading department data:", error);
+      alert("Không thể tải dữ liệu phòng ban.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleAddDepartment = async () => {
+    if (!selectedDeptId) return;
+
+    try {
+      setIsSaving(true);
+      await newsService.addDepartmentAccess(selectedDeptId);
+      await loadData();
+      setSelectedDeptId("");
+      alert("Đã thêm phòng ban vào danh sách!");
+    } catch (error: any) {
+      console.error("Error adding department:", error);
+      alert(error.response?.data?.error || "Không thể thêm phòng ban.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleRemoveDepartment = async (departmentId: string) => {
+    if (!window.confirm("Bạn có chắc muốn xóa phòng ban này khỏi danh sách?")) return;
+
+    try {
+      setIsSaving(true);
+      await newsService.removeDepartmentAccess(departmentId);
+      await loadData();
+      alert("Đã xóa phòng ban khỏi danh sách!");
+    } catch (error: any) {
+      console.error("Error removing department:", error);
+      alert(error.response?.data?.error || "Không thể xóa phòng ban.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Filter out departments that already have access
+  const availableDepartments = allDepartments.filter(
+    (dept) => !departmentsWithAccess.some((access) => access.departmentId === dept.id)
+  );
+
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden ring-1 ring-slate-200">
+        {/* Header */}
+        <div className="h-16 px-6 border-b border-slate-200 flex justify-between items-center bg-white shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+              <Building2 size={20} className="text-blue-600" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">
+                Phòng ban được xem Bản tin
+              </h2>
+              <p className="text-xs text-slate-500">
+                Chọn phòng ban sẽ thấy menu "Bản tin Công ty"
+              </p>
+            </div>
+          </div>
+          <Button variant="ghost" onClick={onClose} className="hover:bg-slate-100">
+            <X size={20} className="text-slate-500" />
+          </Button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-6">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-2 border-brand-600 border-t-transparent"></div>
+            </div>
+          ) : (
+            <>
+              {/* Add Department */}
+              <div className="mb-6 p-4 bg-slate-50 rounded-lg border border-slate-200">
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Thêm phòng ban
+                </label>
+                <div className="flex gap-3">
+                  <select
+                    value={selectedDeptId}
+                    onChange={(e) => setSelectedDeptId(e.target.value)}
+                    className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+                  >
+                    <option value="">-- Chọn phòng ban --</option>
+                    {availableDepartments.map((dept) => (
+                      <option key={dept.id} value={dept.id}>
+                        {dept.name} ({dept.departmentCode})
+                      </option>
+                    ))}
+                  </select>
+                  <Button
+                    onClick={handleAddDepartment}
+                    disabled={!selectedDeptId || isSaving}
+                    className="bg-brand-600 hover:bg-brand-700 text-white"
+                  >
+                    <Plus size={16} className="mr-1" /> Thêm
+                  </Button>
                 </div>
               </div>
 
-            </div>
-          </form>
+              {/* Department List */}
+              <div>
+                <h3 className="text-sm font-medium text-slate-700 mb-3">
+                  Danh sách phòng ban ({departmentsWithAccess.length})
+                </h3>
+                {departmentsWithAccess.length === 0 ? (
+                  <div className="text-center py-8 bg-slate-50 rounded-lg border border-dashed border-slate-200">
+                    <Building2 size={32} className="mx-auto text-slate-300 mb-2" />
+                    <p className="text-slate-500 text-sm">
+                      Chưa có phòng ban nào được chọn
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {departmentsWithAccess.map((dept) => (
+                      <div
+                        key={dept.id}
+                        className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-lg hover:border-slate-300 transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center">
+                            <Check size={16} className="text-emerald-600" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-slate-900">
+                              {dept.departmentName}
+                            </p>
+                            <p className="text-xs text-slate-500">
+                              Mã: {dept.departmentCode}
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveDepartment(dept.departmentId)}
+                          disabled={isSaving}
+                          className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 size={16} />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="h-16 px-6 border-t border-slate-200 flex justify-end items-center bg-slate-50">
+          <Button
+            variant="outline"
+            onClick={onClose}
+            className="text-slate-600 border-slate-200"
+          >
+            Đóng
+          </Button>
         </div>
       </div>
     </div>
@@ -420,6 +693,7 @@ export const NewsEditorModal = ({
 export const NewsManager = () => {
   const [news, setNews] = useState<NewsArticleAPI[]>([]);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [isDeptAccessOpen, setIsDeptAccessOpen] = useState(false);
   const [editingArticle, setEditingArticle] = useState<NewsArticleAPI | null>(
     null
   );
@@ -443,7 +717,8 @@ export const NewsManager = () => {
       setIsLoading(true);
       const articles = await newsService.getAllArticles({
         status: filterStatus !== "All" ? filterStatus : undefined,
-        moderationStatus: filterModeration !== "All" ? filterModeration : undefined,
+        moderationStatus:
+          filterModeration !== "All" ? filterModeration : undefined,
       });
       setNews(articles);
     } catch (error) {
@@ -462,7 +737,10 @@ export const NewsManager = () => {
         alert("Xóa bài viết thành công!");
       } catch (error: any) {
         console.error("Error deleting article:", error);
-        alert(error.response?.data?.error || "Không thể xóa bài viết. Vui lòng thử lại.");
+        alert(
+          error.response?.data?.error ||
+            "Không thể xóa bài viết. Vui lòng thử lại."
+        );
       }
     }
   };
@@ -490,21 +768,37 @@ export const NewsManager = () => {
       }
       await loadNews();
       setIsEditorOpen(false);
-      alert(editingArticle ? "Cập nhật bài viết thành công!" : "Tạo bài viết thành công!");
+      alert(
+        editingArticle
+          ? "Cập nhật bài viết thành công!"
+          : "Tạo bài viết thành công!"
+      );
     } catch (error: any) {
       console.error("Error saving article:", error);
-      alert(error.response?.data?.error || "Không thể lưu bài viết. Vui lòng thử lại.");
+      alert(
+        error.response?.data?.error ||
+          "Không thể lưu bài viết. Vui lòng thử lại."
+      );
     }
   };
 
-  const handleModerate = async (id: string, status: "Approved" | "Rejected", notes?: string) => {
+  const handleModerate = async (
+    id: string,
+    status: "Approved" | "Rejected",
+    notes?: string
+  ) => {
     try {
       await newsService.moderateArticle(id, status, notes);
       await loadNews();
-      alert(`${status === "Approved" ? "Duyệt" : "Từ chối"} bài viết thành công!`);
+      alert(
+        `${status === "Approved" ? "Duyệt" : "Từ chối"} bài viết thành công!`
+      );
     } catch (error: any) {
       console.error("Error moderating article:", error);
-      alert(error.response?.data?.error || "Không thể kiểm duyệt bài viết. Vui lòng thử lại.");
+      alert(
+        error.response?.data?.error ||
+          "Không thể kiểm duyệt bài viết. Vui lòng thử lại."
+      );
     }
   };
 
@@ -540,42 +834,105 @@ export const NewsManager = () => {
         />
       )}
 
+      {/* Department Access Modal */}
+      {isDeptAccessOpen && (
+        <DepartmentAccessManager onClose={() => setIsDeptAccessOpen(false)} />
+      )}
+
       {/* Header */}
       <div className="mb-10 flex justify-between items-end">
         <div>
           <div className="flex items-center gap-2 mb-2">
-            <span className="px-2 py-0.5 rounded-md bg-brand-50 text-brand-700 text-xs font-bold uppercase tracking-wider">CMS</span>
+            <span className="px-2 py-0.5 rounded-md bg-brand-50 text-brand-700 text-xs font-bold uppercase tracking-wider">
+              CMS
+            </span>
             <span className="text-slate-400">/</span>
-            <span className="text-slate-500 text-xs font-medium tracking-wide">News Management</span>
+            <span className="text-slate-500 text-xs font-medium tracking-wide">
+              News Management
+            </span>
           </div>
-          <h2 className="text-3xl font-bold text-slate-900 tracking-tight">Quản lý Tin tức</h2>
+          <h2 className="text-3xl font-bold text-slate-900 tracking-tight">
+            Quản lý Tin tức
+          </h2>
           <p className="text-slate-500 mt-1 max-w-2xl">
             Soạn thảo, xuất bản và quản lý các thông báo quan trọng của công ty.
           </p>
         </div>
 
-        <Button onClick={handleCreate} className="bg-brand-600 hover:bg-brand-700 shadow-md text-white px-6">
-          <Plus size={18} className="mr-2" /> Viết bài mới
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button
+            onClick={() => setIsDeptAccessOpen(true)}
+            variant="outline"
+            className="border-slate-200 text-slate-600 hover:bg-slate-50"
+          >
+            <Building2 size={18} className="mr-2" /> Phòng ban xem tin
+          </Button>
+          <Button
+            onClick={handleCreate}
+            className="bg-brand-600 hover:bg-brand-700 shadow-md text-white px-6"
+          >
+            <Plus size={18} className="mr-2" /> Viết bài mới
+          </Button>
+        </div>
       </div>
 
       {/* KPI Cards - Clean & Professional */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
         {[
-          { label: "Tổng bài viết", value: news.length, icon: FileText, color: "text-blue-600", bg: "bg-blue-50" },
-          { label: "Chờ duyệt", value: news.filter((n) => n.moderationStatus === "Pending").length, icon: Clock, color: "text-amber-600", bg: "bg-amber-50" },
-          { label: "Đã xuất bản", value: news.filter((n) => n.status === "Published" && n.moderationStatus === "Approved").length, icon: CheckCircle, color: "text-emerald-600", bg: "bg-emerald-50" },
-          { label: "Tổng lượt xem", value: news.reduce((sum, n) => sum + (n.viewCount || 0), 0).toLocaleString(), icon: Eye, color: "text-indigo-600", bg: "bg-indigo-50" }
+          {
+            label: "Tổng bài viết",
+            value: news.length,
+            icon: FileText,
+            color: "text-blue-600",
+            bg: "bg-blue-50",
+          },
+          {
+            label: "Chờ duyệt",
+            value: news.filter((n) => n.moderationStatus === "Pending").length,
+            icon: Clock,
+            color: "text-amber-600",
+            bg: "bg-amber-50",
+          },
+          {
+            label: "Đã xuất bản",
+            value: news.filter(
+              (n) =>
+                n.status === "Published" && n.moderationStatus === "Approved"
+            ).length,
+            icon: CheckCircle,
+            color: "text-emerald-600",
+            bg: "bg-emerald-50",
+          },
+          {
+            label: "Tổng lượt xem",
+            value: news
+              .reduce((sum, n) => sum + (n.viewCount || 0), 0)
+              .toLocaleString(),
+            icon: Eye,
+            color: "text-indigo-600",
+            bg: "bg-indigo-50",
+          },
         ].map((stat, i) => (
-          <div key={i} className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow">
+          <div
+            key={i}
+            className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow"
+          >
             <div className="flex justify-between items-start mb-4">
-              <div className={`w-10 h-10 rounded-lg ${stat.bg} flex items-center justify-center`}>
+              <div
+                className={`w-10 h-10 rounded-lg ${stat.bg} flex items-center justify-center`}
+              >
                 <stat.icon size={20} className={stat.color} />
               </div>
-              {i === 2 && <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">+12%</span>}
+              {i === 2 && (
+                <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                  +12%
+                </span>
+              )}
             </div>
             <div>
-              <h4 className="text-2xl font-bold text-slate-900">{stat.value}</h4>
+              <h4 className="text-2xl font-bold text-slate-900">
+                {stat.value}
+              </h4>
               <p className="text-sm text-slate-500 font-medium">{stat.label}</p>
             </div>
           </div>
@@ -587,7 +944,10 @@ export const NewsManager = () => {
         <div className="flex items-center gap-2 flex-1 w-full pl-2">
           {/* Search */}
           <div className="relative flex-1 max-w-md">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search
+              size={16}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+            />
             <input
               type="text"
               className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-4 py-2 text-sm outline-none focus:ring-1 focus:ring-brand-500 focus:border-brand-500 transition-all"
@@ -626,14 +986,22 @@ export const NewsManager = () => {
         {/* View Toggle */}
         <div className="flex items-center bg-slate-100 p-1 rounded-lg">
           <button
-            onClick={() => setViewMode('list')}
-            className={`p-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
+            onClick={() => setViewMode("list")}
+            className={`p-1.5 rounded-md transition-all ${
+              viewMode === "list"
+                ? "bg-white shadow-sm text-slate-900"
+                : "text-slate-500 hover:text-slate-700"
+            }`}
           >
             <ListIcon size={16} />
           </button>
           <button
-            onClick={() => setViewMode('grid')}
-            className={`p-1.5 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
+            onClick={() => setViewMode("grid")}
+            className={`p-1.5 rounded-md transition-all ${
+              viewMode === "grid"
+                ? "bg-white shadow-sm text-slate-900"
+                : "text-slate-500 hover:text-slate-700"
+            }`}
           >
             <Grid size={16} />
           </button>
@@ -650,49 +1018,97 @@ export const NewsManager = () => {
         ) : filteredNews.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-slate-400">
             <FileText size={48} className="mb-4 text-slate-200" />
-            <p className="text-lg font-medium text-slate-900">Không tìm thấy bài viết nào</p>
-            <p className="text-sm mb-6">Thử thay đổi bộ lọc hoặc tạo bài viết mới.</p>
-            <Button onClick={handleCreate} className="bg-brand-600 text-white">Tạo bài viết mới</Button>
+            <p className="text-lg font-medium text-slate-900">
+              Không tìm thấy bài viết nào
+            </p>
+            <p className="text-sm mb-6">
+              Thử thay đổi bộ lọc hoặc tạo bài viết mới.
+            </p>
+            <Button onClick={handleCreate} className="bg-brand-600 text-white">
+              Tạo bài viết mới
+            </Button>
           </div>
         ) : viewMode === "list" ? (
           <table className="w-full text-left">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
-                <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider w-[40%]">Bài viết</th>
-                <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Tác giả</th>
-                <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Trạng thái</th>
-                <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Kiểm duyệt</th>
-                <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Hành động</th>
+                <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider w-[40%]">
+                  Bài viết
+                </th>
+                <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  Tác giả
+                </th>
+                <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  Trạng thái
+                </th>
+                <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  Kiểm duyệt
+                </th>
+                <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">
+                  Hành động
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filteredNews.map((item) => (
-                <tr key={item.id} className="hover:bg-slate-50/50 transition-colors group">
+                <tr
+                  key={item.id}
+                  className="hover:bg-slate-50/50 transition-colors group"
+                >
                   <td className="py-4 px-6">
                     <div className="flex gap-4">
                       <div className="w-16 h-12 rounded-lg bg-slate-200 overflow-hidden flex-shrink-0">
-                        <img src={item.coverImage} className="w-full h-full object-cover" alt="" />
+                        <img
+                          src={item.coverImage}
+                          className="w-full h-full object-cover"
+                          alt=""
+                        />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h4 className="text-sm font-bold text-slate-900 line-clamp-1 mb-1 group-hover:text-brand-600 transition-colors cursor-pointer" onClick={() => handleEdit(item)}>
+                        <h4
+                          className="text-sm font-bold text-slate-900 line-clamp-1 mb-1 group-hover:text-brand-600 transition-colors cursor-pointer"
+                          onClick={() => handleEdit(item)}
+                        >
                           {item.title}
                         </h4>
                         <div className="flex items-center gap-2 text-xs text-slate-500">
-                          <span className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 font-medium">{item.category}</span>
+                          <span className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 font-medium">
+                            {item.category}
+                          </span>
                           <span>•</span>
-                          <span>{item.publishedAt ? new Date(item.publishedAt).toLocaleDateString('vi-VN') : 'Chưa xuất bản'}</span>
+                          <span>
+                            {item.publishedAt
+                              ? new Date(item.publishedAt).toLocaleDateString(
+                                  "vi-VN"
+                                )
+                              : "Chưa xuất bản"}
+                          </span>
                         </div>
                       </div>
                     </div>
                   </td>
                   <td className="py-4 px-6">
                     <div className="flex items-center gap-2">
-                      <img src={item.authorAvatar} className="w-6 h-6 rounded-full" alt="" />
-                      <span className="text-sm text-slate-700">{item.authorName}</span>
+                      <img
+                        src={item.authorAvatar}
+                        className="w-6 h-6 rounded-full"
+                        alt=""
+                      />
+                      <span className="text-sm text-slate-700">
+                        {item.authorName}
+                      </span>
                     </div>
                   </td>
                   <td className="py-4 px-6">
-                    <Badge variant={item.status === 'Published' ? 'success' : item.status === 'Draft' ? 'warning' : 'default'}>
+                    <Badge
+                      variant={
+                        item.status === "Published"
+                          ? "success"
+                          : item.status === "Draft"
+                          ? "warning"
+                          : "default"
+                      }
+                    >
                       {item.status}
                     </Badge>
                   </td>
@@ -701,15 +1117,21 @@ export const NewsManager = () => {
                       <div className="flex items-center gap-2">
                         <Badge variant="warning">Chờ duyệt</Badge>
                         <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-                          <button onClick={() => handleModerate(item.id, "Approved")} className="p-1 rounded bg-green-100 text-green-700 hover:bg-green-200" title="Duyệt">
+                          <button
+                            onClick={() => handleModerate(item.id, "Approved")}
+                            className="p-1 rounded bg-green-100 text-green-700 hover:bg-green-200"
+                            title="Duyệt"
+                          >
                             <Check size={12} />
                           </button>
                           <button
                             onClick={() => {
                               const reason = prompt("Lý do từ chối:");
-                              if (reason) handleModerate(item.id, "Rejected", reason);
+                              if (reason)
+                                handleModerate(item.id, "Rejected", reason);
                             }}
-                            className="p-1 rounded bg-red-100 text-red-700 hover:bg-red-200" title="Từ chối"
+                            className="p-1 rounded bg-red-100 text-red-700 hover:bg-red-200"
+                            title="Từ chối"
                           >
                             <X size={12} />
                           </button>
@@ -723,7 +1145,10 @@ export const NewsManager = () => {
                   </td>
                   <td className="py-4 px-6 text-right">
                     <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => handleEdit(item)} className="p-2 text-slate-500 hover:text-brand-600 rounded-lg hover:bg-brand-50 transition-all">
+                      <button
+                        onClick={() => handleEdit(item)}
+                        className="p-2 text-slate-500 hover:text-brand-600 rounded-lg hover:bg-brand-50 transition-all"
+                      >
                         <MoreHorizontal size={16} />
                       </button>
                     </div>
@@ -735,27 +1160,55 @@ export const NewsManager = () => {
         ) : (
           <div className="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredNews.map((item) => (
-              <div key={item.id} className="bg-white rounded-xl border border-slate-200 overflow-hidden hover:shadow-lg transition-all group flex flex-col h-full cursor-pointer" onClick={() => handleEdit(item)}>
+              <div
+                key={item.id}
+                className="bg-white rounded-xl border border-slate-200 overflow-hidden hover:shadow-lg transition-all group flex flex-col h-full cursor-pointer"
+                onClick={() => handleEdit(item)}
+              >
                 <div className="aspect-video relative overflow-hidden bg-slate-100">
-                  <img src={item.coverImage} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="" />
+                  <img
+                    src={item.coverImage}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    alt=""
+                  />
                   <div className="absolute top-2 right-2 flex gap-1">
-                    <Badge variant={item.status === 'Published' ? 'success' : 'default'} className="shadow-sm backdrop-blur-sm bg-white/90">
+                    <Badge
+                      variant={
+                        item.status === "Published" ? "success" : "default"
+                      }
+                      className="shadow-sm backdrop-blur-sm bg-white/90"
+                    >
                       {item.status}
                     </Badge>
                   </div>
                 </div>
                 <div className="p-4 flex-1 flex flex-col">
-                  <div className="text-xs text-brand-600 font-bold uppercase tracking-wider mb-2">{item.category}</div>
-                  <h4 className="font-bold text-slate-900 line-clamp-2 mb-2 group-hover:text-brand-600 transition-colors">{item.title}</h4>
-                  <p className="text-xs text-slate-500 line-clamp-2 mb-4 flex-1">{item.summary}</p>
+                  <div className="text-xs text-brand-600 font-bold uppercase tracking-wider mb-2">
+                    {item.category}
+                  </div>
+                  <h4 className="font-bold text-slate-900 line-clamp-2 mb-2 group-hover:text-brand-600 transition-colors">
+                    {item.title}
+                  </h4>
+                  <p className="text-xs text-slate-500 line-clamp-2 mb-4 flex-1">
+                    {item.summary}
+                  </p>
 
                   <div className="pt-3 border-t border-slate-100 flex justify-between items-center mt-auto">
                     <div className="flex items-center gap-2">
-                      <img src={item.authorAvatar} className="w-5 h-5 rounded-full" alt="" />
-                      <span className="text-xs font-medium text-slate-700">{item.authorName}</span>
+                      <img
+                        src={item.authorAvatar}
+                        className="w-5 h-5 rounded-full"
+                        alt=""
+                      />
+                      <span className="text-xs font-medium text-slate-700">
+                        {item.authorName}
+                      </span>
                     </div>
                     <div className="flex gap-2">
-                      <span className="text-xs text-slate-400 flex items-center gap-1"><Eye size={12} />{item.viewCount || 0}</span>
+                      <span className="text-xs text-slate-400 flex items-center gap-1">
+                        <Eye size={12} />
+                        {item.viewCount || 0}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -768,8 +1221,8 @@ export const NewsManager = () => {
   );
 };
 
-// --- News Module (READER COMPONENT) ---
-export const NewsModule = () => {
+// --- News Module (READER COMPONENT) - Kept for compatibility ---
+export const NewsReader = () => {
   const [view, setView] = useState<"list" | "detail">("list");
   const [selectedArticle, setSelectedArticle] = useState<NewsArticle | null>(
     null
@@ -785,7 +1238,8 @@ export const NewsModule = () => {
         title: "Chào mừng đến với Nexus Corp",
         summary: "Khởi đầu mới cho một hành trình phát triển",
         content: "<p>Nội dung bài viết...</p>",
-        coverImage: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=800",
+        coverImage:
+          "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=800",
         category: "Announcement",
         authorName: "Admin",
         authorAvatar: "https://ui-avatars.com/api/?name=Admin",
@@ -822,7 +1276,10 @@ export const NewsModule = () => {
               </p>
             </div>
             <div className="relative w-full md:w-80">
-              <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Search
+                size={18}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+              />
               <input
                 type="text"
                 placeholder="Tìm kiếm tin tức..."
@@ -880,7 +1337,9 @@ export const NewsModule = () => {
           <div>
             <div className="flex items-center gap-3 mb-8">
               <div className="w-1 h-8 bg-brand-600 rounded-full"></div>
-              <h3 className="text-2xl font-bold text-slate-900">Mới cập nhật</h3>
+              <h3 className="text-2xl font-bold text-slate-900">
+                Mới cập nhật
+              </h3>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -935,3 +1394,6 @@ export const NewsModule = () => {
     </div>
   );
 };
+
+// Export NewsManager as NewsModule for backwards compatibility with Dashboard route
+export { NewsManager as NewsModule };

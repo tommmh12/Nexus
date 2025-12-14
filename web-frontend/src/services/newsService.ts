@@ -147,5 +147,50 @@ export const newsService = {
       { headers: getAuthHeader() }
     );
   },
+
+  // Department Access Management
+  getDepartmentsWithAccess: async (): Promise<Array<{
+    id: string;
+    departmentId: string;
+    departmentName: string;
+    departmentCode: string;
+    createdAt: Date;
+    createdBy: string | null;
+  }>> => {
+    const response = await axios.get(`${API_URL}/news/department-access`, {
+      headers: getAuthHeader(),
+    });
+    return response.data;
+  },
+
+  getAllDepartments: async (): Promise<Array<{
+    id: string;
+    name: string;
+    departmentCode: string;
+  }>> => {
+    const response = await axios.get(`${API_URL}/news/departments`, {
+      headers: getAuthHeader(),
+    });
+    return response.data;
+  },
+
+  addDepartmentAccess: async (departmentId: string): Promise<void> => {
+    await axios.post(
+      `${API_URL}/news/department-access`,
+      { departmentId },
+      { headers: getAuthHeader() }
+    );
+  },
+
+  removeDepartmentAccess: async (departmentId: string): Promise<void> => {
+    await axios.delete(`${API_URL}/news/department-access/${departmentId}`, {
+      headers: getAuthHeader(),
+    });
+  },
+
+  checkDepartmentAccess: async (departmentId: string): Promise<boolean> => {
+    const response = await axios.get(`${API_URL}/news/department-access/check/${departmentId}`);
+    return response.data.hasAccess;
+  },
 };
 

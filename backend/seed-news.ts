@@ -30,8 +30,10 @@ async function seedNews() {
     const newsArticles = [
       {
         id: crypto.randomUUID(),
-        title: "🎉 Chào mừng đến với NEXUS - Cổng thông tin nội bộ doanh nghiệp",
-        summary: "NEXUS là nền tảng kết nối và chia sẻ thông tin hiện đại, giúp nhân viên cập nhật tin tức, sự kiện và tài liệu quan trọng của công ty một cách nhanh chóng và hiệu quả.",
+        title:
+          "🎉 Chào mừng đến với NEXUS - Cổng thông tin nội bộ doanh nghiệp",
+        summary:
+          "NEXUS là nền tảng kết nối và chia sẻ thông tin hiện đại, giúp nhân viên cập nhật tin tức, sự kiện và tài liệu quan trọng của công ty một cách nhanh chóng và hiệu quả.",
         content: `
           <h2>Giới thiệu về NEXUS</h2>
           <p>NEXUS là cổng thông tin nội bộ được thiết kế dành riêng cho doanh nghiệp, nhằm tăng cường kết nối giữa các phòng ban và cải thiện hiệu suất làm việc.</p>
@@ -52,7 +54,8 @@ async function seedNews() {
           <p>- Xây dựng văn hóa doanh nghiệp số</p>
         `,
         category: "Announcement",
-        coverImage: "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&q=80&w=1200",
+        coverImage:
+          "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&q=80&w=1200",
         status: "Published",
         isFeatured: true,
         isPublic: true,
@@ -60,7 +63,8 @@ async function seedNews() {
       {
         id: crypto.randomUUID(),
         title: "📊 Kết quả kinh doanh Q4/2024 - Vượt chỉ tiêu 15%",
-        summary: "Công ty đã hoàn thành xuất sắc kế hoạch kinh doanh quý 4 năm 2024 với mức tăng trưởng 15% so với mục tiêu đề ra. Đây là thành quả của sự nỗ lực không ngừng từ toàn thể nhân viên.",
+        summary:
+          "Công ty đã hoàn thành xuất sắc kế hoạch kinh doanh quý 4 năm 2024 với mức tăng trưởng 15% so với mục tiêu đề ra. Đây là thành quả của sự nỗ lực không ngừng từ toàn thể nhân viên.",
         content: `
           <h2>Kết quả kinh doanh ấn tượng</h2>
           <p>Quý 4/2024 đánh dấu một cột mốc quan trọng trong lịch sử phát triển của công ty. Chúng ta đã đạt được những kết quả vượt trội:</p>
@@ -80,7 +84,8 @@ async function seedNews() {
           <p>Với đà phát triển này, chúng ta đặt mục tiêu tăng trưởng 25% trong năm 2025. Hãy cùng nhau tiếp tục nỗ lực!</p>
         `,
         category: "Strategy",
-        coverImage: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&q=80&w=1200",
+        coverImage:
+          "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&q=80&w=1200",
         status: "Published",
         isFeatured: true,
         isPublic: true,
@@ -88,7 +93,8 @@ async function seedNews() {
       {
         id: crypto.randomUUID(),
         title: "🎄 Thông báo lịch nghỉ Tết Nguyên Đán 2025",
-        summary: "Công ty thông báo lịch nghỉ Tết Nguyên Đán Ất Tỵ 2025 từ ngày 25/01 đến hết ngày 02/02/2025. Toàn thể nhân viên vui lòng sắp xếp công việc trước khi nghỉ Tết.",
+        summary:
+          "Công ty thông báo lịch nghỉ Tết Nguyên Đán Ất Tỵ 2025 từ ngày 25/01 đến hết ngày 02/02/2025. Toàn thể nhân viên vui lòng sắp xếp công việc trước khi nghỉ Tết.",
         content: `
           <h2>Thông báo lịch nghỉ Tết Nguyên Đán 2025</h2>
           <p>Ban Giám đốc thông báo lịch nghỉ Tết Nguyên Đán Ất Tỵ 2025 như sau:</p>
@@ -110,7 +116,8 @@ async function seedNews() {
           <p>Ban Giám đốc kính chúc toàn thể nhân viên và gia đình một năm mới Ất Tỵ 2025 an khang thịnh vượng, vạn sự như ý! 🎊</p>
         `,
         category: "Announcement",
-        coverImage: "https://images.unsplash.com/photo-1549068106-b024baf5062d?auto=format&fit=crop&q=80&w=1200",
+        coverImage:
+          "https://images.unsplash.com/photo-1549068106-b024baf5062d?auto=format&fit=crop&q=80&w=1200",
         status: "Published",
         isFeatured: false,
         isPublic: true,
@@ -118,7 +125,8 @@ async function seedNews() {
       {
         id: crypto.randomUUID(),
         title: "🏆 Chương trình Nhân viên xuất sắc tháng 12/2024",
-        summary: "Vinh danh những cá nhân có đóng góp xuất sắc trong tháng 12/2024. Cùng chúc mừng các đồng nghiệp đã nỗ lực hết mình vì sự phát triển chung của công ty.",
+        summary:
+          "Vinh danh những cá nhân có đóng góp xuất sắc trong tháng 12/2024. Cùng chúc mừng các đồng nghiệp đã nỗ lực hết mình vì sự phát triển chung của công ty.",
         content: `
           <h2>Vinh danh Nhân viên xuất sắc tháng 12/2024</h2>
           <p>Hàng tháng, công ty tổ chức bình chọn và vinh danh những cá nhân có đóng góp xuất sắc. Tháng 12/2024, chúng ta có:</p>
@@ -142,7 +150,8 @@ async function seedNews() {
           <p><strong>Chúc mừng tất cả các đội!</strong> Hãy tiếp tục phát huy tinh thần này trong năm mới 2025! 🎉</p>
         `,
         category: "Culture",
-        coverImage: "https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&q=80&w=1200",
+        coverImage:
+          "https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&q=80&w=1200",
         status: "Published",
         isFeatured: false,
         isPublic: true,
@@ -150,7 +159,8 @@ async function seedNews() {
       {
         id: crypto.randomUUID(),
         title: "🎉 Team Building 2025 - Đà Nẵng 3 ngày 2 đêm",
-        summary: "Chương trình Team Building đầu năm 2025 sẽ diễn ra tại Đà Nẵng từ ngày 15-17/03/2025. Đây là dịp để toàn thể nhân viên nghỉ ngơi, gắn kết và tạo thêm nhiều kỷ niệm đẹp.",
+        summary:
+          "Chương trình Team Building đầu năm 2025 sẽ diễn ra tại Đà Nẵng từ ngày 15-17/03/2025. Đây là dịp để toàn thể nhân viên nghỉ ngơi, gắn kết và tạo thêm nhiều kỷ niệm đẹp.",
         content: `
           <h2>Team Building 2025 - Đà Nẵng</h2>
           <p>Công ty tổ chức chương trình Team Building đầu năm với nhiều hoạt động thú vị:</p>
@@ -174,7 +184,8 @@ async function seedNews() {
           <p><em>Đừng bỏ lỡ cơ hội tuyệt vời này! 🌴☀️</em></p>
         `,
         category: "Event",
-        coverImage: "https://images.unsplash.com/photo-1528164344705-47542687000d?auto=format&fit=crop&q=80&w=1200",
+        coverImage:
+          "https://images.unsplash.com/photo-1528164344705-47542687000d?auto=format&fit=crop&q=80&w=1200",
         status: "Published",
         isFeatured: true,
         isPublic: true,
@@ -207,7 +218,6 @@ async function seedNews() {
     }
 
     console.log(`\n🎉 Hoàn tất! Đã thêm ${newsArticles.length} bài viết mẫu.`);
-
   } catch (error) {
     console.error("❌ Lỗi:", error);
   } finally {

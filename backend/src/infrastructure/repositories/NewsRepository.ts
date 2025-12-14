@@ -350,5 +350,78 @@ export class NewsRepository {
       deletedAt: row.deleted_at ? new Date(row.deleted_at) : undefined,
     };
   }
+
+  // ==================== Department Access Management ====================
+
+  async getDepartmentsWithAccess(): Promise<Array<{
+    id: string;
+    departmentId: string;
+    departmentName: string;
+    departmentCode: string;
+    createdAt: Date;
+    createdBy: string | null;
+  }>> {
+    const [rows] = await this.db.query<RowDataPacket[]>(`
+      SELECT 
+        nda.id,
+        nda.department_id,
+        d.name as department_name,
+        d.department_code,
+        nda.created_at,
+        nda.created_by
+      FROM news_department_access nda
+      JOIN departments d ON nda.department_id = d.id
+      ORDER BY d.name ASC
+    `);
+    return rows.map(row => ({
+      id: row.id,
+      departmentId: row.department_id,
+      departmentName: row.department_name,
+      departmentCode: row.department_code,
+      createdAt: new Date(row.created_at),
+      createdBy: row.created_by
+    }));
+  }
+
+  async addDepartmentAccess(departmentId: string, createdBy: string): Promise<void> {
+    const id = crypto.randomUUID();
+    await this.db.query(
+      `INSERT IGNORE INTO news_department_access (id, department_id, created_by) VALUES (?, ?, ?)`,
+      [id, departmentId, createdBy]
+    );
+  }
+
+  async removeDepartmentAccess(departmentId: string): Promise<void> {
+    await this.db.query(
+      `DELETE FROM news_department_access WHERE department_id = ?`,
+      [departmentId]
+    );
+  }
+
+  async checkDepartmentAccess(departmentId: string): Promise<boolean> {
+    const [rows] = await this.db.query<RowDataPacket[]>(
+      `SELECT id FROM news_department_access WHERE department_id = ?`,
+      [departmentId]
+    );
+    return rows.length > 0;
+  }
+
+  async getAllDepartments(): Promise<Array<{
+    id: string;
+    name: string;
+    departmentCode: string;
+  }>> {
+    const [rows] = await this.db.query<RowDataPacket[]>(`
+      SELECT id, name, department_code
+      FROM departments
+      WHERE deleted_at IS NULL
+      ORDER BY name ASC
+    `);
+    return rows.map(row => ({
+      id: row.id,
+      name: row.name,
+      departmentCode: row.department_code
+    }));
+  }
 }
 

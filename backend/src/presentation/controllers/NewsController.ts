@@ -324,3 +324,96 @@ export const moderateComment = async (req: Request, res: Response) => {
   }
 };
 
+// ==================== Department Access Management ====================
+
+export const getDepartmentsWithAccess = async (req: Request, res: Response) => {
+  try {
+    const departments = await newsRepository.getDepartmentsWithAccess();
+    res.json(departments);
+  } catch (error: any) {
+    console.error("Error fetching departments with access:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const getAllDepartments = async (req: Request, res: Response) => {
+  try {
+    const departments = await newsRepository.getAllDepartments();
+    res.json(departments);
+  } catch (error: any) {
+    console.error("Error fetching all departments:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const addDepartmentAccess = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?.userId;
+    const ipAddress = getIpAddress(req);
+    const { departmentId } = req.body;
+
+    if (!departmentId) {
+      return res.status(400).json({ error: "Department ID is required" });
+    }
+
+    await newsRepository.addDepartmentAccess(departmentId, userId);
+
+    await auditLogger.log({
+      userId,
+      type: "system_config",
+      content: `Thêm phòng ban vào danh sách truy cập bản tin`,
+      target: departmentId,
+      ipAddress,
+      meta: {
+        action: "add_department_access",
+        entity: "news_department_access",
+        departmentId,
+      },
+    });
+
+    res.json({ message: "Department access added successfully" });
+  } catch (error: any) {
+    console.error("Error adding department access:", error);
+    res.status(400).json({ error: error.message });
+  }
+};
+
+export const removeDepartmentAccess = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?.userId;
+    const ipAddress = getIpAddress(req);
+    const { departmentId } = req.params;
+
+    await newsRepository.removeDepartmentAccess(departmentId);
+
+    await auditLogger.log({
+      userId,
+      type: "system_config",
+      content: `Xóa phòng ban khỏi danh sách truy cập bản tin`,
+      target: departmentId,
+      ipAddress,
+      meta: {
+        action: "remove_department_access",
+        entity: "news_department_access",
+        departmentId,
+      },
+    });
+
+    res.json({ message: "Department access removed successfully" });
+  } catch (error: any) {
+    console.error("Error removing department access:", error);
+    res.status(400).json({ error: error.message });
+  }
+};
+
+export const checkDepartmentAccess = async (req: Request, res: Response) => {
+  try {
+    const { departmentId } = req.params;
+    const hasAccess = await newsRepository.checkDepartmentAccess(departmentId);
+    res.json({ hasAccess });
+  } catch (error: any) {
+    console.error("Error checking department access:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
+

@@ -1,5 +1,11 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { BrowserRouter, Routes, Route, useLocation, Navigate } from "react-router-dom";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  useLocation,
+  Navigate,
+} from "react-router-dom";
 import { LoginScreen } from "./components/LoginScreen";
 import { AppRouter } from "./routes/AppRouter";
 import { AuthState, AuthStatus, User, UserRole } from "./types";
@@ -127,9 +133,10 @@ const App: React.FC = () => {
   );
 
   // Check if we're on a public route
-  const isPublicRoute = window.location.pathname === "/" || 
-                        window.location.pathname === "/news" ||
-                        window.location.pathname.startsWith("/news/");
+  const isPublicRoute =
+    window.location.pathname === "/" ||
+    window.location.pathname === "/news" ||
+    window.location.pathname.startsWith("/news/");
 
   // Show public news page for unauthenticated users on public routes
   if (!auth.user && isPublicRoute && window.location.pathname !== "/login") {
@@ -139,13 +146,16 @@ const App: React.FC = () => {
           <Route path="/" element={<PublicNewsPage />} />
           <Route path="/news" element={<PublicNewsPage />} />
           <Route path="/news/*" element={<PublicNewsPage />} />
-          <Route path="/login" element={
-            <LoginScreen
-              onLogin={handleLogin}
-              status={auth.status}
-              errorMessage={auth.errorMessage}
-            />
-          } />
+          <Route
+            path="/login"
+            element={
+              <LoginScreen
+                onLogin={handleLogin}
+                status={auth.status}
+                errorMessage={auth.errorMessage}
+              />
+            }
+          />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>

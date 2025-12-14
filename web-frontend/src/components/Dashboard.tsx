@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Routes,
   Route,
@@ -8,6 +8,7 @@ import {
 } from "react-router-dom";
 import { User, Notification } from "../types";
 import { notificationService } from "../services/notificationService";
+import { newsService } from "../services/newsService";
 import { Button } from "./system/ui/Button";
 import {
   LogOut,
@@ -36,6 +37,7 @@ import {
   UserCircle,
   Key,
   HelpCircle,
+  Newspaper,
 } from "lucide-react";
 
 // Stable components for routes to prevent remounting
@@ -190,7 +192,7 @@ const MENU_ITEMS: MenuItem[] = [
 ];
 
 // Function to filter menu items based on user role
-const getFilteredMenuItems = (role: string): MenuItem[] => {
+const getFilteredMenuItems = (role: string, hasDeptNewsAccess: boolean = false): MenuItem[] => {
   // Menu groups that Admin can access but Manager cannot
   const adminOnlyGroups = ["content-cms", "moderation", "system"];
 
@@ -199,7 +201,7 @@ const getFilteredMenuItems = (role: string): MenuItem[] => {
     organization: ["departments", "users"], // Manager chỉ xem sơ đồ tổ chức và phòng ban của mình
     workspace: ["floor-management", "meeting-admin", "booking-approval"], // Manager không quản lý phòng
     "project-management": ["pm-settings"], // Manager không cấu hình hệ thống
-    community: ["news-reader"], // Manager không xem bản tin trong menu (đã public)
+    community: hasDeptNewsAccess ? [] : ["news-reader"], // Manager xem bản tin nếu phòng ban được phép
   };
 
   // Additional menu items for Manager that don't exist in admin menu
@@ -334,6 +336,9 @@ const isRouteAllowed = (route: string, role: string): boolean => {
     "chat",
     "forum",
     "news",
+    "news-reader", // Allow if department has access
+    "forum-reader",
+    "chat-manager",
     "notifications",
     "profile",
     "change-password",
@@ -507,12 +512,40 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
       ? "/manager"
       : "/employee";
 
+  // State for department news access (for Manager)
+  const [hasDeptNewsAccess, setHasDeptNewsAccess] = useState(false);
+
+  // Check if manager's department has news access
+  useEffect(() => {
+    const checkDeptNewsAccess = async () => {
+      if (userRole === "manager" || userRole === "department-manager") {
+        try {
+          // Get department ID from user object or localStorage
+          const storedUser = localStorage.getItem("user");
+          if (storedUser) {
+            const parsed = JSON.parse(storedUser);
+            const deptId = parsed.department_id || parsed.departmentId;
+            if (deptId) {
+              const hasAccess = await newsService.checkDepartmentAccess(deptId);
+              setHasDeptNewsAccess(hasAccess);
+              console.log("📰 Department news access:", hasAccess);
+            }
+          }
+        } catch (error) {
+          console.error("Error checking department news access:", error);
+        }
+      }
+    };
+
+    checkDeptNewsAccess();
+  }, [userRole]);
+
   console.log("👤 User role:", user.role, "rolePrefix:", rolePrefix);
 
-  // Get filtered menu items based on role
+  // Get filtered menu items based on role and department news access
   const filteredMenuItems = React.useMemo(() => {
-    return getFilteredMenuItems(userRole);
-  }, [userRole]);
+    return getFilteredMenuItems(userRole, hasDeptNewsAccess);
+  }, [userRole, hasDeptNewsAccess]);
 
   // State
   const [activeMenu, setActiveMenu] = useState<string>("overview");
