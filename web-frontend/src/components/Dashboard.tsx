@@ -199,6 +199,7 @@ const getFilteredMenuItems = (role: string): MenuItem[] => {
     organization: ["departments", "users"], // Manager chỉ xem sơ đồ tổ chức và phòng ban của mình
     workspace: ["floor-management", "meeting-admin", "booking-approval"], // Manager không quản lý phòng
     "project-management": ["pm-settings"], // Manager không cấu hình hệ thống
+    community: ["news-reader"], // Manager không xem bản tin trong menu (đã public)
   };
 
   // Additional menu items for Manager that don't exist in admin menu

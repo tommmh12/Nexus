@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { BrowserRouter, Routes, Route, useLocation, Navigate } from "react-router-dom";
 import { LoginScreen } from "./components/LoginScreen";
 import { AppRouter } from "./routes/AppRouter";
 import { AuthState, AuthStatus, User, UserRole } from "./types";
 import { authService } from "./services/authService";
+import { PublicNewsPage } from "./pages/public/PublicNewsPage";
 
 const App: React.FC = () => {
   console.log("App component rendering");
@@ -123,6 +125,32 @@ const App: React.FC = () => {
     "auth.user:",
     auth.user
   );
+
+  // Check if we're on a public route
+  const isPublicRoute = window.location.pathname === "/" || 
+                        window.location.pathname === "/news" ||
+                        window.location.pathname.startsWith("/news/");
+
+  // Show public news page for unauthenticated users on public routes
+  if (!auth.user && isPublicRoute && window.location.pathname !== "/login") {
+    return (
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<PublicNewsPage />} />
+          <Route path="/news" element={<PublicNewsPage />} />
+          <Route path="/news/*" element={<PublicNewsPage />} />
+          <Route path="/login" element={
+            <LoginScreen
+              onLogin={handleLogin}
+              status={auth.status}
+              errorMessage={auth.errorMessage}
+            />
+          } />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </BrowserRouter>
+    );
+  }
 
   if (auth.status === AuthStatus.SUCCESS && auth.user) {
     console.log("Rendering AppRouter with user:", auth.user.email);
