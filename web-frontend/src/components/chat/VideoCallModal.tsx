@@ -1,70 +1,85 @@
-import React, { useEffect, useRef, useState } from "react";
+/**
+ * Video Call Modal Component
+ * For direct video calls (chat) - Uses Daily.co only
+ */
+
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import {
-  X,
   PhoneOff,
   Maximize2,
   Minimize2,
   Users,
   ExternalLink,
+  AlertCircle,
+  RefreshCw,
 } from "lucide-react";
 
 interface VideoCallModalProps {
   isOpen: boolean;
   onClose: () => void;
-  roomName: string;
+  roomUrl?: string;       // Full Daily.co room URL
+  roomName?: string;      // Just room name (for backward compatibility)
+  token?: string;
+  provider?: 'DAILY';
   displayName: string;
   otherUserName: string;
-  isVideoCall: boolean; // true = video, false = audio only
+  isVideoCall: boolean;
   onCallEnd?: () => void;
+}
+
+// Daily.co SDK types (Window.DailyIframe already declared in DailyMeetingRoom.tsx)
+interface DailyCall {
+  join: (options: { url: string; token?: string }) => Promise<void>;
+  leave: () => Promise<void>;
+  destroy: () => void;
+  on: (event: string, callback: (...args: any[]) => void) => void;
+  off: (event: string, callback: (...args: any[]) => void) => void;
+}
+
+// Module-level singleton for VideoCallModal
+let modalCallFrame: DailyCall | null = null;
+
+function destroyModalCallFrame() {
+  if (modalCallFrame) {
+    console.log('[VideoCallModal] Destroying call frame');
+    try {
+      modalCallFrame.leave();
+    } catch (e) { }
+    try {
+      modalCallFrame.destroy();
+    } catch (e) { }
+    modalCallFrame = null;
+  }
 }
 
 export const VideoCallModal: React.FC<VideoCallModalProps> = ({
   isOpen,
   onClose,
+  roomUrl: roomUrlProp,
   roomName,
+  token,
   displayName,
   otherUserName,
   isVideoCall,
   onCallEnd,
 }) => {
-  const iframeRef = useRef<HTMLIFrameElement>(null);
+  // Compute room URL from either roomUrl or roomName
+  const roomUrl = roomUrlProp || (roomName ? `https://mma-e9.daily.co/${roomName}` : '');
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const mountedRef = useRef(true);
   const [isMinimized, setIsMinimized] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Build Jitsi URL with config to skip prejoin
-  const buildJitsiUrl = () => {
-    const baseUrl = "https://meet.jit.si";
-    const room = `nexus-${roomName}`;
-
-    // URL config parameters to bypass prejoin
-    const configParams = [
-      `config.prejoinPageEnabled=false`,
-      `config.startWithAudioMuted=false`,
-      `config.startWithVideoMuted=${!isVideoCall}`,
-      `config.disableDeepLinking=true`,
-      `config.enableWelcomePage=false`,
-      `config.enableClosePage=false`,
-      `config.disableInviteFunctions=true`,
-      `config.requireDisplayName=false`,
-      `config.enableInsecureRoomNameWarning=false`,
-      `interfaceConfig.SHOW_JITSI_WATERMARK=false`,
-      `interfaceConfig.SHOW_WATERMARK_FOR_GUESTS=false`,
-      `interfaceConfig.SHOW_BRAND_WATERMARK=false`,
-      `interfaceConfig.SHOW_POWERED_BY=false`,
-      `interfaceConfig.MOBILE_APP_PROMO=false`,
-      `interfaceConfig.HIDE_INVITE_MORE_HEADER=true`,
-      `userInfo.displayName="${encodeURIComponent(displayName)}"`,
-    ].join("&");
-
-    return `${baseUrl}/${room}#${configParams}`;
-  };
 
   // Call duration timer
   useEffect(() => {
     if (!isOpen) {
       setCallDuration(0);
       setIsLoading(true);
+      setError(null);
       return;
     }
 
@@ -75,44 +90,114 @@ export const VideoCallModal: React.FC<VideoCallModalProps> = ({
     return () => clearInterval(timer);
   }, [isOpen]);
 
-  // Handle iframe load
-  const handleIframeLoad = () => {
-    setIsLoading(false);
-  };
+  // Initialize Daily.co
+  useEffect(() => {
+    if (!isOpen || !roomUrl) return;
+
+    mountedRef.current = true;
+    let localFrame: DailyCall | null = null;
+
+    const init = async () => {
+      console.log('[VideoCallModal] Init, roomUrl:', roomUrl);
+
+      // Destroy previous frame
+      destroyModalCallFrame();
+
+      // Load SDK
+      if (!window.DailyIframe) {
+        console.log('[VideoCallModal] Loading SDK...');
+        await loadDailySDK();
+      }
+
+      if (!mountedRef.current || !containerRef.current) return;
+
+      containerRef.current.innerHTML = '';
+      await new Promise(r => setTimeout(r, 50));
+
+      if (!mountedRef.current || !containerRef.current) return;
+
+      try {
+        console.log('[VideoCallModal] Creating frame...');
+        const callFrame = window.DailyIframe!.createFrame(containerRef.current, {
+          iframeStyle: {
+            width: '100%',
+            height: '100%',
+            border: '0',
+            borderRadius: '8px',
+          },
+          showLeaveButton: true,
+          showFullscreenButton: true,
+        });
+
+        modalCallFrame = callFrame;
+        localFrame = callFrame;
+
+        callFrame.on('left-meeting', () => {
+          console.log('[VideoCallModal] Left meeting');
+          destroyModalCallFrame();
+          onCallEnd?.();
+          onClose();
+        });
+
+        callFrame.on('error', (e: any) => {
+          console.error('[VideoCallModal] Error:', e);
+          setError('Lỗi kết nối cuộc gọi');
+        });
+
+        callFrame.on('joined-meeting', () => {
+          console.log('[VideoCallModal] Joined');
+          if (mountedRef.current) setIsLoading(false);
+        });
+
+        await callFrame.join({ url: roomUrl, token: token || undefined });
+
+      } catch (err: any) {
+        console.error('[VideoCallModal] Failed:', err);
+        if (mountedRef.current) {
+          setError(err.message || 'Không thể kết nối');
+          setIsLoading(false);
+        }
+      }
+    };
+
+    init();
+
+    return () => {
+      mountedRef.current = false;
+      if (localFrame === modalCallFrame) {
+        destroyModalCallFrame();
+      }
+    };
+  }, [isOpen, roomUrl, token, onCallEnd, onClose]);
 
   const formatDuration = (seconds: number) => {
-    const hrs = Math.floor(seconds / 3600);
-    const mins = Math.floor((seconds % 3600) / 60);
+    const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-
-    if (hrs > 0) {
-      return `${hrs}:${mins.toString().padStart(2, "0")}:${secs
-        .toString()
-        .padStart(2, "0")}`;
-    }
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
   const handleEndCall = () => {
+    destroyModalCallFrame();
     onCallEnd?.();
     onClose();
   };
 
-  const openInNewTab = () => {
-    window.open(buildJitsiUrl(), "_blank");
+  const handleRetry = () => {
+    setError(null);
+    setIsLoading(true);
+    destroyModalCallFrame();
+    // Trigger re-init
   };
 
   if (!isOpen) return null;
 
   return (
     <div
-      className={`fixed z-50 transition-all duration-300 ${
-        isMinimized
-          ? "bottom-4 right-4 w-96 h-64 rounded-xl shadow-2xl"
-          : "inset-4 md:inset-8 lg:inset-12 rounded-2xl shadow-2xl"
-      }`}
+      className={`fixed z-50 transition-all duration-300 ${isMinimized
+        ? "bottom-4 right-4 w-96 h-64 rounded-xl shadow-2xl"
+        : "inset-4 md:inset-8 lg:inset-12 rounded-2xl shadow-2xl"
+        }`}
     >
-      {/* Overlay when not minimized */}
       {!isMinimized && (
         <div
           className="fixed inset-0 bg-black/60 -z-10"
@@ -131,10 +216,8 @@ export const VideoCallModal: React.FC<VideoCallModalProps> = ({
               <div>
                 <h3 className="text-white font-semibold">{otherUserName}</h3>
                 <div className="flex items-center gap-2 text-white/70 text-sm">
-                  <span className="flex items-center gap-1">
-                    <Users size={14} />
-                    {isVideoCall ? "Video Call" : "Voice Call"}
-                  </span>
+                  <Users size={14} />
+                  <span>{isVideoCall ? "Video Call" : "Voice Call"}</span>
                   <span>•</span>
                   <span>{formatDuration(callDuration)}</span>
                 </div>
@@ -142,7 +225,7 @@ export const VideoCallModal: React.FC<VideoCallModalProps> = ({
             </div>
             <div className="flex items-center gap-2">
               <button
-                onClick={openInNewTab}
+                onClick={() => window.open(roomUrl, '_blank')}
                 className="p-2 hover:bg-white/20 rounded-full transition-colors"
                 title="Mở trong tab mới"
               >
@@ -151,18 +234,12 @@ export const VideoCallModal: React.FC<VideoCallModalProps> = ({
               <button
                 onClick={() => setIsMinimized(!isMinimized)}
                 className="p-2 hover:bg-white/20 rounded-full transition-colors"
-                title={isMinimized ? "Phóng to" : "Thu nhỏ"}
               >
-                {isMinimized ? (
-                  <Maximize2 size={20} className="text-white" />
-                ) : (
-                  <Minimize2 size={20} className="text-white" />
-                )}
+                {isMinimized ? <Maximize2 size={20} className="text-white" /> : <Minimize2 size={20} className="text-white" />}
               </button>
               <button
                 onClick={handleEndCall}
                 className="p-2 bg-red-500 hover:bg-red-600 rounded-full transition-colors"
-                title="Kết thúc cuộc gọi"
               >
                 <PhoneOff size={20} className="text-white" />
               </button>
@@ -170,47 +247,69 @@ export const VideoCallModal: React.FC<VideoCallModalProps> = ({
           </div>
         </div>
 
-        {/* Jitsi IFrame */}
+        {/* Content */}
         <div className="flex-1 w-full h-full pt-16">
-          {isLoading && (
+          {isLoading && !error && (
             <div className="absolute inset-0 flex items-center justify-center bg-slate-900 z-5">
-              <div className="text-center max-w-md px-6">
-                <div className="animate-spin w-12 h-12 border-4 border-brand-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-                <p className="text-white font-medium text-lg mb-2">
-                  Đang kết nối cuộc gọi...
-                </p>
-                <div className="bg-amber-500/20 border border-amber-500/50 rounded-lg p-3 mt-4">
-                  <p className="text-amber-200 text-sm">
-                    💡 <strong>Lưu ý:</strong> Khi Jitsi hiển thị, nhấn nút
-                    <span className="bg-blue-500 text-white px-2 py-0.5 rounded mx-1 text-xs font-bold">
-                      Join meeting
-                    </span>
-                    để tham gia cuộc gọi
-                  </p>
-                </div>
+              <div className="text-center">
+                <div className="animate-spin w-12 h-12 border-4 border-teal-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+                <p className="text-white font-medium">Đang kết nối...</p>
               </div>
             </div>
           )}
-          <iframe
-            ref={iframeRef}
-            src={buildJitsiUrl()}
-            className="w-full h-full border-0"
-            allow="camera; microphone; fullscreen; display-capture; autoplay; clipboard-write"
-            onLoad={handleIframeLoad}
+
+          {error && (
+            <div className="absolute inset-0 flex items-center justify-center bg-slate-900 z-5">
+              <div className="text-center">
+                <AlertCircle size={48} className="text-red-400 mx-auto mb-4" />
+                <p className="text-white font-medium mb-4">{error}</p>
+                <button
+                  onClick={handleRetry}
+                  className="flex items-center gap-2 mx-auto px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg"
+                >
+                  <RefreshCw size={16} />
+                  Thử lại
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div
+            ref={containerRef}
+            className="w-full h-full"
+            style={{ display: isLoading || error ? 'none' : 'block' }}
           />
         </div>
-
-        {/* Bottom tip when minimized */}
-        {isMinimized && (
-          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-3">
-            <p className="text-white/60 text-xs text-center">
-              Nhấn để phóng to • Cuộc gọi đang diễn ra
-            </p>
-          </div>
-        )}
       </div>
     </div>
   );
 };
+
+// Helper to load Daily SDK
+async function loadDailySDK(): Promise<void> {
+  if (window.DailyIframe) return;
+
+  return new Promise((resolve, reject) => {
+    const existing = document.getElementById('daily-js-script');
+    if (existing) {
+      const check = setInterval(() => {
+        if (window.DailyIframe) {
+          clearInterval(check);
+          resolve();
+        }
+      }, 100);
+      setTimeout(() => { clearInterval(check); reject(new Error('Timeout')); }, 10000);
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.id = 'daily-js-script';
+    script.src = 'https://unpkg.com/@daily-co/daily-js';
+    script.async = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('Failed to load SDK'));
+    document.head.appendChild(script);
+  });
+}
 
 export default VideoCallModal;

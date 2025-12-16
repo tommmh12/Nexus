@@ -42,9 +42,18 @@ interface IncomingCall {
   callId: string;
   callerId: string;
   callerName: string;
-  roomName: string;
+  roomUrl: string;  // Daily.co or Jitsi URL
   isVideoCall: boolean;
+  provider: 'DAILY' | 'JITSI';  // Provider type
 }
+
+interface RoomReady {
+  callId: string;
+  roomUrl: string;
+  token: string;  // Daily.co token (empty for Jitsi)
+  provider: 'DAILY' | 'JITSI';
+}
+
 
 export const useSocket = () => {
   const socketRef = useRef<Socket | null>(null);
@@ -337,6 +346,32 @@ export const useSocket = () => {
     []
   );
 
+  // Listen for room ready (Daily.co room created with token)
+  const onRoomReady = useCallback(
+    (callback: (data: RoomReady) => void) => {
+      if (socketRef.current) {
+        socketRef.current.on("call:room_ready", callback);
+        return () => {
+          socketRef.current?.off("call:room_ready", callback);
+        };
+      }
+    },
+    []
+  );
+
+  // Listen for no answer (call timed out)
+  const onNoAnswer = useCallback(
+    (callback: (data: { callId: string }) => void) => {
+      if (socketRef.current) {
+        socketRef.current.on("call:no_answer", callback);
+        return () => {
+          socketRef.current?.off("call:no_answer", callback);
+        };
+      }
+    },
+    []
+  );
+
   return {
     socket: socketRef.current,
     isConnected,
@@ -363,5 +398,7 @@ export const useSocket = () => {
     onCallDeclined,
     onCallEnded,
     onCallBusy,
+    onRoomReady,
+    onNoAnswer,
   };
 };

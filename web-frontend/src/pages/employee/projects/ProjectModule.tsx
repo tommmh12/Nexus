@@ -1,663 +1,344 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import {
+  Search,
+  FolderKanban,
+  LayoutGrid,
+  List,
+  RefreshCw,
+  AlertCircle,
+  Clock,
+  ChevronRight,
+  ArrowLeft,
+  Calendar,
+  CheckCircle,
+  MoreVertical,
+  Plus
+} from 'lucide-react';
+import { useMyProjects } from '../../../hooks/useMyProjects';
+import { Avatar } from '../../../components/ui/Avatar';
 
-// Mock data for UI preview
-const MOCK_TASKS = [
-  {
-    id: "1",
-    title: "Hoàn thành báo cáo tháng 6",
-    description: "Tổng hợp và hoàn thành báo cáo hiệu suất công việc tháng 6",
-    project: "Portal Nội bộ",
-    projectColor: "blue",
-    priority: "high" as const,
-    status: "in-progress" as const,
-    dueDate: "2024-06-20",
-    progress: 65,
-    assignedBy: "Nguyễn Văn An",
-    tags: ["report", "monthly"],
-  },
-  {
-    id: "2",
-    title: "Review code module Chat",
-    description: "Kiểm tra và review code cho module chat realtime",
-    project: "Portal Nội bộ",
-    projectColor: "blue",
-    priority: "medium" as const,
-    status: "pending" as const,
-    dueDate: "2024-06-22",
-    progress: 0,
-    assignedBy: "Trần Thị Bình",
-    tags: ["review", "code"],
-  },
-  {
-    id: "3",
-    title: "Thiết kế mockup trang Dashboard",
-    description: "Tạo mockup UI cho trang dashboard mới",
-    project: "Website Marketing",
-    projectColor: "green",
-    priority: "high" as const,
-    status: "in-progress" as const,
-    dueDate: "2024-06-18",
-    progress: 80,
-    assignedBy: "Lê Hoàng Cường",
-    tags: ["design", "ui"],
-  },
-  {
-    id: "4",
-    title: "Viết tài liệu API endpoints",
-    description: "Tạo tài liệu kỹ thuật cho các API mới",
-    project: "Portal Nội bộ",
-    projectColor: "blue",
-    priority: "low" as const,
-    status: "completed" as const,
-    dueDate: "2024-06-15",
-    progress: 100,
-    assignedBy: "Phạm Văn Dũng",
-    tags: ["docs", "api"],
-  },
-  {
-    id: "5",
-    title: "Fix bug đăng nhập mobile",
-    description: "Sửa lỗi không đăng nhập được trên ứng dụng mobile",
-    project: "Mobile App",
-    projectColor: "purple",
-    priority: "high" as const,
-    status: "in-progress" as const,
-    dueDate: "2024-06-17",
-    progress: 40,
-    assignedBy: "Nguyễn Văn An",
-    tags: ["bug", "mobile"],
-  },
-];
-
-const MOCK_PROJECTS = [
-  {
-    id: "1",
-    name: "Portal Nội bộ",
-    color: "blue",
-    taskCount: 12,
-    progress: 68,
-  },
-  {
-    id: "2",
-    name: "Website Marketing",
-    color: "green",
-    taskCount: 8,
-    progress: 45,
-  },
-  { id: "3", name: "Mobile App", color: "purple", taskCount: 5, progress: 30 },
-];
-
-const statusConfig = {
-  pending: {
-    label: "Chờ xử lý",
-    color: "bg-gray-100 text-gray-700",
-    icon: "⏳",
-  },
-  "in-progress": {
-    label: "Đang thực hiện",
-    color: "bg-blue-100 text-blue-700",
-    icon: "🔄",
-  },
-  completed: {
-    label: "Hoàn thành",
-    color: "bg-green-100 text-green-700",
-    icon: "✅",
-  },
-  overdue: { label: "Quá hạn", color: "bg-red-100 text-red-700", icon: "⚠️" },
+// --- Configuration ---
+const THEME = {
+  bg: "bg-[#F8FAFC]",
+  card: "bg-white rounded-[24px] shadow-sm hover:shadow-md transition-all border-0",
+  textPrimary: "text-slate-900",
+  textSecondary: "text-slate-500",
+  accent: "text-teal-600",
+  buttonPrimary: "bg-slate-900 text-white hover:bg-slate-800 rounded-xl font-bold",
+  buttonGhost: "bg-transparent text-slate-500 hover:bg-slate-100 rounded-xl"
 };
 
-const priorityConfig = {
-  high: { label: "Cao", color: "text-red-500", dot: "bg-red-500" },
-  medium: {
-    label: "Trung bình",
-    color: "text-yellow-500",
-    dot: "bg-yellow-500",
-  },
-  low: { label: "Thấp", color: "text-green-500", dot: "bg-green-500" },
-};
+type ViewMode = 'grid' | 'list';
+type StatusFilter = 'all' | 'Active' | 'Completed' | 'OnHold';
 
-export default function ProjectModule() {
-  const [viewMode, setViewMode] = useState<"list" | "board" | "calendar">(
-    "list"
-  );
-  const [filterStatus, setFilterStatus] = useState<string>("all");
-  const [filterProject, setFilterProject] = useState<string>("all");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedTask, setSelectedTask] = useState<
-    (typeof MOCK_TASKS)[0] | null
-  >(null);
-  const [showProjectDetail, setShowProjectDetail] = useState<
-    (typeof MOCK_PROJECTS)[0] | null
-  >(null);
+const ProjectModule: React.FC = () => {
+  const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>(); // Get ID from URL
+  const { projects, loading, error, refetch } = useMyProjects();
 
-  const filteredTasks = MOCK_TASKS.filter((task) => {
-    const matchesSearch = task.title
-      .toLowerCase()
-      .includes(searchTerm.toLowerCase());
-    const matchesStatus =
-      filterStatus === "all" || task.status === filterStatus;
-    const matchesProject =
-      filterProject === "all" || task.project === filterProject;
-    return matchesSearch && matchesStatus && matchesProject;
-  });
+  const [viewMode, setViewMode] = useState<ViewMode>('grid');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+
+  // Find active project if ID exists
+  const activeProject = useMemo(() =>
+    id ? projects.find(p => p.id === id) : null
+    , [id, projects]);
 
   // Stats
-  const stats = {
-    total: MOCK_TASKS.length,
-    pending: MOCK_TASKS.filter((t) => t.status === "pending").length,
-    inProgress: MOCK_TASKS.filter((t) => t.status === "in-progress").length,
-    completed: MOCK_TASKS.filter((t) => t.status === "completed").length,
-  };
+  const stats = useMemo(() => ({
+    total: projects.length,
+    active: projects.filter(p => p.status === 'Active').length,
+    completed: projects.filter(p => p.status === 'Completed').length,
+  }), [projects]);
 
+  // Filter
+  const filteredProjects = useMemo(() => {
+    return projects.filter(p => {
+      const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesStatus = statusFilter === 'all' || p.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [projects, searchTerm, statusFilter]);
+
+  const formatDate = (d: string) => new Date(d).toLocaleDateString('vi-VN', { month: 'short', day: 'numeric' });
+
+  if (loading) return <div className="min-h-screen flex items-center justify-center text-slate-400">Loading projects...</div>;
+  if (error) return (
+    <div className="flex flex-col items-center justify-center py-20 text-red-500">
+      <AlertCircle className="mb-2" size={32} />
+      <p>{error}</p>
+      <button onClick={() => refetch()} className="mt-4 underline">Try Again</button>
+    </div>
+  );
+
+  // --- DETAIL VIEW ---
+  if (id && activeProject) {
+    return (
+      <div className={`min-h-screen ${THEME.bg} p-6 font-sans text-slate-800`}>
+        <div className="max-w-7xl mx-auto space-y-8">
+          {/* Nav Back */}
+          <button onClick={() => navigate('/employee/projects')} className="flex items-center gap-2 text-slate-500 hover:text-slate-900 font-bold transition-colors">
+            <ArrowLeft size={20} /> Back to Projects
+          </button>
+
+          {/* Header */}
+          <div className={`${THEME.card} p-8`}>
+            <div className="flex justify-between items-start">
+              <div>
+                <div className="flex items-center gap-3 mb-2">
+                  <div className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${activeProject.status === 'Active' ? 'bg-teal-50 text-teal-600' : 'bg-slate-100 text-slate-500'}`}>
+                    {activeProject.status}
+                  </div>
+                  <span className="text-slate-400 text-sm font-bold flex items-center gap-1"><Clock size={14} /> {formatDate(activeProject.startDate)} - {formatDate(activeProject.endDate)}</span>
+                </div>
+                <h1 className="text-4xl font-bold text-slate-900 mb-4">{activeProject.name}</h1>
+                <p className="text-slate-500 max-w-2xl text-lg">{activeProject.description}</p>
+              </div>
+              <div className="text-right">
+                <div className="text-3xl font-bold text-teal-600">{activeProject.progress}%</div>
+                <div className="text-slate-400 text-sm font-bold uppercase">Completion</div>
+              </div>
+            </div>
+
+            <div className="h-4 bg-slate-100 rounded-full mt-8 overflow-hidden">
+              <div className="h-full bg-teal-500 rounded-full" style={{ width: `${activeProject.progress}%` }}></div>
+            </div>
+
+            <div className="flex justify-between items-center mt-8 pt-8 border-t border-slate-50">
+              <div className="flex items-center gap-4">
+                <div className="flex -space-x-3">
+                  {activeProject.members.map(m => (
+                    <Avatar key={m.id} name={m.name} src={m.avatarUrl} size="md" className="border-4 border-white" />
+                  ))}
+                  <button className="w-10 h-10 rounded-full bg-slate-100 border-4 border-white flex items-center justify-center text-slate-400 hover:bg-slate-200">
+                    <Plus size={16} />
+                  </button>
+                </div>
+                <span className="text-slate-500 font-bold text-sm">{activeProject.members.length} Members</span>
+              </div>
+              <button className={THEME.buttonPrimary + " px-6 py-3"}>View Board</button>
+            </div>
+          </div>
+
+          {/* Content Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Left: Tasks */}
+            <div className="lg:col-span-2 space-y-6">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-bold text-slate-900">Recent Tasks</h3>
+                <button className="text-teal-600 font-bold text-sm hover:underline">View All</button>
+              </div>
+
+              {/* Mock Tasks for Detail View */}
+              {[1, 2, 3].map(i => (
+                <div key={i} className={`${THEME.card} p-5 flex items-center gap-4 group cursor-pointer`}>
+                  <div className="w-6 h-6 rounded-full border-2 border-slate-200 flex items-center justify-center text-transparent hover:border-teal-500 hover:text-teal-500 transition-all">
+                    <CheckCircle size={14} />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-bold text-slate-900 group-hover:text-teal-700 transition-colors">Update documentation for release {i}.0</h4>
+                    <div className="flex items-center gap-3 mt-1">
+                      <span className="bg-orange-50 text-orange-600 text-[10px] font-bold px-2 py-0.5 rounded">High Priority</span>
+                      <span className="text-slate-400 text-xs font-bold">Due Tomorrow</span>
+                    </div>
+                  </div>
+                  <Avatar name="Alex" size="sm" />
+                </div>
+              ))}
+            </div>
+
+            {/* Right: Info */}
+            <div className="space-y-6">
+              <div className={`${THEME.card} p-6`}>
+                <h3 className="font-bold text-slate-900 mb-4">Quick Stats</h3>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-500 font-medium">Pending Tasks</span>
+                    <span className="font-bold text-slate-900">12</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-500 font-medium">Upcoming Meetings</span>
+                    <span className="font-bold text-slate-900">3</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-500 font-medium">Documents</span>
+                    <span className="font-bold text-slate-900">45</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  } else if (id && !activeProject && !loading) {
+    // 404 Case
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center text-center p-6">
+        <h2 className="text-2xl font-bold text-slate-900 mb-2">Project Not Found</h2>
+        <p className="text-slate-500 mb-6">The project you are looking for does not exist or you don't have access.</p>
+        <button onClick={() => navigate('/employee/projects')} className={THEME.buttonPrimary + " px-6 py-3"}>Back to Projects</button>
+      </div>
+    );
+  }
+
+  // --- LIST VIEW (Original) ---
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-indigo-600 to-blue-600 rounded-2xl p-6 text-white">
-        <div className="flex items-center justify-between">
+    <div className={`min-h-screen ${THEME.bg} p-6 font-sans text-slate-800`}>
+      <div className="max-w-7xl mx-auto space-y-8">
+
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
-            <h1 className="text-2xl font-bold mb-2">📋 Công việc của tôi</h1>
-            <p className="text-indigo-100">
-              Quản lý và theo dõi tiến độ các task được giao
+            <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
+              <FolderKanban className="text-teal-600" /> Projects
+            </h1>
+            <p className="text-slate-500 mt-1 font-medium">
+              You are participating in <span className="text-slate-900 font-bold">{stats.active}</span> active projects.
             </p>
           </div>
+
           <div className="flex items-center gap-3">
-            {/* View Mode Toggle */}
-            <div className="flex bg-white/10 rounded-lg p-1">
-              {[
-                { key: "list", icon: "☰", label: "List" },
-                { key: "board", icon: "▦", label: "Board" },
-                { key: "calendar", icon: "📅", label: "Calendar" },
-              ].map((mode) => (
-                <button
-                  key={mode.key}
-                  onClick={() => setViewMode(mode.key as typeof viewMode)}
-                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                    viewMode === mode.key
-                      ? "bg-white text-indigo-600"
-                      : "text-white/80 hover:text-white"
-                  }`}
-                >
-                  {mode.icon}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-4 gap-4 mt-6">
-          {[
-            {
-              label: "Tổng task",
-              value: stats.total,
-              icon: "📊",
-              color: "bg-white/10",
-            },
-            {
-              label: "Chờ xử lý",
-              value: stats.pending,
-              icon: "⏳",
-              color: "bg-yellow-500/20",
-            },
-            {
-              label: "Đang làm",
-              value: stats.inProgress,
-              icon: "🔄",
-              color: "bg-blue-500/20",
-            },
-            {
-              label: "Hoàn thành",
-              value: stats.completed,
-              icon: "✅",
-              color: "bg-green-500/20",
-            },
-          ].map((stat) => (
-            <div key={stat.label} className={`${stat.color} rounded-xl p-4`}>
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">{stat.icon}</span>
-                <div>
-                  <p className="text-2xl font-bold">{stat.value}</p>
-                  <p className="text-sm text-white/80">{stat.label}</p>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-12 gap-6">
-        {/* Left Sidebar - Projects */}
-        <div className="col-span-3">
-          <div className="bg-white rounded-xl shadow-sm p-4">
-            <h3 className="font-semibold text-gray-800 mb-4">📁 Dự án</h3>
-            <div className="space-y-2">
-              <button
-                onClick={() => setFilterProject("all")}
-                className={`w-full flex items-center justify-between p-3 rounded-lg transition-colors ${
-                  filterProject === "all"
-                    ? "bg-indigo-50 text-indigo-700"
-                    : "hover:bg-gray-50 text-gray-600"
-                }`}
-              >
-                <span className="font-medium">Tất cả dự án</span>
-                <span className="text-xs bg-gray-100 px-2 py-0.5 rounded-full">
-                  {MOCK_TASKS.length}
-                </span>
+            <div className="bg-white p-1 rounded-xl shadow-sm border border-slate-100 flex">
+              <button onClick={() => setViewMode('grid')} className={`p-2 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-slate-100 text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}>
+                <LayoutGrid size={20} />
               </button>
-              {MOCK_PROJECTS.map((project) => (
-                <button
-                  key={project.id}
-                  onClick={() => setFilterProject(project.name)}
-                  className={`w-full flex items-center justify-between p-3 rounded-lg transition-colors ${
-                    filterProject === project.name
-                      ? "bg-indigo-50 text-indigo-700"
-                      : "hover:bg-gray-50 text-gray-600"
-                  }`}
-                >
-                  <span className="flex items-center gap-2">
-                    <span
-                      className={`w-3 h-3 rounded-full bg-${project.color}-500`}
-                      style={{
-                        backgroundColor:
-                          project.color === "blue"
-                            ? "#3b82f6"
-                            : project.color === "green"
-                            ? "#22c55e"
-                            : "#a855f7",
-                      }}
-                    ></span>
-                    <span className="font-medium text-sm">{project.name}</span>
-                  </span>
-                  <span className="text-xs bg-gray-100 px-2 py-0.5 rounded-full">
-                    {project.taskCount}
-                  </span>
-                </button>
-              ))}
+              <button onClick={() => setViewMode('list')} className={`p-2 rounded-lg transition-all ${viewMode === 'list' ? 'bg-slate-100 text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}>
+                <List size={20} />
+              </button>
             </div>
-
-            {/* Project Progress */}
-            <div className="mt-6 pt-4 border-t border-gray-100">
-              <h4 className="text-sm font-medium text-gray-500 mb-3">
-                Tiến độ dự án
-              </h4>
-              {MOCK_PROJECTS.map((project) => (
-                <div key={project.id} className="mb-3">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm text-gray-700">
-                      {project.name}
-                    </span>
-                    <span className="text-xs text-gray-500">
-                      {project.progress}%
-                    </span>
-                  </div>
-                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all"
-                      style={{
-                        width: `${project.progress}%`,
-                        backgroundColor:
-                          project.color === "blue"
-                            ? "#3b82f6"
-                            : project.color === "green"
-                            ? "#22c55e"
-                            : "#a855f7",
-                      }}
-                    ></div>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <button onClick={() => refetch()} className={`${THEME.buttonGhost} p-3`}>
+              <RefreshCw size={20} />
+            </button>
           </div>
         </div>
 
-        {/* Main Content - Tasks */}
-        <div className="col-span-9">
-          {/* Filters */}
-          <div className="bg-white rounded-xl shadow-sm p-4 mb-4">
-            <div className="flex items-center gap-4">
-              <div className="flex-1 relative">
-                <input
-                  type="text"
-                  placeholder="Tìm kiếm task..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                />
-                <svg
-                  className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                  />
-                </svg>
-              </div>
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                className="px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500"
-              >
-                <option value="all">Tất cả trạng thái</option>
-                <option value="pending">Chờ xử lý</option>
-                <option value="in-progress">Đang thực hiện</option>
-                <option value="completed">Hoàn thành</option>
-              </select>
-            </div>
+        {/* Filters */}
+        <div className="flex flex-col lg:flex-row gap-4">
+          <div className="bg-white p-2 rounded-[20px] shadow-sm flex items-center gap-2 flex-1">
+            <div className="pl-4 text-slate-400"><Search size={20} /></div>
+            <input
+              type="text"
+              placeholder="Search projects..."
+              className="flex-1 py-3 px-2 outline-none text-slate-700 placeholder:text-slate-400 font-medium"
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+            />
           </div>
+          <div className="flex gap-2 overflow-x-auto pb-1 lg:pb-0">
+            {['all', 'Active', 'Completed', 'OnHold'].map((status) => (
+              <button
+                key={status}
+                onClick={() => setStatusFilter(status as any)}
+                className={`px-6 py-3 rounded-2xl font-bold whitespace-nowrap transition-all ${statusFilter === status ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/10' : 'bg-white text-slate-500 hover:bg-slate-50'}`}
+              >
+                {status === 'all' ? 'All' : status}
+              </button>
+            ))}
+          </div>
+        </div>
 
-          {/* Task List */}
-          {viewMode === "list" && (
-            <div className="space-y-3">
-              {filteredTasks.map((task) => (
-                <div
-                  key={task.id}
-                  onClick={() => setSelectedTask(task)}
-                  className="bg-white rounded-xl shadow-sm p-4 hover:shadow-md transition-shadow cursor-pointer border-l-4"
-                  style={{
-                    borderLeftColor:
-                      task.priority === "high"
-                        ? "#ef4444"
-                        : task.priority === "medium"
-                        ? "#eab308"
-                        : "#22c55e",
-                  }}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span
-                          className={`px-2 py-0.5 rounded text-xs font-medium ${
-                            statusConfig[task.status].color
-                          }`}
-                        >
-                          {statusConfig[task.status].icon}{" "}
-                          {statusConfig[task.status].label}
-                        </span>
-                        <span className="text-xs text-gray-400">•</span>
-                        <span className="text-xs text-gray-500">
-                          {task.project}
-                        </span>
-                      </div>
-                      <h3 className="font-semibold text-gray-800 mb-1">
-                        {task.title}
-                      </h3>
-                      <p className="text-sm text-gray-500 line-clamp-1">
-                        {task.description}
-                      </p>
-                    </div>
-                    <div className="text-right ml-4">
-                      <p className="text-sm text-gray-500 mb-1">
-                        📅 {task.dueDate}
-                      </p>
-                      <div className="flex items-center gap-1">
-                        <span
-                          className={`w-2 h-2 rounded-full ${
-                            priorityConfig[task.priority].dot
-                          }`}
-                        ></span>
-                        <span
-                          className={`text-xs ${
-                            priorityConfig[task.priority].color
-                          }`}
-                        >
-                          {priorityConfig[task.priority].label}
-                        </span>
-                      </div>
-                    </div>
+        {/* Grid View */}
+        {viewMode === 'grid' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {filteredProjects.map(project => (
+              <div key={project.id} onClick={() => navigate(`/employee/projects/${project.id}`)} className={`${THEME.card} p-6 relative group cursor-pointer flex flex-col h-full`}>
+
+                <div className="flex justify-between items-start mb-4">
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl font-bold bg-gradient-to-br ${project.status === 'Active' ? 'from-teal-400 to-teal-600 text-white' : 'from-slate-100 to-slate-200 text-slate-500'}`}>
+                    {project.name.charAt(0)}
                   </div>
+                  <div className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${project.status === 'Active' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
+                    {project.status}
+                  </div>
+                </div>
 
-                  {/* Progress Bar */}
-                  {task.status !== "pending" && (
-                    <div className="mt-3">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs text-gray-500">Tiến độ</span>
-                        <span className="text-xs font-medium text-gray-700">
-                          {task.progress}%
-                        </span>
-                      </div>
-                      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-indigo-500 rounded-full transition-all"
-                          style={{ width: `${task.progress}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                  )}
+                <h3 className="text-xl font-bold text-slate-900 mb-2 group-hover:text-teal-700 transition-colors leading-tight">
+                  {project.name}
+                </h3>
+                <p className="text-sm text-slate-500 line-clamp-2 mb-6 flex-1">
+                  {project.description || 'No description provided.'}
+                </p>
 
-                  {/* Tags */}
-                  <div className="flex items-center gap-2 mt-3">
-                    {task.tags.map((tag) => (
-                      <span
-                        key={tag}
-                        className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full"
-                      >
-                        #{tag}
-                      </span>
+                {/* Progress */}
+                <div className="mb-6">
+                  <div className="flex justify-between text-xs font-bold text-slate-400 mb-2">
+                    <span>Progress</span>
+                    <span className="text-slate-900">{project.progress}%</span>
+                  </div>
+                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-teal-500 rounded-full" style={{ width: `${project.progress}%` }}></div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between border-t border-slate-50 pt-4 mt-auto">
+                  <div className="flex -space-x-2">
+                    {project.members.slice(0, 3).map(m => (
+                      <div key={m.id} onClick={(e) => { e.stopPropagation(); navigate(`/employee/chat?userId=${m.id}`); }} className="cursor-pointer hover:z-10 transition-transform hover:scale-110" title={`Chat with ${m.name}`}>
+                        <Avatar name={m.name} src={m.avatarUrl} size="sm" className="border-2 border-white" />
+                      </div>
                     ))}
-                    <span className="ml-auto text-xs text-gray-400">
-                      Giao bởi: {task.assignedBy}
-                    </span>
+                    {project.members.length > 3 && (
+                      <div className="w-8 h-8 rounded-full bg-slate-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-slate-500">
+                        +{project.members.length - 3}
+                      </div>
+                    )}
+                  </div>
+                  <div className="text-xs font-bold text-slate-400 flex items-center gap-1">
+                    <Clock size={14} /> {formatDate(project.endDate)}
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
+              </div>
+            ))}
+          </div>
+        )}
 
-          {/* Board View */}
-          {viewMode === "board" && (
-            <div className="grid grid-cols-3 gap-4">
-              {["pending", "in-progress", "completed"].map((status) => (
-                <div key={status} className="bg-gray-50 rounded-xl p-4">
-                  <div className="flex items-center gap-2 mb-4">
-                    <span
-                      className={`px-2 py-0.5 rounded text-xs font-medium ${
-                        statusConfig[status as keyof typeof statusConfig].color
-                      }`}
-                    >
-                      {statusConfig[status as keyof typeof statusConfig].icon}{" "}
-                      {statusConfig[status as keyof typeof statusConfig].label}
-                    </span>
-                    <span className="text-xs text-gray-400">
-                      ({filteredTasks.filter((t) => t.status === status).length}
-                      )
-                    </span>
-                  </div>
-                  <div className="space-y-3">
-                    {filteredTasks
-                      .filter((t) => t.status === status)
-                      .map((task) => (
-                        <div
-                          key={task.id}
-                          onClick={() => setSelectedTask(task)}
-                          className="bg-white rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-                        >
-                          <h4 className="font-medium text-gray-800 text-sm mb-2">
-                            {task.title}
-                          </h4>
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs text-gray-500">
-                              {task.project}
-                            </span>
-                            <span
-                              className={`w-2 h-2 rounded-full ${
-                                priorityConfig[task.priority].dot
-                              }`}
-                            ></span>
-                          </div>
-                          {task.progress > 0 && (
-                            <div className="h-1 bg-gray-100 rounded-full overflow-hidden mt-2">
-                              <div
-                                className="h-full bg-indigo-500 rounded-full"
-                                style={{ width: `${task.progress}%` }}
-                              ></div>
-                            </div>
-                          )}
-                        </div>
-                      ))}
+        {/* List View */}
+        {viewMode === 'list' && (
+          <div className="space-y-4">
+            {filteredProjects.map(project => (
+              <div key={project.id} onClick={() => navigate(`/employee/projects/${project.id}`)} className={`${THEME.card} p-5 flex items-center gap-6 cursor-pointer group`}>
+                <div className={`w-12 h-12 rounded-2xl flex-shrink-0 flex items-center justify-center font-bold text-white bg-slate-900`}>
+                  {project.name.charAt(0)}
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-lg font-bold text-slate-900 truncate group-hover:text-teal-700 transition-colors">{project.name}</h3>
+                  <p className="text-sm text-slate-400 truncate">{project.description}</p>
+                </div>
+
+                <div className="hidden md:block w-32">
+                  <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden mt-1">
+                    <div className="h-full bg-teal-500 rounded-full" style={{ width: `${project.progress}%` }}></div>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
 
-          {/* Calendar View Placeholder */}
-          {viewMode === "calendar" && (
-            <div className="bg-white rounded-xl shadow-sm p-8 text-center">
-              <div className="w-16 h-16 mx-auto mb-4 bg-indigo-100 rounded-full flex items-center justify-center">
-                <span className="text-3xl">📅</span>
-              </div>
-              <h3 className="text-lg font-semibold text-gray-800 mb-2">
-                Calendar View
-              </h3>
-              <p className="text-gray-500">
-                Xem lịch công việc theo ngày/tuần/tháng
-              </p>
-              <p className="text-sm text-gray-400 mt-2">
-                (Tính năng đang phát triển)
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Task Detail Modal */}
-      {selectedTask && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
-            <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span
-                  className={`px-2 py-0.5 rounded text-xs font-medium ${
-                    statusConfig[selectedTask.status].color
-                  }`}
-                >
-                  {statusConfig[selectedTask.status].icon}{" "}
-                  {statusConfig[selectedTask.status].label}
-                </span>
-                <span className="text-sm text-gray-500">
-                  {selectedTask.project}
-                </span>
-              </div>
-              <button
-                onClick={() => setSelectedTask(null)}
-                className="p-1 hover:bg-gray-100 rounded"
-              >
-                <svg
-                  className="w-5 h-5 text-gray-500"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            </div>
-            <div className="p-6 overflow-y-auto">
-              <h2 className="text-xl font-bold text-gray-800 mb-4">
-                {selectedTask.title}
-              </h2>
-
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div className="bg-gray-50 rounded-lg p-3">
-                  <p className="text-xs text-gray-500 mb-1">Độ ưu tiên</p>
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`w-2 h-2 rounded-full ${
-                        priorityConfig[selectedTask.priority].dot
-                      }`}
-                    ></span>
-                    <span
-                      className={`font-medium ${
-                        priorityConfig[selectedTask.priority].color
-                      }`}
-                    >
-                      {priorityConfig[selectedTask.priority].label}
-                    </span>
-                  </div>
-                </div>
-                <div className="bg-gray-50 rounded-lg p-3">
-                  <p className="text-xs text-gray-500 mb-1">Hạn chót</p>
-                  <p className="font-medium text-gray-800">
-                    📅 {selectedTask.dueDate}
-                  </p>
-                </div>
-                <div className="bg-gray-50 rounded-lg p-3">
-                  <p className="text-xs text-gray-500 mb-1">Giao bởi</p>
-                  <p className="font-medium text-gray-800">
-                    {selectedTask.assignedBy}
-                  </p>
-                </div>
-                <div className="bg-gray-50 rounded-lg p-3">
-                  <p className="text-xs text-gray-500 mb-1">Tiến độ</p>
-                  <p className="font-medium text-gray-800">
-                    {selectedTask.progress}%
-                  </p>
-                </div>
-              </div>
-
-              <div className="mb-6">
-                <h4 className="font-semibold text-gray-800 mb-2">Mô tả</h4>
-                <p className="text-gray-600">{selectedTask.description}</p>
-              </div>
-
-              {/* Progress Update */}
-              <div className="mb-6">
-                <h4 className="font-semibold text-gray-800 mb-2">
-                  Cập nhật tiến độ
-                </h4>
-                <div className="flex items-center gap-4">
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={selectedTask.progress}
-                    className="flex-1"
-                    readOnly
-                  />
-                  <span className="font-medium text-indigo-600">
-                    {selectedTask.progress}%
-                  </span>
-                </div>
-              </div>
-
-              {/* Tags */}
-              <div className="mb-6">
-                <h4 className="font-semibold text-gray-800 mb-2">Tags</h4>
-                <div className="flex flex-wrap gap-2">
-                  {selectedTask.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="px-3 py-1 bg-indigo-50 text-indigo-600 text-sm rounded-full"
-                    >
-                      #{tag}
-                    </span>
+                <div className="flex -space-x-2">
+                  {project.members.slice(0, 3).map(m => (
+                    <Avatar key={m.id} name={m.name} src={m.avatarUrl} size="sm" />
                   ))}
                 </div>
-              </div>
 
-              {/* Actions */}
-              <div className="flex items-center gap-3 pt-4 border-t border-gray-100">
-                <button className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors">
-                  Cập nhật tiến độ
-                </button>
-                <button className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors">
-                  Thêm bình luận
+                <button className="p-2 text-slate-300 hover:text-slate-600 hover:bg-slate-100 rounded-lg">
+                  <ChevronRight size={20} />
                 </button>
               </div>
-            </div>
+            ))}
           </div>
-        </div>
-      )}
+        )}
+
+        {filteredProjects.length === 0 && (
+          <div className="text-center py-20 opacity-50">
+            <FolderKanban size={48} className="mx-auto mb-4" />
+            <p>No projects found.</p>
+          </div>
+        )}
+
+      </div>
     </div>
   );
 }
+
+export default ProjectModule;

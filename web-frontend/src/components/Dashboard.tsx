@@ -68,7 +68,6 @@ import {
 import { MeetingAdmin } from "../pages/admin/workspace/MeetingAdmin";
 import { EventManager } from "../pages/admin/workspace/EventManager";
 import { OnlineMeetingModule } from "../pages/admin/workspace/OnlineMeetingModule";
-import { JitsiRoom } from "../pages/admin/workspace/JitsiRoom";
 import { BookingModule } from "../pages/admin/booking/BookingModule";
 import { BookingApproval } from "../pages/admin/booking/BookingApproval";
 import { FloorManagement } from "../pages/admin/booking/FloorManagement";
@@ -410,8 +409,8 @@ const RoleGuard: React.FC<{
     role === "admin"
       ? "/admin"
       : role === "department-manager" || role === "manager"
-      ? "/manager"
-      : "/employee";
+        ? "/manager"
+        : "/employee";
 
   React.useEffect(() => {
     if (!isRouteAllowed(route, role)) {
@@ -447,21 +446,19 @@ const ContentAdminDashboard = ({
       <div className="flex border-b border-slate-200 bg-white px-6">
         <button
           onClick={() => setActiveTab("news")}
-          className={`py-4 px-6 text-sm font-medium border-b-2 transition-colors ${
-            activeTab === "news"
-              ? "border-brand-600 text-brand-600"
-              : "border-transparent text-slate-500 hover:text-slate-700"
-          }`}
+          className={`py-4 px-6 text-sm font-medium border-b-2 transition-colors ${activeTab === "news"
+            ? "border-brand-600 text-brand-600"
+            : "border-transparent text-slate-500 hover:text-slate-700"
+            }`}
         >
           Quản lý Tin tức
         </button>
         <button
           onClick={() => setActiveTab("forum")}
-          className={`py-4 px-6 text-sm font-medium border-b-2 transition-colors ${
-            activeTab === "forum"
-              ? "border-brand-600 text-brand-600"
-              : "border-transparent text-slate-500 hover:text-slate-700"
-          }`}
+          className={`py-4 px-6 text-sm font-medium border-b-2 transition-colors ${activeTab === "forum"
+            ? "border-brand-600 text-brand-600"
+            : "border-transparent text-slate-500 hover:text-slate-700"
+            }`}
         >
           Kiểm duyệt Diễn đàn
         </button>
@@ -537,8 +534,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
     userRole === "admin"
       ? "/admin"
       : userRole === "department-manager" || userRole === "manager"
-      ? "/manager"
-      : "/employee";
+        ? "/manager"
+        : "/employee";
 
   // State for department news access (for Manager)
   const [hasDeptNewsAccess, setHasDeptNewsAccess] = useState(false);
@@ -785,9 +782,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
       >
         {/* Sidebar Header */}
         <div
-          className={`h-16 flex items-center ${
-            isSidebarCollapsed ? "justify-center px-0" : "px-6"
-          } bg-slate-950 border-b border-slate-800 transition-all duration-300`}
+          className={`h-16 flex items-center ${isSidebarCollapsed ? "justify-center px-0" : "px-6"
+            } bg-slate-950 border-b border-slate-800 transition-all duration-300`}
         >
           <div className="flex items-center gap-2 font-bold text-xl text-white tracking-tight overflow-hidden whitespace-nowrap">
             <div className="h-8 w-8 min-w-[32px] bg-brand-600 rounded-lg flex items-center justify-center">
@@ -824,11 +820,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                     }
                     className={`
                                 w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
-                                ${
-                                  activeMenu === item.id
-                                    ? "bg-brand-600 text-white shadow-lg shadow-brand-900/20"
-                                    : "hover:bg-slate-800 hover:text-white"
-                                }
+                                ${activeMenu === item.id
+                        ? "bg-brand-600 text-white shadow-lg shadow-brand-900/20"
+                        : "hover:bg-slate-800 hover:text-white"
+                      }
                                 ${isSidebarCollapsed ? "justify-center" : ""}
                             `}
                     title={isSidebarCollapsed ? item.label : undefined}
@@ -837,11 +832,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                       {item.icon && (
                         <item.icon
                           size={20}
-                          className={`${!isSidebarCollapsed ? "mr-3" : ""} ${
-                            activeMenu === item.id
-                              ? "text-white"
-                              : "text-slate-400"
-                          }`}
+                          className={`${!isSidebarCollapsed ? "mr-3" : ""} ${activeMenu === item.id
+                            ? "text-white"
+                            : "text-slate-400"
+                            }`}
                         />
                       )}
                       {!isSidebarCollapsed && <span>{item.label}</span>}
@@ -851,9 +845,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                       <div className="flex items-center">
                         {item.badge && (
                           <span
-                            className={`${
-                              item.badgeColor || "bg-brand-500"
-                            } text-white text-[10px] px-1.5 py-0.5 rounded-full mr-2`}
+                            className={`${item.badgeColor || "bg-brand-500"
+                              } text-white text-[10px] px-1.5 py-0.5 rounded-full mr-2`}
                           >
                             {item.badge}
                           </span>
@@ -884,19 +877,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                             }
                             className={`
                                             w-full flex items-center justify-between px-3 py-2 rounded-md text-sm transition-colors
-                                            ${
-                                              activeMenu === child.id
-                                                ? "text-brand-400 bg-slate-800/50"
-                                                : "text-slate-400 hover:text-white hover:bg-slate-800/30"
-                                            }
+                                            ${activeMenu === child.id
+                                ? "text-brand-400 bg-slate-800/50"
+                                : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                              }
                                         `}
                           >
                             <span className="truncate">{child.label}</span>
                             {child.badge && (
                               <span
-                                className={`${
-                                  child.badgeColor || "text-slate-400"
-                                } text-xs font-bold`}
+                                className={`${child.badgeColor || "text-slate-400"
+                                  } text-xs font-bold`}
                               >
                                 {child.badge}
                               </span>
@@ -915,9 +906,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
         <div className="pt-4 pb-4 border-t border-slate-800 bg-slate-900">
           {/* Collapse Toggle Button */}
           <div
-            className={`flex ${
-              isSidebarCollapsed ? "justify-center" : "justify-end px-4"
-            }`}
+            className={`flex ${isSidebarCollapsed ? "justify-center" : "justify-end px-4"
+              }`}
           >
             <button
               onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
@@ -970,11 +960,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                   setShowAlerts(!showAlerts);
                   setShowNotifications(false);
                 }}
-                className={`p-2 rounded-full relative transition-colors ${
-                  showAlerts
-                    ? "bg-amber-50 text-amber-600"
-                    : "text-slate-400 hover:text-amber-600 hover:bg-amber-50"
-                }`}
+                className={`p-2 rounded-full relative transition-colors ${showAlerts
+                  ? "bg-amber-50 text-amber-600"
+                  : "text-slate-400 hover:text-amber-600 hover:bg-amber-50"
+                  }`}
                 title="Cảnh báo hệ thống"
               >
                 <ShieldAlert size={20} />
@@ -1007,9 +996,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                         alertRules.map((rule) => (
                           <div
                             key={rule.id}
-                            className={`p-4 border-b border-slate-50 hover:bg-slate-50 transition-colors cursor-pointer ${
-                              rule.is_enabled ? "bg-amber-50/50" : ""
-                            }`}
+                            className={`p-4 border-b border-slate-50 hover:bg-slate-50 transition-colors cursor-pointer ${rule.is_enabled ? "bg-amber-50/50" : ""
+                              }`}
                             onClick={() => {
                               setShowAlerts(false);
                               navigate(`${rolePrefix}/alert-manager`);
@@ -1017,11 +1005,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                           >
                             <div className="flex gap-3">
                               <div
-                                className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                                  rule.is_enabled
-                                    ? "bg-amber-100"
-                                    : "bg-slate-100"
-                                }`}
+                                className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${rule.is_enabled
+                                  ? "bg-amber-100"
+                                  : "bg-slate-100"
+                                  }`}
                               >
                                 <ShieldAlert
                                   size={14}
@@ -1035,22 +1022,20 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                               <div className="flex-1">
                                 <div className="flex items-center gap-2">
                                   <p
-                                    className={`text-sm leading-snug ${
-                                      rule.is_enabled
-                                        ? "text-slate-900 font-medium"
-                                        : "text-slate-500"
-                                    }`}
+                                    className={`text-sm leading-snug ${rule.is_enabled
+                                      ? "text-slate-900 font-medium"
+                                      : "text-slate-500"
+                                      }`}
                                   >
                                     {rule.name}
                                   </p>
                                   <span
-                                    className={`px-1.5 py-0.5 text-[10px] rounded ${
-                                      rule.category === "HR"
-                                        ? "bg-blue-100 text-blue-700"
-                                        : rule.category === "System"
+                                    className={`px-1.5 py-0.5 text-[10px] rounded ${rule.category === "HR"
+                                      ? "bg-blue-100 text-blue-700"
+                                      : rule.category === "System"
                                         ? "bg-purple-100 text-purple-700"
                                         : "bg-red-100 text-red-700"
-                                    }`}
+                                      }`}
                                   >
                                     {rule.category}
                                   </span>
@@ -1062,11 +1047,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                                 )}
                                 <div className="flex items-center gap-2 mt-1">
                                   <span
-                                    className={`text-xs px-1.5 py-0.5 rounded ${
-                                      rule.is_enabled
-                                        ? "bg-green-100 text-green-700"
-                                        : "bg-slate-100 text-slate-500"
-                                    }`}
+                                    className={`text-xs px-1.5 py-0.5 rounded ${rule.is_enabled
+                                      ? "bg-green-100 text-green-700"
+                                      : "bg-slate-100 text-slate-500"
+                                      }`}
                                   >
                                     {rule.is_enabled
                                       ? "🟢 Đang hoạt động"
@@ -1077,8 +1061,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                                     {rule.unit === "days"
                                       ? "ngày"
                                       : rule.unit === "percent"
-                                      ? "%"
-                                      : "lần"}
+                                        ? "%"
+                                        : "lần"}
                                   </span>
                                 </div>
                               </div>
@@ -1118,11 +1102,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                   setShowNotifications(!showNotifications);
                   setShowAlerts(false);
                 }}
-                className={`p-2 rounded-full relative transition-colors ${
-                  showNotifications
-                    ? "bg-blue-50 text-brand-600"
-                    : "text-slate-400 hover:text-brand-600 hover:bg-blue-50"
-                }`}
+                className={`p-2 rounded-full relative transition-colors ${showNotifications
+                  ? "bg-blue-50 text-brand-600"
+                  : "text-slate-400 hover:text-brand-600 hover:bg-blue-50"
+                  }`}
               >
                 <Bell size={20} />
                 {unreadCount > 0 && (
@@ -1156,9 +1139,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                         notifications.map((notif) => (
                           <div
                             key={notif.id}
-                            className={`p-4 border-b border-slate-50 hover:bg-slate-50 transition-colors ${
-                              !notif.isRead ? "bg-blue-50/30" : ""
-                            }`}
+                            className={`p-4 border-b border-slate-50 hover:bg-slate-50 transition-colors ${!notif.isRead ? "bg-blue-50/30" : ""
+                              }`}
                           >
                             <div className="flex gap-3">
                               {notif.actorAvatar ? (
@@ -1229,11 +1211,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                   className="flex items-center gap-2 group"
                 >
                   <img
-                    className={`h-9 w-9 rounded-full object-cover ring-2 transition-all ${
-                      showUserDropdown
-                        ? "ring-brand-300"
-                        : "ring-slate-100 group-hover:ring-brand-200"
-                    }`}
+                    className={`h-9 w-9 rounded-full object-cover ring-2 transition-all ${showUserDropdown
+                      ? "ring-brand-300"
+                      : "ring-slate-100 group-hover:ring-brand-200"
+                      }`}
                     src={
                       currentUser.avatarUrl ||
                       `https://ui-avatars.com/api/?name=${encodeURIComponent(
@@ -1244,11 +1225,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                   />
                   <ChevronDown
                     size={14}
-                    className={`transition-transform ${
-                      showUserDropdown
-                        ? "rotate-180 text-brand-600"
-                        : "text-slate-400 group-hover:text-slate-600"
-                    }`}
+                    className={`transition-transform ${showUserDropdown
+                      ? "rotate-180 text-brand-600"
+                      : "text-slate-400 group-hover:text-slate-600"
+                      }`}
                   />
                 </button>
 
@@ -1359,9 +1339,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
 
         {/* Content Area */}
         <main
-          className={`flex-1 overflow-y-auto bg-slate-50 ${
-            isFullWidthView ? "p-0" : "p-4 sm:p-6 lg:p-8"
-          }`}
+          className={`flex-1 overflow-y-auto bg-slate-50 ${isFullWidthView ? "p-0" : "p-4 sm:p-6 lg:p-8"
+            }`}
         >
           <div
             className={`mx-auto h-full ${isFullWidthView ? "" : "max-w-7xl"}`}
@@ -1409,7 +1388,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
 
               {/* Workspace Routes */}
               <Route path="online-meetings" element={<OnlineMeetingModule />} />
-              <Route path="online-meetings/:id/join" element={<JitsiRoom />} />
               <Route path="room-booking" element={<BookingModule />} />
               <Route path="booking-approval" element={<BookingApproval />} />
               <Route path="floor-management" element={<FloorManagement />} />

@@ -1,680 +1,432 @@
-import React, { useState } from "react";
+/**
+ * Online Meeting Module with Daily.co Integration
+ * Replaces mock data with real API calls
+ */
 
-// Mock data for UI preview
-const MOCK_MEETINGS = [
-  {
-    id: "1",
-    title: "Sprint Planning - Q3",
-    type: "meeting" as const,
-    startTime: "09:00",
-    endTime: "10:30",
-    date: "2024-06-18",
-    organizer: "Nguyễn Văn An",
-    participants: [
-      "Nguyễn Văn An",
-      "Trần Thị Bình",
-      "Lê Hoàng Cường",
-      "Phạm Văn Dũng",
-    ],
-    status: "upcoming" as const,
-    meetingLink: "https://meet.example.com/abc123",
-    description:
-      "Họp planning sprint mới cho Q3, review backlog và phân chia công việc",
-    isRecurring: true,
-  },
-  {
-    id: "2",
-    title: "Code Review Session",
-    type: "meeting" as const,
-    startTime: "14:00",
-    endTime: "15:00",
-    date: "2024-06-18",
-    organizer: "Trần Thị Bình",
-    participants: ["Trần Thị Bình", "Lê Hoàng Cường"],
-    status: "upcoming" as const,
-    meetingLink: "https://meet.example.com/def456",
-    description: "Review code module authentication",
-    isRecurring: false,
-  },
-  {
-    id: "3",
-    title: "Daily Standup",
-    type: "meeting" as const,
-    startTime: "08:30",
-    endTime: "08:45",
-    date: "2024-06-17",
-    organizer: "Team Lead",
-    participants: ["Toàn team"],
-    status: "completed" as const,
-    meetingLink: "https://meet.example.com/daily",
-    description: "Daily standup meeting",
-    isRecurring: true,
-  },
-];
+import React, { useState, useEffect } from "react";
+import { Video, Calendar, Clock, User, Check, Plus, X, AlertCircle, Loader2 } from "lucide-react";
+import meetingService from "../../../services/meetingService";
+import { MeetingDetails, JoinMeetingResponse } from "../../../types/meeting.types";
+import DailyMeetingRoom from "../../../components/meeting/DailyMeetingRoom";
 
-const MOCK_SCHEDULE = [
-  { date: "2024-06-17", meetings: 2, events: 1 },
-  { date: "2024-06-18", meetings: 3, events: 0 },
-  { date: "2024-06-19", meetings: 1, events: 2 },
-  { date: "2024-06-20", meetings: 0, events: 1 },
-];
-
-const MOCK_QUICK_CONTACTS = [
-  { id: "1", name: "Nguyễn Văn An", avatar: "NA", status: "online" as const },
-  { id: "2", name: "Trần Thị Bình", avatar: "TB", status: "online" as const },
-  { id: "3", name: "Lê Hoàng Cường", avatar: "LC", status: "away" as const },
-  { id: "4", name: "Phạm Văn Dũng", avatar: "PD", status: "offline" as const },
-];
+const THEME = {
+  bg: "bg-[#F8FAFC]",
+  card: "bg-white rounded-[24px] shadow-sm border-0",
+  textPrimary: "text-slate-900",
+  textSecondary: "text-slate-500",
+  accent: "text-teal-600",
+  accentBg: "bg-teal-50",
+  buttonPrimary: "bg-slate-900 text-white hover:bg-slate-800 rounded-xl font-bold shadow-lg shadow-slate-900/10",
+  buttonGhost: "bg-transparent text-slate-500 hover:bg-slate-100 rounded-xl"
+};
 
 export default function OnlineMeetingModule() {
-  const [activeTab, setActiveTab] = useState<
-    "upcoming" | "history" | "schedule"
-  >("upcoming");
+  // State
+  const [activeTab, setActiveTab] = useState<"upcoming" | "history" | "schedule">("upcoming");
+  const [meetings, setMeetings] = useState<MeetingDetails[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Meeting room state
+  const [activeMeeting, setActiveMeeting] = useState<JoinMeetingResponse | null>(null);
+  const [joiningMeetingId, setJoiningMeetingId] = useState<string | null>(null);
+
+  // Create meeting modal
   const [showCreateMeeting, setShowCreateMeeting] = useState(false);
-  const [selectedMeeting, setSelectedMeeting] = useState<
-    (typeof MOCK_MEETINGS)[0] | null
-  >(null);
   const [newMeeting, setNewMeeting] = useState({
     title: "",
-    date: "",
-    startTime: "",
-    endTime: "",
-    participants: [] as string[],
+    scheduledStart: "",
+    scheduledEnd: "",
+    accessMode: "public" as "public" | "private",
     description: "",
   });
+  const [creating, setCreating] = useState(false);
 
-  const upcomingMeetings = MOCK_MEETINGS.filter((m) => m.status === "upcoming");
-  const pastMeetings = MOCK_MEETINGS.filter((m) => m.status === "completed");
+  // Fetch meetings on mount
+  useEffect(() => {
+    fetchMeetings();
+  }, []);
 
-  const handleCreateMeeting = () => {
-    console.log("Creating meeting:", newMeeting);
-    setShowCreateMeeting(false);
-    setNewMeeting({
-      title: "",
-      date: "",
-      startTime: "",
-      endTime: "",
-      participants: [],
-      description: "",
-    });
+  const fetchMeetings = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await meetingService.getMeetings();
+      setMeetings(data);
+    } catch (err: any) {
+      console.error("Failed to fetch meetings:", err);
+      setError(err.response?.data?.message || "Failed to load meetings");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleJoinMeeting = (meetingLink: string) => {
-    console.log("Joining meeting:", meetingLink);
-    window.open(meetingLink, "_blank");
+  const handleJoinMeeting = async (meetingId: string) => {
+    try {
+      setJoiningMeetingId(meetingId);
+      const response = await meetingService.joinMeeting(meetingId);
+      setActiveMeeting(response);
+    } catch (err: any) {
+      console.error("Failed to join meeting:", err);
+      alert(err.response?.data?.message || "Failed to join meeting");
+    } finally {
+      setJoiningMeetingId(null);
+    }
   };
+
+  const handleLeaveMeeting = () => {
+    setActiveMeeting(null);
+    fetchMeetings(); // Refresh list
+  };
+
+  const handleCreateMeeting = async () => {
+    if (!newMeeting.title || !newMeeting.scheduledStart) {
+      alert("Please fill in title and start time");
+      return;
+    }
+
+    try {
+      setCreating(true);
+      await meetingService.createMeeting({
+        title: newMeeting.title,
+        description: newMeeting.description,
+        scheduledStart: new Date(newMeeting.scheduledStart).toISOString(),
+        scheduledEnd: newMeeting.scheduledEnd ? new Date(newMeeting.scheduledEnd).toISOString() : undefined,
+        accessMode: newMeeting.accessMode,
+      });
+      setShowCreateMeeting(false);
+      setNewMeeting({ title: "", scheduledStart: "", scheduledEnd: "", accessMode: "public", description: "" });
+      fetchMeetings();
+    } catch (err: any) {
+      console.error("Failed to create meeting:", err);
+      alert(err.response?.data?.message || "Failed to create meeting");
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  // Filter meetings by status
+  const now = new Date();
+  const upcomingMeetings = meetings.filter(m => m.status === "scheduled" || m.status === "active");
+  const pastMeetings = meetings.filter(m => m.status === "ended" || m.status === "cancelled");
+
+  // If in a meeting, show the Daily room
+  if (activeMeeting) {
+    return (
+      <div className={`min-h-screen ${THEME.bg} p-6`}>
+        <div className="max-w-6xl mx-auto">
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
+              <Video className="text-teal-600" /> In Meeting
+            </h1>
+            <button
+              onClick={handleLeaveMeeting}
+              className="px-4 py-2 bg-red-500 text-white font-bold rounded-xl hover:bg-red-600"
+            >
+              Leave Meeting
+            </button>
+          </div>
+
+          <DailyMeetingRoom
+            roomUrl={activeMeeting.roomUrl}
+            token={activeMeeting.token}
+            onLeave={handleLeaveMeeting}
+            onError={(err) => {
+              console.error("Meeting error:", err);
+              alert("Meeting error: " + err.message);
+            }}
+            minHeight="calc(100vh - 200px)"
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-teal-600 to-cyan-600 rounded-2xl p-6 text-white">
-        <div className="flex items-center justify-between">
+    <div className={`min-h-screen ${THEME.bg} p-6 font-sans text-slate-800`}>
+      <div className="max-w-7xl mx-auto space-y-8">
+
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
-            <h1 className="text-2xl font-bold mb-2">🎥 Họp trực tuyến</h1>
-            <p className="text-teal-100">
-              Quản lý lịch họp và tham gia cuộc họp online
-            </p>
+            <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
+              <Video className="text-teal-600" /> Online Meetings
+            </h1>
+            <p className="text-slate-500 mt-1 font-medium">Manage and join your virtual meetings.</p>
           </div>
+
           <div className="flex items-center gap-3">
             <button
               onClick={() => setShowCreateMeeting(true)}
-              className="px-5 py-2.5 bg-white text-teal-600 rounded-xl font-semibold hover:bg-teal-50 transition-colors flex items-center gap-2"
+              className={`${THEME.buttonPrimary} px-6 py-3 flex items-center gap-2`}
             >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 4v16m8-8H4"
-                />
-              </svg>
-              Tạo cuộc họp
+              <Plus size={18} /> New Meeting
             </button>
-            <button className="px-5 py-2.5 bg-white/10 backdrop-blur-sm text-white rounded-xl font-semibold hover:bg-white/20 transition-colors flex items-center gap-2">
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
-                />
-              </svg>
-              Tham gia nhanh
+            <button
+              onClick={fetchMeetings}
+              className="px-6 py-3 bg-white text-slate-600 rounded-xl font-bold border border-slate-200 shadow-sm hover:bg-slate-50 transition-colors"
+            >
+              Refresh
             </button>
           </div>
         </div>
 
-        {/* Quick Stats */}
-        <div className="grid grid-cols-4 gap-4 mt-6">
+        {/* Quick Stats Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
-            { label: "Họp hôm nay", value: "3", icon: "📅" },
-            { label: "Sắp diễn ra", value: "2", icon: "⏰" },
-            { label: "Đã tham gia tuần này", value: "12", icon: "✅" },
-            { label: "Tạo bởi tôi", value: "5", icon: "👤" },
-          ].map((stat) => (
-            <div
-              key={stat.label}
-              className="bg-white/10 backdrop-blur-sm rounded-xl p-4"
-            >
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">{stat.icon}</span>
-                <div>
-                  <p className="text-2xl font-bold">{stat.value}</p>
-                  <p className="text-sm text-white/80">{stat.label}</p>
-                </div>
+            { label: "Total Meetings", value: meetings.length.toString(), icon: Calendar },
+            { label: "Upcoming", value: upcomingMeetings.length.toString(), icon: Clock },
+            { label: "Completed", value: pastMeetings.filter(m => m.status === "ended").length.toString(), icon: Check },
+            { label: "Active Now", value: meetings.filter(m => m.status === "active").length.toString(), icon: Video },
+          ].map((stat, i) => (
+            <div key={i} className={`${THEME.card} p-5 flex items-center gap-4`}>
+              <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-teal-600">
+                <stat.icon size={24} />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-slate-900">{stat.value}</p>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">{stat.label}</p>
               </div>
             </div>
           ))}
         </div>
-      </div>
 
-      <div className="grid grid-cols-12 gap-6">
+        {/* Error Message */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3">
+            <AlertCircle className="text-red-500" size={20} />
+            <span className="text-red-700 font-medium">{error}</span>
+            <button onClick={fetchMeetings} className="ml-auto text-red-600 font-bold hover:underline">
+              Retry
+            </button>
+          </div>
+        )}
+
+        {/* Loading */}
+        {loading && (
+          <div className="flex justify-center py-12">
+            <Loader2 className="animate-spin text-teal-600" size={32} />
+          </div>
+        )}
+
         {/* Main Content */}
-        <div className="col-span-8">
-          {/* Tabs */}
-          <div className="bg-white rounded-xl shadow-sm mb-4">
-            <div className="flex border-b border-gray-100">
+        {!loading && (
+          <div className="space-y-6">
+            {/* Tabs */}
+            <div className="flex items-center space-x-1 bg-white p-1 rounded-xl w-fit shadow-sm border border-slate-100">
               {[
-                { key: "upcoming", label: "Sắp diễn ra", icon: "📅" },
-                { key: "history", label: "Lịch sử", icon: "📋" },
-                { key: "schedule", label: "Lịch tuần", icon: "🗓️" },
-              ].map((tab) => (
+                { key: "upcoming", label: "Upcoming" },
+                { key: "history", label: "History" },
+              ].map(tab => (
                 <button
                   key={tab.key}
-                  onClick={() => setActiveTab(tab.key as typeof activeTab)}
-                  className={`flex-1 py-3 text-sm font-medium transition-colors ${
-                    activeTab === tab.key
-                      ? "text-teal-600 border-b-2 border-teal-600"
-                      : "text-gray-500 hover:text-gray-700"
-                  }`}
+                  onClick={() => setActiveTab(tab.key as any)}
+                  className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === tab.key ? 'bg-slate-900 text-white shadow-md' : 'text-slate-500 hover:text-slate-900'}`}
                 >
-                  {tab.icon} {tab.label}
+                  {tab.label}
                 </button>
               ))}
             </div>
-          </div>
 
-          {/* Upcoming Meetings */}
-          {activeTab === "upcoming" && (
-            <div className="space-y-4">
-              {upcomingMeetings.length === 0 ? (
-                <div className="bg-white rounded-xl shadow-sm p-8 text-center">
-                  <div className="w-16 h-16 mx-auto mb-4 bg-teal-100 rounded-full flex items-center justify-center">
-                    <span className="text-3xl">📅</span>
+            {activeTab === "upcoming" && (
+              <div className="space-y-4">
+                {upcomingMeetings.length === 0 ? (
+                  <div className={`${THEME.card} p-12 text-center`}>
+                    <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Calendar className="text-slate-300" size={32} />
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-900">No upcoming meetings</h3>
+                    <p className="text-slate-500">You are free for now!</p>
                   </div>
-                  <h3 className="text-lg font-semibold text-gray-800 mb-2">
-                    Không có cuộc họp
-                  </h3>
-                  <p className="text-gray-500">
-                    Bạn chưa có cuộc họp nào sắp diễn ra
-                  </p>
-                </div>
-              ) : (
-                upcomingMeetings.map((meeting) => (
-                  <div
-                    key={meeting.id}
-                    className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow overflow-hidden"
-                  >
-                    <div className="p-5">
-                      <div className="flex items-start justify-between mb-4">
+                ) : (
+                  upcomingMeetings.map(meeting => (
+                    <div key={meeting.id} className={`${THEME.card} p-6 group hover:shadow-md transition-all relative overflow-hidden`}>
+                      <div className={`absolute top-0 left-0 bottom-0 w-1.5 ${meeting.status === 'active' ? 'bg-green-500' : 'bg-teal-500'}`}></div>
+
+                      <div className="flex justify-between items-start mb-4 pl-2">
                         <div>
-                          <div className="flex items-center gap-2 mb-2">
-                            {meeting.isRecurring && (
-                              <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full">
-                                🔄 Định kỳ
-                              </span>
-                            )}
-                            <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">
-                              Sắp diễn ra
+                          <div className="flex gap-2 mb-2">
+                            <span className={`text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider ${meeting.status === 'active'
+                                ? 'bg-green-50 text-green-700'
+                                : 'bg-teal-50 text-teal-700'
+                              }`}>
+                              {meeting.status === 'active' ? 'Live Now' : 'Scheduled'}
+                            </span>
+                            <span className="bg-slate-100 text-slate-600 text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider">
+                              {meeting.provider}
                             </span>
                           </div>
-                          <h3 className="text-lg font-semibold text-gray-800">
-                            {meeting.title}
-                          </h3>
-                          <p className="text-gray-500 text-sm mt-1">
-                            {meeting.description}
-                          </p>
+                          <h3 className="text-xl font-bold text-slate-900 group-hover:text-teal-700 transition-colors">{meeting.title}</h3>
+                          <p className="text-slate-500 text-sm mt-1">{meeting.description || 'No description'}</p>
                         </div>
                         <div className="text-right">
-                          <p className="text-lg font-bold text-teal-600">
-                            {meeting.startTime} - {meeting.endTime}
-                          </p>
-                          <p className="text-sm text-gray-500">
-                            {meeting.date}
-                          </p>
+                          <div className="text-lg font-bold text-slate-900">
+                            {new Date(meeting.scheduledStart).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                          </div>
+                          <div className="text-sm font-bold text-slate-400">
+                            {new Date(meeting.scheduledStart).toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'numeric' })}
+                          </div>
                         </div>
                       </div>
 
-                      {/* Participants */}
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-gray-500">
-                            Người tham gia:
-                          </span>
+                      <div className="flex justify-between items-center pl-2 pt-4 border-t border-slate-50">
+                        <div className="flex items-center gap-3">
                           <div className="flex -space-x-2">
-                            {meeting.participants.slice(0, 4).map((p, idx) => (
-                              <div
-                                key={idx}
-                                className="w-8 h-8 rounded-full bg-gradient-to-br from-teal-400 to-teal-600 text-white flex items-center justify-center text-xs font-medium border-2 border-white"
-                                title={p}
-                              >
-                                {p.charAt(0)}
+                            {meeting.participants.slice(0, 3).map((p, i) => (
+                              <div key={i} className="w-8 h-8 rounded-full bg-slate-100 border-2 border-white flex items-center justify-center text-xs font-bold text-slate-600" title={p.userName}>
+                                {p.userName?.charAt(0) || '?'}
                               </div>
                             ))}
-                            {meeting.participants.length > 4 && (
-                              <div className="w-8 h-8 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center text-xs font-medium border-2 border-white">
-                                +{meeting.participants.length - 4}
+                            {meeting.participants.length > 3 && (
+                              <div className="w-8 h-8 rounded-full bg-slate-100 border-2 border-white flex items-center justify-center text-xs font-bold text-slate-600">
+                                +{meeting.participants.length - 3}
                               </div>
                             )}
                           </div>
+                          <span className="text-xs font-bold text-slate-400">{meeting.participants.length} Participants</span>
                         </div>
-                        <div className="flex items-center gap-2">
+
+                        <div className="flex gap-3">
                           <button
-                            onClick={() => setSelectedMeeting(meeting)}
-                            className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                            onClick={() => handleJoinMeeting(meeting.id)}
+                            disabled={joiningMeetingId === meeting.id}
+                            className={`px-4 py-2 font-bold rounded-xl shadow-lg transition-colors flex items-center gap-2 ${meeting.status === 'active'
+                                ? 'bg-green-600 text-white shadow-green-600/20 hover:bg-green-700'
+                                : 'bg-teal-600 text-white shadow-teal-600/20 hover:bg-teal-700'
+                              } ${joiningMeetingId === meeting.id ? 'opacity-50 cursor-not-allowed' : ''}`}
                           >
-                            Chi tiết
-                          </button>
-                          <button
-                            onClick={() =>
-                              handleJoinMeeting(meeting.meetingLink)
-                            }
-                            className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
-                          >
-                            <svg
-                              className="w-4 h-4"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
-                              />
-                            </svg>
-                            Tham gia
+                            {joiningMeetingId === meeting.id ? (
+                              <Loader2 className="animate-spin" size={16} />
+                            ) : (
+                              <Video size={16} />
+                            )}
+                            {meeting.status === 'active' ? 'Join Now' : 'Start Meeting'}
                           </button>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))
-              )}
-            </div>
-          )}
+                  ))
+                )}
+              </div>
+            )}
 
-          {/* History */}
-          {activeTab === "history" && (
-            <div className="space-y-3">
-              {pastMeetings.map((meeting) => (
-                <div
-                  key={meeting.id}
-                  className="bg-white rounded-xl shadow-sm p-4"
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-medium text-gray-800">
-                        {meeting.title}
-                      </h4>
-                      <p className="text-sm text-gray-500">
-                        {meeting.date} • {meeting.startTime} - {meeting.endTime}
-                      </p>
-                    </div>
-                    <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
-                      ✅ Đã kết thúc
-                    </span>
+            {activeTab === "history" && (
+              <div className="space-y-4">
+                {pastMeetings.length === 0 ? (
+                  <div className={`${THEME.card} p-12 text-center`}>
+                    <p className="text-slate-500">No past meetings</p>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Weekly Schedule */}
-          {activeTab === "schedule" && (
-            <div className="bg-white rounded-xl shadow-sm p-6">
-              <h3 className="font-semibold text-gray-800 mb-4">
-                📅 Lịch tuần này
-              </h3>
-              <div className="grid grid-cols-7 gap-2">
-                {["CN", "T2", "T3", "T4", "T5", "T6", "T7"].map((day, idx) => (
-                  <div key={day} className="text-center">
-                    <p className="text-xs text-gray-500 mb-2">{day}</p>
-                    <div
-                      className={`p-3 rounded-lg ${
-                        idx === 1 || idx === 2
-                          ? "bg-teal-50 border border-teal-200"
-                          : "bg-gray-50"
-                      }`}
-                    >
-                      <p className="text-lg font-bold text-gray-800">
-                        {17 + idx}
-                      </p>
-                      {(idx === 1 || idx === 2) && (
-                        <div className="mt-1">
-                          <span className="inline-block w-1.5 h-1.5 bg-teal-500 rounded-full"></span>
+                ) : (
+                  pastMeetings.map(meeting => (
+                    <div key={meeting.id} className={`${THEME.card} p-5 flex justify-between items-center opacity-75`}>
+                      <div>
+                        <h4 className="font-bold text-slate-800">{meeting.title}</h4>
+                        <div className="text-sm text-slate-500 font-medium">
+                          {new Date(meeting.scheduledStart).toLocaleString('vi-VN')}
                         </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Right Sidebar */}
-        <div className="col-span-4 space-y-4">
-          {/* Quick Join */}
-          <div className="bg-white rounded-xl shadow-sm p-4">
-            <h3 className="font-semibold text-gray-800 mb-3">
-              🔗 Tham gia nhanh
-            </h3>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                placeholder="Nhập mã cuộc họp..."
-                className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-teal-500"
-              />
-              <button className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg font-medium transition-colors">
-                Tham gia
-              </button>
-            </div>
-          </div>
-
-          {/* Quick Contacts */}
-          <div className="bg-white rounded-xl shadow-sm p-4">
-            <h3 className="font-semibold text-gray-800 mb-3">
-              👥 Liên hệ nhanh
-            </h3>
-            <div className="space-y-2">
-              {MOCK_QUICK_CONTACTS.map((contact) => (
-                <div
-                  key={contact.id}
-                  className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg"
-                >
-                  <div className="flex items-center gap-2">
-                    <div className="relative">
-                      <div className="w-8 h-8 rounded-full bg-teal-500 text-white flex items-center justify-center text-sm font-medium">
-                        {contact.avatar}
                       </div>
-                      <span
-                        className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-white ${
-                          contact.status === "online"
-                            ? "bg-green-500"
-                            : contact.status === "away"
-                            ? "bg-yellow-500"
-                            : "bg-gray-400"
-                        }`}
-                      ></span>
+                      <span className={`text-xs font-bold px-3 py-1 rounded-full uppercase ${meeting.status === 'cancelled'
+                          ? 'bg-red-100 text-red-500'
+                          : 'bg-slate-100 text-slate-500'
+                        }`}>
+                        {meeting.status}
+                      </span>
                     </div>
-                    <span className="text-sm text-gray-700">
-                      {contact.name}
-                    </span>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Create Meeting Modal */}
+        {showCreateMeeting && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-3xl p-8 w-full max-w-lg shadow-2xl">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-slate-900">Create New Meeting</h2>
+                <button onClick={() => setShowCreateMeeting(false)} className="text-slate-400 hover:text-slate-600">
+                  <X size={24} />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Title *</label>
+                  <input
+                    type="text"
+                    value={newMeeting.title}
+                    onChange={(e) => setNewMeeting({ ...newMeeting, title: e.target.value })}
+                    className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    placeholder="Meeting title"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-2">Start Time *</label>
+                    <input
+                      type="datetime-local"
+                      value={newMeeting.scheduledStart}
+                      onChange={(e) => setNewMeeting({ ...newMeeting, scheduledStart: e.target.value })}
+                      className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    />
                   </div>
-                  <button className="p-1.5 hover:bg-teal-50 text-teal-600 rounded">
-                    <svg
-                      className="w-4 h-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
-                      />
-                    </svg>
-                  </button>
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-2">End Time</label>
+                    <input
+                      type="datetime-local"
+                      value={newMeeting.scheduledEnd}
+                      onChange={(e) => setNewMeeting({ ...newMeeting, scheduledEnd: e.target.value })}
+                      className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    />
+                  </div>
                 </div>
-              ))}
-            </div>
-          </div>
 
-          {/* Meeting Tips */}
-          <div className="bg-gradient-to-br from-teal-50 to-cyan-50 rounded-xl p-4 border border-teal-100">
-            <h3 className="font-semibold text-teal-800 mb-3">
-              💡 Mẹo họp hiệu quả
-            </h3>
-            <ul className="space-y-2 text-sm text-teal-700">
-              <li className="flex items-start gap-2">
-                <span>✓</span>
-                <span>Kiểm tra micro và camera trước khi vào họp</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span>✓</span>
-                <span>Tắt tiếng khi không nói</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span>✓</span>
-                <span>Chuẩn bị nội dung trước cuộc họp</span>
-              </li>
-            </ul>
-          </div>
-        </div>
-      </div>
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Access Mode</label>
+                  <select
+                    value={newMeeting.accessMode}
+                    onChange={(e) => setNewMeeting({ ...newMeeting, accessMode: e.target.value as "public" | "private" })}
+                    className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  >
+                    <option value="public">Public (All employees can join)</option>
+                    <option value="private">Private (Invite only)</option>
+                  </select>
+                </div>
 
-      {/* Create Meeting Modal */}
-      {showCreateMeeting && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl w-full max-w-lg mx-4 overflow-hidden">
-            <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-              <h3 className="font-semibold text-gray-800">
-                🎥 Tạo cuộc họp mới
-              </h3>
-              <button
-                onClick={() => setShowCreateMeeting(false)}
-                className="p-1 hover:bg-gray-100 rounded"
-              >
-                <svg
-                  className="w-5 h-5 text-gray-500"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            </div>
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Tiêu đề cuộc họp
-                </label>
-                <input
-                  type="text"
-                  value={newMeeting.title}
-                  onChange={(e) =>
-                    setNewMeeting({ ...newMeeting, title: e.target.value })
-                  }
-                  placeholder="VD: Sprint Planning Meeting"
-                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500"
-                />
-              </div>
-              <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Ngày
-                  </label>
-                  <input
-                    type="date"
-                    value={newMeeting.date}
-                    onChange={(e) =>
-                      setNewMeeting({ ...newMeeting, date: e.target.value })
-                    }
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Bắt đầu
-                  </label>
-                  <input
-                    type="time"
-                    value={newMeeting.startTime}
-                    onChange={(e) =>
-                      setNewMeeting({
-                        ...newMeeting,
-                        startTime: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Kết thúc
-                  </label>
-                  <input
-                    type="time"
-                    value={newMeeting.endTime}
-                    onChange={(e) =>
-                      setNewMeeting({ ...newMeeting, endTime: e.target.value })
-                    }
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500"
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Description</label>
+                  <textarea
+                    value={newMeeting.description}
+                    onChange={(e) => setNewMeeting({ ...newMeeting, description: e.target.value })}
+                    className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    rows={3}
+                    placeholder="Meeting description (optional)"
                   />
                 </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Mô tả
-                </label>
-                <textarea
-                  value={newMeeting.description}
-                  onChange={(e) =>
-                    setNewMeeting({
-                      ...newMeeting,
-                      description: e.target.value,
-                    })
-                  }
-                  placeholder="Nội dung cuộc họp..."
-                  rows={3}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 resize-none"
-                />
-              </div>
-              <div className="flex items-center gap-3 pt-2">
+
+              <div className="flex gap-3 mt-8">
                 <button
                   onClick={() => setShowCreateMeeting(false)}
-                  className="flex-1 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="flex-1 px-6 py-3 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200"
                 >
-                  Hủy
+                  Cancel
                 </button>
                 <button
                   onClick={handleCreateMeeting}
-                  className="flex-1 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg font-medium transition-colors"
+                  disabled={creating}
+                  className={`flex-1 px-6 py-3 bg-teal-600 text-white font-bold rounded-xl hover:bg-teal-700 flex items-center justify-center gap-2 ${creating ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
-                  Tạo cuộc họp
+                  {creating && <Loader2 className="animate-spin" size={18} />}
+                  Create Meeting
                 </button>
               </div>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* Meeting Detail Modal */}
-      {selectedMeeting && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl w-full max-w-lg mx-4 overflow-hidden">
-            <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-              <h3 className="font-semibold text-gray-800">Chi tiết cuộc họp</h3>
-              <button
-                onClick={() => setSelectedMeeting(null)}
-                className="p-1 hover:bg-gray-100 rounded"
-              >
-                <svg
-                  className="w-5 h-5 text-gray-500"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            </div>
-            <div className="p-6">
-              <h2 className="text-xl font-bold text-gray-800 mb-4">
-                {selectedMeeting.title}
-              </h2>
-              <div className="space-y-3 mb-6">
-                <div className="flex items-center gap-3">
-                  <span className="text-gray-500">📅</span>
-                  <span>{selectedMeeting.date}</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-gray-500">🕐</span>
-                  <span>
-                    {selectedMeeting.startTime} - {selectedMeeting.endTime}
-                  </span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-gray-500">👤</span>
-                  <span>Tổ chức bởi: {selectedMeeting.organizer}</span>
-                </div>
-                <div className="flex items-start gap-3">
-                  <span className="text-gray-500">👥</span>
-                  <div>
-                    <p className="mb-1">Người tham gia:</p>
-                    <div className="flex flex-wrap gap-1">
-                      {selectedMeeting.participants.map((p, idx) => (
-                        <span
-                          key={idx}
-                          className="px-2 py-0.5 bg-gray-100 text-gray-700 text-xs rounded-full"
-                        >
-                          {p}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <p className="text-gray-600 mb-6">
-                {selectedMeeting.description}
-              </p>
-              <button
-                onClick={() => handleJoinMeeting(selectedMeeting.meetingLink)}
-                className="w-full py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
-              >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
-                  />
-                </svg>
-                Tham gia ngay
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

@@ -1,3 +1,8 @@
+/**
+ * Admin Online Meeting Module with Daily.co Integration
+ * Uses v2 API for provider-agnostic meeting management
+ */
+
 import React, { useState, useEffect } from "react";
 import { Button } from "../../../components/system/ui/Button";
 import { Input } from "../../../components/system/ui/Input";
@@ -14,23 +19,27 @@ import {
     X,
     Check,
     Search,
+    Loader2,
+    AlertCircle,
 } from "lucide-react";
-import { onlineMeetingService } from "../../../services/onlineMeetingService";
+import meetingService from "../../../services/meetingService";
 import { departmentService, Department } from "../../../services/departmentService";
 import { userService, User } from "../../../services/userService";
-import type {
-    OnlineMeetingDetails,
-    CreateOnlineMeetingRequest,
-} from "../../../types/onlineMeeting.types";
-import { useNavigate } from "react-router-dom";
+import type { MeetingDetails, CreateMeetingRequest, JoinMeetingResponse } from "../../../types/meeting.types";
+import DailyMeetingRoom from "../../../components/meeting/DailyMeetingRoom";
 
 export const OnlineMeetingModule = () => {
-    const [meetings, setMeetings] = useState<OnlineMeetingDetails[]>([]);
+    const [meetings, setMeetings] = useState<MeetingDetails[]>([]);
     const [loading, setLoading] = useState(true);
-    const [view, setView] = useState<"list" | "create">("list");
+    const [error, setError] = useState<string | null>(null);
+    const [view, setView] = useState<"list" | "create" | "meeting">("list");
+
+    // Active meeting state
+    const [activeMeeting, setActiveMeeting] = useState<JoinMeetingResponse | null>(null);
+    const [joiningMeetingId, setJoiningMeetingId] = useState<string | null>(null);
 
     // Form state
-    const [formData, setFormData] = useState<CreateOnlineMeetingRequest>({
+    const [formData, setFormData] = useState<CreateMeetingRequest>({
         title: "",
         description: "",
         scheduledStart: "",
@@ -46,8 +55,6 @@ export const OnlineMeetingModule = () => {
     const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
 
-    const navigate = useNavigate();
-
     useEffect(() => {
         if (view === "list") {
             loadMeetings();
@@ -59,10 +66,12 @@ export const OnlineMeetingModule = () => {
     const loadMeetings = async () => {
         try {
             setLoading(true);
-            const data = await onlineMeetingService.getMeetings();
+            setError(null);
+            const data = await meetingService.getMeetings();
             setMeetings(data);
-        } catch (error) {
-            console.error("Error loading meetings:", error);
+        } catch (err: any) {
+            console.error("Error loading meetings:", err);
+            setError(err.response?.data?.message || "Failed to load meetings");
         } finally {
             setLoading(false);
         }
@@ -84,6 +93,16 @@ export const OnlineMeetingModule = () => {
     const handleCreateMeeting = async (e: React.FormEvent) => {
         e.preventDefault();
 
+        // Validate required fields
+        if (!formData.title.trim()) {
+            alert("Vui lòng nhập tên cuộc họp");
+            return;
+        }
+        if (!formData.scheduledStart) {
+            alert("Vui lòng chọn thời gian bắt đầu");
+            return;
+        }
+
         // Collect participant IDs based on selected departments and users
         const participantIds = new Set<string>(selectedUsers);
 
@@ -95,8 +114,16 @@ export const OnlineMeetingModule = () => {
         });
 
         try {
-            await onlineMeetingService.createMeeting({
+            console.log("Creating meeting with data:", {
                 ...formData,
+                scheduledStart: new Date(formData.scheduledStart).toISOString(),
+                participantIds: Array.from(participantIds),
+            });
+
+            await meetingService.createMeeting({
+                ...formData,
+                scheduledStart: new Date(formData.scheduledStart).toISOString(),
+                scheduledEnd: formData.scheduledEnd ? new Date(formData.scheduledEnd).toISOString() : undefined,
                 participantIds: Array.from(participantIds),
             });
             setView("list");
@@ -111,24 +138,42 @@ export const OnlineMeetingModule = () => {
             });
             setSelectedDepartments([]);
             setSelectedUsers([]);
-        } catch (error) {
-            console.error("Error creating meeting:", error);
-            alert("Lỗi khi tạo cuộc họp");
+        } catch (err: any) {
+            console.error("Error creating meeting:", err);
+            console.error("Response data:", err.response?.data);
+            console.error("Response status:", err.response?.status);
+            alert(err.response?.data?.message || "Lỗi khi tạo cuộc họp: " + (err.message || err));
         }
     };
 
-    const handleJoinMeeting = (meetingId: string) => {
-        navigate(`/admin/online-meetings/${meetingId}/join`);
+    const handleJoinMeeting = async (meetingId: string) => {
+        try {
+            setJoiningMeetingId(meetingId);
+            const response = await meetingService.joinMeeting(meetingId);
+            setActiveMeeting(response);
+            setView("meeting");
+        } catch (err: any) {
+            console.error("Error joining meeting:", err);
+            alert(err.response?.data?.message || "Lỗi khi tham gia cuộc họp");
+        } finally {
+            setJoiningMeetingId(null);
+        }
+    };
+
+    const handleLeaveMeeting = () => {
+        setActiveMeeting(null);
+        setView("list");
+        loadMeetings();
     };
 
     const handleDeleteMeeting = async (id: string) => {
         if (window.confirm("Bạn có chắc chắn muốn xóa cuộc họp này?")) {
             try {
-                await onlineMeetingService.deleteMeeting(id);
+                await meetingService.deleteMeeting(id);
                 loadMeetings();
-            } catch (error) {
-                console.error("Error deleting meeting:", error);
-                alert("Lỗi khi xóa cuộc họp");
+            } catch (err: any) {
+                console.error("Error deleting meeting:", err);
+                alert(err.response?.data?.message || "Lỗi khi xóa cuộc họp");
             }
         }
     };
@@ -137,12 +182,10 @@ export const OnlineMeetingModule = () => {
         const isCurrentlySelected = selectedDepartments.includes(deptId);
 
         if (isCurrentlySelected) {
-            // Uncheck department - remove it and all its users
             setSelectedDepartments(prev => prev.filter(id => id !== deptId));
             const usersInDept = users.filter(u => u.department_id === deptId).map(u => u.id);
             setSelectedUsers(prev => prev.filter(id => !usersInDept.includes(id)));
         } else {
-            // Check department - add it and all its users
             setSelectedDepartments(prev => [...prev, deptId]);
             const usersInDept = users.filter(u => u.department_id === deptId).map(u => u.id);
             setSelectedUsers(prev => [...new Set([...prev, ...usersInDept])]);
@@ -202,6 +245,40 @@ export const OnlineMeetingModule = () => {
             u.email.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
+    // === MEETING VIEW ===
+    if (view === "meeting" && activeMeeting) {
+        return (
+            <div className="animate-fadeIn">
+                <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
+                        <Video className="text-teal-600" /> Đang trong cuộc họp
+                    </h2>
+                    <Button
+                        variant="outline"
+                        className="text-red-600 border-red-200 hover:bg-red-50"
+                        onClick={handleLeaveMeeting}
+                    >
+                        <X size={18} className="mr-2" />
+                        Rời cuộc họp
+                    </Button>
+                </div>
+
+                <DailyMeetingRoom
+                    key={activeMeeting.roomUrl}
+                    roomUrl={activeMeeting.roomUrl}
+                    token={activeMeeting.token}
+                    onLeave={handleLeaveMeeting}
+                    onError={(err) => {
+                        console.error("Meeting error:", err);
+                        alert("Lỗi cuộc họp: " + err.message);
+                    }}
+                    minHeight="calc(100vh - 250px)"
+                />
+            </div>
+        );
+    }
+
+    // === CREATE VIEW ===
     if (view === "create") {
         return (
             <div className="animate-fadeIn">
@@ -276,7 +353,6 @@ export const OnlineMeetingModule = () => {
                                 <div
                                     onClick={() => {
                                         setFormData({ ...formData, accessMode: "public" });
-                                        // Clear selections when switching to public
                                         setSelectedDepartments([]);
                                         setSelectedUsers([]);
                                     }}
@@ -332,8 +408,8 @@ export const OnlineMeetingModule = () => {
                                             >
                                                 <div
                                                     className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${selectedDepartments.includes(dept.id)
-                                                            ? "bg-brand-600 border-brand-600"
-                                                            : "bg-white border-slate-300"
+                                                        ? "bg-brand-600 border-brand-600"
+                                                        : "bg-white border-slate-300"
                                                         }`}
                                                 >
                                                     {selectedDepartments.includes(dept.id) && (
@@ -391,8 +467,8 @@ export const OnlineMeetingModule = () => {
                                                     >
                                                         <div
                                                             className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${selectedUsers.includes(user.id)
-                                                                    ? "bg-brand-600 border-brand-600"
-                                                                    : "bg-white border-slate-300"
+                                                                ? "bg-brand-600 border-brand-600"
+                                                                : "bg-white border-slate-300"
                                                                 }`}
                                                         >
                                                             {selectedUsers.includes(user.id) && (
@@ -472,7 +548,7 @@ export const OnlineMeetingModule = () => {
         );
     }
 
-    // List View (same as before)
+    // === LIST VIEW ===
     return (
         <div className="animate-fadeIn">
             <div className="flex justify-between items-center mb-6">
@@ -481,18 +557,34 @@ export const OnlineMeetingModule = () => {
                         Phòng họp Online
                     </h2>
                     <p className="text-slate-500 mt-1">
-                        Tạo và tham gia cuộc họp video trực tuyến với Jitsi
+                        Tạo và tham gia cuộc họp video trực tuyến với Daily.co
                     </p>
                 </div>
-                <Button onClick={() => setView("create")}>
-                    <Plus size={18} className="mr-2" />
-                    Tạo cuộc họp mới
-                </Button>
+                <div className="flex gap-3">
+                    <Button variant="outline" onClick={loadMeetings}>
+                        Làm mới
+                    </Button>
+                    <Button onClick={() => setView("create")}>
+                        <Plus size={18} className="mr-2" />
+                        Tạo cuộc họp mới
+                    </Button>
+                </div>
             </div>
+
+            {/* Error Message */}
+            {error && (
+                <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3 mb-6">
+                    <AlertCircle className="text-red-500" size={20} />
+                    <span className="text-red-700 font-medium">{error}</span>
+                    <button onClick={loadMeetings} className="ml-auto text-red-600 font-bold hover:underline">
+                        Thử lại
+                    </button>
+                </div>
+            )}
 
             {loading ? (
                 <div className="text-center py-12">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-600 mx-auto"></div>
+                    <Loader2 className="animate-spin h-12 w-12 text-brand-600 mx-auto" />
                     <p className="text-slate-500 mt-4">Đang tải...</p>
                 </div>
             ) : meetings.length === 0 ? (
@@ -537,21 +629,26 @@ export const OnlineMeetingModule = () => {
                                                 {getStatusLabel(meeting.status)}
                                             </span>
                                         </div>
-                                        <span
-                                            className={`px-2 py-0.5 text-[10px] font-bold rounded-full flex items-center gap-1 border ${meeting.accessMode === "public"
-                                                ? "bg-green-50 text-green-700 border-green-100"
-                                                : "bg-slate-100 text-slate-700 border-slate-200"
-                                                }`}
-                                        >
-                                            {meeting.accessMode === "public" ? (
-                                                <Globe size={10} />
-                                            ) : (
-                                                <Lock size={10} />
-                                            )}
-                                            {meeting.accessMode === "public"
-                                                ? "Public"
-                                                : "Private"}
-                                        </span>
+                                        <div className="flex items-center gap-2">
+                                            <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-teal-50 text-teal-700 border border-teal-100">
+                                                {meeting.provider}
+                                            </span>
+                                            <span
+                                                className={`px-2 py-0.5 text-[10px] font-bold rounded-full flex items-center gap-1 border ${meeting.accessMode === "public"
+                                                    ? "bg-green-50 text-green-700 border-green-100"
+                                                    : "bg-slate-100 text-slate-700 border-slate-200"
+                                                    }`}
+                                            >
+                                                {meeting.accessMode === "public" ? (
+                                                    <Globe size={10} />
+                                                ) : (
+                                                    <Lock size={10} />
+                                                )}
+                                                {meeting.accessMode === "public"
+                                                    ? "Public"
+                                                    : "Private"}
+                                            </span>
+                                        </div>
                                     </div>
 
                                     <h3 className="text-lg font-bold text-slate-900 mb-2 line-clamp-2">
@@ -575,7 +672,7 @@ export const OnlineMeetingModule = () => {
                                         </div>
                                         <div className="flex items-center gap-2 text-sm text-slate-600">
                                             <Users size={14} className="text-brand-600" />
-                                            {meeting.participants.length} người tham gia
+                                            {meeting.participants?.length || 0} người tham gia
                                         </div>
                                     </div>
 
@@ -595,8 +692,13 @@ export const OnlineMeetingModule = () => {
                                             variant="primary"
                                             className="flex-1 text-xs h-9"
                                             onClick={() => handleJoinMeeting(meeting.id)}
+                                            disabled={joiningMeetingId === meeting.id}
                                         >
-                                            <Play size={14} className="mr-2" />
+                                            {joiningMeetingId === meeting.id ? (
+                                                <Loader2 size={14} className="mr-2 animate-spin" />
+                                            ) : (
+                                                <Play size={14} className="mr-2" />
+                                            )}
                                             Tham gia
                                         </Button>
                                     )}
