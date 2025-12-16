@@ -425,4 +425,246 @@ export class ChatController {
       });
     }
   };
+
+  // ==================== MODERATION (Admin/Manager) ====================
+
+  // Delete any message (moderation)
+  moderateDeleteMessage = async (req: Request, res: Response) => {
+    try {
+      const moderatorId = (req as any).user.userId;
+      const { messageId } = req.params;
+      const { reason } = req.body;
+
+      const deleted = await this.chatService.moderateDeleteMessage(
+        messageId,
+        moderatorId,
+        reason
+      );
+
+      if (deleted) {
+        res.json({
+          success: true,
+          message: "Đã xóa tin nhắn (kiểm duyệt)",
+        });
+      } else {
+        res.status(404).json({
+          success: false,
+          message: "Không tìm thấy tin nhắn",
+        });
+      }
+    } catch (error) {
+      console.error("Error moderating message:", error);
+      res.status(500).json({
+        success: false,
+        message: "Không thể xóa tin nhắn",
+      });
+    }
+  };
+
+  // Get reported messages
+  getReportedMessages = async (req: Request, res: Response) => {
+    try {
+      const messages = await this.chatService.getReportedMessages();
+
+      res.json({
+        success: true,
+        data: messages,
+      });
+    } catch (error) {
+      console.error("Error getting reported messages:", error);
+      res.status(500).json({
+        success: false,
+        message: "Không thể tải danh sách tin nhắn bị báo cáo",
+      });
+    }
+  };
+
+  // Ban user from chat
+  banUserFromChat = async (req: Request, res: Response) => {
+    try {
+      const moderatorId = (req as any).user.userId;
+      const { userId } = req.params;
+      const { reason, duration } = req.body;
+
+      await this.chatService.banUserFromChat(userId, moderatorId, reason, duration);
+
+      res.json({
+        success: true,
+        message: "Đã cấm người dùng khỏi chat",
+      });
+    } catch (error) {
+      console.error("Error banning user:", error);
+      res.status(500).json({
+        success: false,
+        message: "Không thể cấm người dùng",
+      });
+    }
+  };
+
+  // Unban user
+  unbanUserFromChat = async (req: Request, res: Response) => {
+    try {
+      const { userId } = req.params;
+
+      await this.chatService.unbanUserFromChat(userId);
+
+      res.json({
+        success: true,
+        message: "Đã bỏ cấm người dùng",
+      });
+    } catch (error) {
+      console.error("Error unbanning user:", error);
+      res.status(500).json({
+        success: false,
+        message: "Không thể bỏ cấm người dùng",
+      });
+    }
+  };
+
+  // ==================== GROUP MANAGEMENT ====================
+
+  // Update group info
+  updateGroup = async (req: Request, res: Response) => {
+    try {
+      const { groupId } = req.params;
+      const { name, avatarUrl } = req.body;
+
+      await this.groupRepo.updateGroupInfo(groupId, name, avatarUrl);
+
+      res.json({
+        success: true,
+        message: "Đã cập nhật thông tin nhóm",
+      });
+    } catch (error) {
+      console.error("Error updating group:", error);
+      res.status(500).json({
+        success: false,
+        message: "Không thể cập nhật nhóm",
+      });
+    }
+  };
+
+  // Add members to group
+  addGroupMembers = async (req: Request, res: Response) => {
+    try {
+      const userId = (req as any).user.userId;
+      const { groupId } = req.params;
+      const { memberIds } = req.body;
+
+      if (!memberIds || !Array.isArray(memberIds) || memberIds.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Danh sách thành viên không hợp lệ",
+        });
+      }
+
+      await this.groupRepo.addGroupMembers(groupId, memberIds, "member");
+
+      // Send system message
+      await this.groupRepo.sendGroupMessage(
+        groupId,
+        userId,
+        `${(req as any).user.full_name || "Admin"} đã thêm ${memberIds.length} thành viên`,
+        "system"
+      );
+
+      res.json({
+        success: true,
+        message: "Đã thêm thành viên vào nhóm",
+      });
+    } catch (error) {
+      console.error("Error adding group members:", error);
+      res.status(500).json({
+        success: false,
+        message: "Không thể thêm thành viên",
+      });
+    }
+  };
+
+  // Remove member from group
+  removeGroupMember = async (req: Request, res: Response) => {
+    try {
+      const adminId = (req as any).user.userId;
+      const { groupId, userId } = req.params;
+
+      await this.groupRepo.removeMember(groupId, userId);
+
+      // Send system message
+      await this.groupRepo.sendGroupMessage(
+        groupId,
+        adminId,
+        `Một thành viên đã bị xóa khỏi nhóm`,
+        "system"
+      );
+
+      res.json({
+        success: true,
+        message: "Đã xóa thành viên khỏi nhóm",
+      });
+    } catch (error) {
+      console.error("Error removing group member:", error);
+      res.status(500).json({
+        success: false,
+        message: "Không thể xóa thành viên",
+      });
+    }
+  };
+
+  // Leave group
+  leaveGroup = async (req: Request, res: Response) => {
+    try {
+      const userId = (req as any).user.userId;
+      const { groupId } = req.params;
+
+      await this.groupRepo.removeMember(groupId, userId);
+
+      // Send system message
+      await this.groupRepo.sendGroupMessage(
+        groupId,
+        userId,
+        `${(req as any).user.full_name || "Một thành viên"} đã rời nhóm`,
+        "system"
+      );
+
+      res.json({
+        success: true,
+        message: "Đã rời khỏi nhóm",
+      });
+    } catch (error) {
+      console.error("Error leaving group:", error);
+      res.status(500).json({
+        success: false,
+        message: "Không thể rời nhóm",
+      });
+    }
+  };
+
+  // Promote member to admin
+  promoteMember = async (req: Request, res: Response) => {
+    try {
+      const adminId = (req as any).user.userId;
+      const { groupId, userId } = req.params;
+
+      await this.groupRepo.updateMemberRole(groupId, userId, "admin");
+
+      // Send system message
+      await this.groupRepo.sendGroupMessage(
+        groupId,
+        adminId,
+        `Một thành viên đã được thăng làm admin`,
+        "system"
+      );
+
+      res.json({
+        success: true,
+        message: "Đã thăng cấp thành viên làm admin",
+      });
+    } catch (error) {
+      console.error("Error promoting member:", error);
+      res.status(500).json({
+        success: false,
+        message: "Không thể thăng cấp thành viên",
+      });
+    }
+  };
 }

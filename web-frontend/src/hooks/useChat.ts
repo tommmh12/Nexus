@@ -9,15 +9,38 @@ export interface ChatUser {
   online?: boolean;
 }
 
+// Message status for optimistic UI
+export type MessageStatus = 'sending' | 'sent' | 'delivered' | 'read' | 'failed';
+
 export interface ChatMessage {
   id: string;
+  tempId?: string; // For optimistic UI - temporary ID before server confirms
   senderId: string;
   senderName: string;
   senderAvatar?: string;
+  senderDepartment?: string; // For clear identity in group chats
   content: string;
   timestamp: string;
-  status: 'sent' | 'delivered' | 'read';
+  status: MessageStatus;
   type: 'text' | 'image' | 'file';
+  // Edit/Recall support
+  editedAt?: string;
+  isRecalled?: boolean;
+  // Attachments
+  attachments?: {
+    id: string;
+    fileName: string;
+    fileType: string;
+    fileSize: number;
+    url: string;
+  }[];
+  // Reactions
+  reactions?: {
+    emoji: string;
+    count: number;
+    users: { userId: string; userName: string }[];
+    hasReacted: boolean;
+  }[];
 }
 
 export interface Conversation {
@@ -31,6 +54,7 @@ export interface Conversation {
   online?: boolean;
   memberCount?: number;
   department?: string;
+  participantId?: string; // For direct chats - the other user's ID (for calls)
 }
 
 interface UseChatReturn {
@@ -41,6 +65,7 @@ interface UseChatReturn {
     conversations: boolean;
     messages: boolean;
     users: boolean;
+    loadingMore: boolean;
   };
   activeConversationId: string | null;
   setActiveConversationId: (id: string | null) => void;
@@ -48,6 +73,8 @@ interface UseChatReturn {
   searchUsers: (query: string) => Promise<void>;
   createConversation: (userId: string) => Promise<string>;
   refetch: () => void;
+  loadMoreMessages: () => Promise<void>;
+  hasMoreMessages: boolean;
 }
 
 export const useChat = (): UseChatReturn => {
@@ -58,25 +85,33 @@ export const useChat = (): UseChatReturn => {
     conversations: true,
     messages: false,
     users: false,
+    loadingMore: false,
   });
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [messageOffset, setMessageOffset] = useState(0);
+  const [hasMoreMessages, setHasMoreMessages] = useState(true);
+  const MESSAGE_LIMIT = 50;
 
   // Fetch conversations
   const fetchConversations = useCallback(async () => {
     setLoading((prev) => ({ ...prev, conversations: true }));
     try {
-      const data = await chatService.getConversations();
-      const mapped: Conversation[] = (data || []).map((c: any) => ({
+      const response = await chatService.getConversations();
+      // Handle both { success: true, data: [] } and direct [] formats
+      const rawData = response.data || response;
+      const mapped: Conversation[] = (Array.isArray(rawData) ? rawData : []).map((c: any) => ({
         id: c.id,
         type: c.isGroup ? 'group' : 'direct',
-        name: c.name || c.otherUser?.name || 'Unknown',
-        avatar: c.avatar || c.otherUser?.avatarUrl,
-        lastMessage: c.lastMessage?.content || c.lastMessage,
-        lastMessageTime: c.lastMessageTime || c.lastMessage?.createdAt,
-        unreadCount: c.unreadCount || 0,
-        online: c.otherUser?.isOnline || false,
-        memberCount: c.memberCount,
-        department: c.otherUser?.department,
+        // Map snake_case fields from SQL query
+        name: c.group_name || c.other_user_name || c.name || 'Unknown',
+        avatar: c.group_avatar || c.other_user_avatar || c.avatar,
+        lastMessage: c.last_message_text || c.lastMessage,
+        lastMessageTime: c.last_message_time || c.lastMessageTime || c.created_at,
+        unreadCount: c.unread_count || c.unreadCount || 0,
+        online: c.other_user_status === 'online',
+        memberCount: c.member_count,
+        department: c.other_user_department,
+        participantId: c.other_user_id || c.participant2_id || c.participant1_id,
       }));
       setConversations(mapped);
     } catch (err) {
@@ -86,41 +121,87 @@ export const useChat = (): UseChatReturn => {
     }
   }, []);
 
+  // Map raw message data to ChatMessage
+  const mapMessage = useCallback((m: any, currentUserId: string): ChatMessage => ({
+    id: m.id,
+    senderId: m.sender_id === currentUserId ? 'me' : m.sender_id,
+    senderName: m.sender_name || m.sender?.name || 'Unknown',
+    senderAvatar: m.sender_avatar || m.sender?.avatarUrl,
+    senderDepartment: m.sender_department || m.sender?.department,
+    content: m.is_recalled ? 'Tin nhắn này đã được thu hồi' : (m.message_text || m.content),
+    timestamp: m.created_at || m.timestamp,
+    status: m.is_read ? 'read' : 'delivered',
+    type: m.message_type || m.type || 'text',
+    editedAt: m.edited_at,
+    isRecalled: m.is_recalled || false,
+  }), []);
+
   // Fetch messages for active conversation
-  const fetchMessages = useCallback(async (conversationId: string) => {
+  const fetchMessages = useCallback(async (conversationId: string, reset = true) => {
     setLoading((prev) => ({ ...prev, messages: true }));
     try {
-      const data = await chatService.getMessages(conversationId);
+      const response = await chatService.getMessages(conversationId, MESSAGE_LIMIT, 0);
       const currentUserId = localStorage.getItem('userId') || '';
-      const mapped: ChatMessage[] = (data || []).map((m: any) => ({
-        id: m.id,
-        senderId: m.senderId === currentUserId ? 'me' : m.senderId,
-        senderName: m.sender?.name || m.senderName || 'Unknown',
-        senderAvatar: m.sender?.avatarUrl || m.senderAvatar,
-        content: m.content || m.messageText,
-        timestamp: m.createdAt || m.timestamp,
-        status: m.isRead ? 'read' : 'delivered',
-        type: m.messageType || 'text',
-      }));
-      setMessages(mapped.reverse()); // Reverse to show oldest first
+      const rawData = response.data || response;
+      const mapped: ChatMessage[] = (Array.isArray(rawData) ? rawData : []).map((m: any) => mapMessage(m, currentUserId));
+      
+      // Reset offset and hasMore when fetching fresh
+      if (reset) {
+        setMessageOffset(MESSAGE_LIMIT);
+        setHasMoreMessages(mapped.length >= MESSAGE_LIMIT);
+      }
+      
+      // Merge with existing messages preserving pending ones
+      setMessages(prev => {
+        const pendingMessages = prev.filter(m => m.status === 'sending' || m.status === 'failed');
+        return [...mapped.reverse(), ...pendingMessages];
+      });
     } catch (err) {
       console.error('Error fetching messages:', err);
     } finally {
       setLoading((prev) => ({ ...prev, messages: false }));
     }
-  }, []);
+  }, [mapMessage]);
+
+  // Load more messages (pagination)
+  const loadMoreMessages = useCallback(async () => {
+    if (!activeConversationId || loading.loadingMore || !hasMoreMessages) return;
+    
+    setLoading((prev) => ({ ...prev, loadingMore: true }));
+    try {
+      const response = await chatService.getMessages(activeConversationId, MESSAGE_LIMIT, messageOffset);
+      const currentUserId = localStorage.getItem('userId') || '';
+      const rawData = response.data || response;
+      const mapped: ChatMessage[] = (Array.isArray(rawData) ? rawData : []).map((m: any) => mapMessage(m, currentUserId));
+      
+      if (mapped.length < MESSAGE_LIMIT) {
+        setHasMoreMessages(false);
+      }
+      
+      setMessageOffset(prev => prev + MESSAGE_LIMIT);
+      
+      // Prepend older messages
+      setMessages(prev => [...mapped.reverse(), ...prev]);
+    } catch (err) {
+      console.error('Error loading more messages:', err);
+    } finally {
+      setLoading((prev) => ({ ...prev, loadingMore: false }));
+    }
+  }, [activeConversationId, loading.loadingMore, hasMoreMessages, messageOffset, mapMessage]);
 
   // Search users
   const searchUsers = useCallback(async (query: string) => {
     setLoading((prev) => ({ ...prev, users: true }));
     try {
-      const data = await chatService.searchUsers(query);
-      const mapped: ChatUser[] = (data || []).map((u: any) => ({
+      const response = await chatService.searchUsers(query);
+      const rawData = response.data || response;
+      const mapped: ChatUser[] = (Array.isArray(rawData) ? rawData : []).map((u: any) => ({
         id: u.id,
-        name: u.name || u.fullName,
-        avatar: u.avatarUrl,
-        department: u.department,
-        online: u.isOnline,
+        // Map snake_case fields from SQL query
+        name: u.full_name || u.name || u.fullName,
+        avatar: u.avatar_url || u.avatarUrl,
+        department: u.department_name || u.department,
+        online: u.status === 'online' || u.isOnline,
       }));
       setUsers(mapped);
     } catch (err) {
@@ -130,9 +211,27 @@ export const useChat = (): UseChatReturn => {
     }
   }, []);
 
-  // Send message
+  // Send message with optimistic UI
   const sendMessage = useCallback(async (content: string) => {
     if (!activeConversationId || !content.trim()) return;
+
+    const tempId = crypto.randomUUID();
+    const currentUserName = localStorage.getItem('userName') || 'You';
+
+    // Create optimistic message - show immediately
+    const pendingMessage: ChatMessage = {
+      id: tempId,
+      tempId,
+      senderId: 'me',
+      senderName: currentUserName,
+      content: content.trim(),
+      timestamp: new Date().toISOString(),
+      status: 'sending',
+      type: 'text',
+    };
+
+    // Show immediately with "sending" status
+    setMessages(prev => [...prev, pendingMessage]);
 
     try {
       await chatService.sendMessage({
@@ -140,12 +239,21 @@ export const useChat = (): UseChatReturn => {
         messageText: content,
         messageType: 'text',
       });
-      // Refetch messages
+
+      // Update to sent status (server confirmed)
+      setMessages(prev => prev.map(m =>
+        m.tempId === tempId ? { ...m, status: 'sent' as MessageStatus } : m
+      ));
+
+      // Refetch to get the real message ID and update conversation list
       await fetchMessages(activeConversationId);
-      // Update conversation list
       await fetchConversations();
     } catch (err) {
       console.error('Error sending message:', err);
+      // Mark as failed
+      setMessages(prev => prev.map(m =>
+        m.tempId === tempId ? { ...m, status: 'failed' as MessageStatus } : m
+      ));
       throw err;
     }
   }, [activeConversationId, fetchMessages, fetchConversations]);
@@ -198,5 +306,7 @@ export const useChat = (): UseChatReturn => {
     searchUsers,
     createConversation,
     refetch,
+    loadMoreMessages,
+    hasMoreMessages,
   };
 };

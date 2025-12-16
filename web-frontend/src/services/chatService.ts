@@ -157,4 +157,107 @@ export const chatService = {
     );
     return response.data;
   },
+
+  // ==================== MODERATION ====================
+
+  // Delete message (moderation)
+  moderateDeleteMessage: async (messageId: string, reason?: string) => {
+    const response = await axios.delete(
+      `${API_URL}/moderate/messages/${messageId}`,
+      {
+        ...getAuthHeader(),
+        data: { reason },
+      }
+    );
+    return response.data;
+  },
+
+  // Get reported messages
+  getReportedMessages: async () => {
+    const response = await axios.get(
+      `${API_URL}/moderate/reported`,
+      getAuthHeader()
+    );
+    return response.data;
+  },
+
+  // Report a message
+  reportMessage: async (messageId: string, reason: string) => {
+    const response = await axios.post(
+      `${API_URL}/messages/${messageId}/report`,
+      { reason },
+      getAuthHeader()
+    );
+    return response.data;
+  },
+
+  // Ban user from chat
+  banUser: async (userId: string, reason?: string, durationHours?: number) => {
+    const response = await axios.post(
+      `${API_URL}/moderate/ban/${userId}`,
+      { reason, duration: durationHours },
+      getAuthHeader()
+    );
+    return response.data;
+  },
+
+  // Unban user
+  unbanUser: async (userId: string) => {
+    const response = await axios.delete(
+      `${API_URL}/moderate/ban/${userId}`,
+      getAuthHeader()
+    );
+    return response.data;
+  },
+
+  // ==================== GROUP MANAGEMENT ====================
+
+  // Update group info
+  updateGroup: async (groupId: string, name?: string, avatarUrl?: string) => {
+    const response = await axios.put(
+      `${API_URL}/groups/${groupId}`,
+      { name, avatarUrl },
+      getAuthHeader()
+    );
+    return response.data;
+  },
+
+  // Add members to group
+  addGroupMembers: async (groupId: string, memberIds: string[]) => {
+    const response = await axios.post(
+      `${API_URL}/groups/${groupId}/members`,
+      { memberIds },
+      getAuthHeader()
+    );
+    return response.data;
+  },
+
+  // Remove member from group
+  removeGroupMember: async (groupId: string, userId: string) => {
+    const response = await axios.delete(
+      `${API_URL}/groups/${groupId}/members/${userId}`,
+      getAuthHeader()
+    );
+    return response.data;
+  },
+
+  // Leave group
+  leaveGroup: async (groupId: string) => {
+    const response = await axios.post(
+      `${API_URL}/groups/${groupId}/leave`,
+      {},
+      getAuthHeader()
+    );
+    return response.data;
+  },
+
+  // Promote member to admin
+  promoteMember: async (groupId: string, userId: string) => {
+    const response = await axios.put(
+      `${API_URL}/groups/${groupId}/members/${userId}/promote`,
+      {},
+      getAuthHeader()
+    );
+    return response.data;
+  },
 };

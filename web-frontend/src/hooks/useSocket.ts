@@ -59,10 +59,23 @@ export const useSocket = () => {
   const socketRef = useRef<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
+  const isInitialized = useRef(false);
 
   useEffect(() => {
     const token = localStorage.getItem("accessToken");
     if (!token) return;
+
+    // Prevent multiple socket connections
+    if (isInitialized.current && socketRef.current?.connected) {
+      return;
+    }
+
+    // Disconnect existing socket if any
+    if (socketRef.current) {
+      socketRef.current.disconnect();
+    }
+
+    isInitialized.current = true;
 
     // Initialize socket connection
     socketRef.current = io(SOCKET_URL, {
@@ -70,6 +83,7 @@ export const useSocket = () => {
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionAttempts: 5,
+      forceNew: false,
     });
 
     const socket = socketRef.current;
@@ -112,7 +126,14 @@ export const useSocket = () => {
 
     // Cleanup on unmount
     return () => {
-      socket.disconnect();
+      // Don't disconnect on HMR - only on actual unmount
+      if (import.meta.hot) {
+        // In development with HMR, keep connection alive
+        console.log("🔄 HMR detected, keeping socket connection");
+      } else {
+        socket.disconnect();
+        isInitialized.current = false;
+      }
     };
   }, []);
 
@@ -138,8 +159,14 @@ export const useSocket = () => {
       messageText: string;
       messageType?: string;
     }) => {
-      if (socketRef.current) {
+      if (socketRef.current && socketRef.current.connected) {
+        console.log("🔌 Socket emitting send:message", data);
         socketRef.current.emit("send:message", data);
+      } else {
+        console.error("❌ Socket not available or not connected", {
+          socketExists: !!socketRef.current,
+          connected: socketRef.current?.connected,
+        });
       }
     },
     []
@@ -224,6 +251,101 @@ export const useSocket = () => {
     }
   }, []);
 
+  // ==================== EDIT/RECALL/REACTION FUNCTIONS ====================
+
+  // Edit message
+  const editMessage = useCallback(
+    (messageId: string, conversationId: string, newText: string) => {
+      if (socketRef.current) {
+        socketRef.current.emit("message:edit", { messageId, conversationId, newText });
+      }
+    },
+    []
+  );
+
+  // Recall message
+  const recallMessage = useCallback(
+    (messageId: string, conversationId: string) => {
+      if (socketRef.current) {
+        socketRef.current.emit("message:recall", { messageId, conversationId });
+      }
+    },
+    []
+  );
+
+  // Add reaction
+  const addReaction = useCallback(
+    (messageId: string, conversationId: string, emoji: string) => {
+      if (socketRef.current) {
+        socketRef.current.emit("reaction:add", { messageId, conversationId, emoji });
+      }
+    },
+    []
+  );
+
+  // Remove reaction
+  const removeReaction = useCallback(
+    (messageId: string, conversationId: string, emoji: string) => {
+      if (socketRef.current) {
+        socketRef.current.emit("reaction:remove", { messageId, conversationId, emoji });
+      }
+    },
+    []
+  );
+
+  // Listen for edited messages
+  const onMessageEdited = useCallback(
+    (callback: (data: { messageId: string; conversationId: string; newText: string; editedAt: string }) => void) => {
+      if (socketRef.current) {
+        socketRef.current.on("message:edited", callback);
+        return () => {
+          socketRef.current?.off("message:edited", callback);
+        };
+      }
+    },
+    []
+  );
+
+  // Listen for recalled messages
+  const onMessageRecalled = useCallback(
+    (callback: (data: { messageId: string; conversationId: string }) => void) => {
+      if (socketRef.current) {
+        socketRef.current.on("message:recalled", callback);
+        return () => {
+          socketRef.current?.off("message:recalled", callback);
+        };
+      }
+    },
+    []
+  );
+
+  // Listen for reaction added
+  const onReactionAdded = useCallback(
+    (callback: (data: { messageId: string; conversationId: string; userId: string; userName: string; emoji: string }) => void) => {
+      if (socketRef.current) {
+        socketRef.current.on("reaction:added", callback);
+        return () => {
+          socketRef.current?.off("reaction:added", callback);
+        };
+      }
+    },
+    []
+  );
+
+  // Listen for reaction removed
+  const onReactionRemoved = useCallback(
+    (callback: (data: { messageId: string; conversationId: string; userId: string; emoji: string }) => void) => {
+      if (socketRef.current) {
+        socketRef.current.on("reaction:removed", callback);
+        return () => {
+          socketRef.current?.off("reaction:removed", callback);
+        };
+      }
+    },
+    []
+  );
+
+
   // ==================== CALL FUNCTIONS ====================
 
   // Start a call (video or audio)
@@ -233,12 +355,15 @@ export const useSocket = () => {
       recipientName: string;
       isVideoCall: boolean;
     }) => {
-      if (socketRef.current) {
+      console.log("📞 startCall called", { data, socketExists: !!socketRef.current, connected: socketRef.current?.connected });
+      
+      if (socketRef.current && socketRef.current.connected) {
         const callId = `call-${Date.now()}-${Math.random()
           .toString(36)
           .substr(2, 9)}`;
         const roomName = `room-${callId}`;
 
+        console.log("📞 Emitting call:start", { callId, roomName, ...data });
         socketRef.current.emit("call:start", {
           callId,
           recipientId: data.recipientId,
@@ -249,6 +374,7 @@ export const useSocket = () => {
 
         return { callId, roomName };
       }
+      console.error("❌ Cannot start call: socket not available or not connected");
       return null;
     },
     []
@@ -400,5 +526,14 @@ export const useSocket = () => {
     onCallBusy,
     onRoomReady,
     onNoAnswer,
+    // Edit/Recall/Reaction functions
+    editMessage,
+    recallMessage,
+    addReaction,
+    removeReaction,
+    onMessageEdited,
+    onMessageRecalled,
+    onReactionAdded,
+    onReactionRemoved,
   };
 };

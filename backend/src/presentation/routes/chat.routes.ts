@@ -1,6 +1,13 @@
 import { Router } from "express";
 import { ChatController } from "../controllers/ChatController.js";
 import { authMiddleware } from "../middlewares/auth.middleware.js";
+import {
+  isConversationParticipant,
+  isGroupMember,
+  isGroupAdmin,
+  canModerateChat,
+  rateLimitMessages,
+} from "../middlewares/chat.middleware.js";
 import multer from "multer";
 import path from "path";
 
@@ -26,7 +33,9 @@ const upload = multer({
 // All routes require authentication
 router.use(authMiddleware);
 
-// Get all conversations
+// ==================== CONVERSATIONS ====================
+
+// Get all conversations for current user
 router.get("/conversations", chatController.getConversations);
 
 // Get or create conversation with specific user
@@ -35,23 +44,62 @@ router.get(
   chatController.getOrCreateConversation
 );
 
-// Get messages for conversation
+// Get messages for conversation (with authorization check)
 router.get(
   "/conversations/:conversationId/messages",
+  isConversationParticipant,
   chatController.getMessages
 );
 
-// Send message (REST backup)
-router.post("/messages", chatController.sendMessage);
+// Mark messages as read (with authorization check)
+router.put(
+  "/conversations/:conversationId/read",
+  isConversationParticipant,
+  chatController.markAsRead
+);
 
-// Mark messages as read
-router.put("/conversations/:conversationId/read", chatController.markAsRead);
+// ==================== MESSAGES ====================
 
-// Delete message
+// Send message (with rate limiting)
+router.post("/messages", rateLimitMessages, chatController.sendMessage);
+
+// Delete own message
 router.delete("/messages/:messageId", chatController.deleteMessage);
 
-// Search messages
+// Search messages (only in user's conversations)
 router.get("/search", chatController.searchMessages);
+
+// ==================== MODERATION (Admin/Manager only) ====================
+
+// Delete any message (moderation)
+router.delete(
+  "/moderate/messages/:messageId",
+  canModerateChat,
+  chatController.moderateDeleteMessage
+);
+
+// Get reported messages
+router.get(
+  "/moderate/reported",
+  canModerateChat,
+  chatController.getReportedMessages
+);
+
+// Ban user from chat
+router.post(
+  "/moderate/ban/:userId",
+  canModerateChat,
+  chatController.banUserFromChat
+);
+
+// Unban user
+router.delete(
+  "/moderate/ban/:userId",
+  canModerateChat,
+  chatController.unbanUserFromChat
+);
+
+// ==================== USERS ====================
 
 // Search users to start new chat
 router.get("/users", chatController.searchUsers);
@@ -59,14 +107,79 @@ router.get("/users", chatController.searchUsers);
 // Get online users
 router.get("/online-users", chatController.getOnlineUsers);
 
-// Upload attachment
-router.post("/upload", upload.single("file"), chatController.uploadAttachment);
+// ==================== ATTACHMENTS ====================
 
-// Group chat routes
+// Upload attachment (with rate limiting)
+router.post(
+  "/upload",
+  rateLimitMessages,
+  upload.single("file"),
+  chatController.uploadAttachment
+);
+
+// ==================== GROUP CHAT ====================
+
+// Create group
 router.post("/groups", chatController.createGroup);
+
+// Get user's groups
 router.get("/groups", chatController.getGroups);
-router.get("/groups/:groupId/members", chatController.getGroupMembers);
-router.get("/groups/:groupId/messages", chatController.getGroupMessages);
-router.post("/groups/:groupId/messages", chatController.sendGroupMessage);
+
+// Get group members (must be member)
+router.get(
+  "/groups/:groupId/members",
+  isGroupMember,
+  chatController.getGroupMembers
+);
+
+// Get group messages (must be member)
+router.get(
+  "/groups/:groupId/messages",
+  isGroupMember,
+  chatController.getGroupMessages
+);
+
+// Send group message (must be member, with rate limiting)
+router.post(
+  "/groups/:groupId/messages",
+  isGroupMember,
+  rateLimitMessages,
+  chatController.sendGroupMessage
+);
+
+// Update group info (admin only)
+router.put(
+  "/groups/:groupId",
+  isGroupAdmin,
+  chatController.updateGroup
+);
+
+// Add members to group (admin only)
+router.post(
+  "/groups/:groupId/members",
+  isGroupAdmin,
+  chatController.addGroupMembers
+);
+
+// Remove member from group (admin only)
+router.delete(
+  "/groups/:groupId/members/:userId",
+  isGroupAdmin,
+  chatController.removeGroupMember
+);
+
+// Leave group
+router.post(
+  "/groups/:groupId/leave",
+  isGroupMember,
+  chatController.leaveGroup
+);
+
+// Promote member to admin (admin only)
+router.put(
+  "/groups/:groupId/members/:userId/promote",
+  isGroupAdmin,
+  chatController.promoteMember
+);
 
 export default router;

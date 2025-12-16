@@ -33,7 +33,7 @@ export class ChatService {
       throw new Error("No conversation ID or recipient ID provided");
     }
 
-    const messageId = await this.chatRepo.createMessage({
+    await this.chatRepo.createMessage({
       conversationId,
       senderId: messageData.senderId,
       messageText: messageData.messageText,
@@ -109,5 +109,67 @@ export class ChatService {
 
   async getMessageAttachments(messageId: string) {
     return await this.chatRepo.getMessageAttachments(messageId);
+  }
+
+  // ==================== EDIT/RECALL ====================
+
+  async getMessage(messageId: string) {
+    return await this.chatRepo.getMessage(messageId);
+  }
+
+  async editMessage(messageId: string, userId: string, newText: string) {
+    return await this.chatRepo.editMessage(messageId, userId, newText);
+  }
+
+  async recallMessage(messageId: string, userId: string) {
+    return await this.chatRepo.recallMessage(messageId, userId);
+  }
+
+  // ==================== REACTIONS ====================
+
+  async addReaction(messageId: string, userId: string, emoji: string) {
+    return await this.chatRepo.addReaction(messageId, userId, emoji);
+  }
+
+  async removeReaction(messageId: string, userId: string, emoji: string) {
+    return await this.chatRepo.removeReaction(messageId, userId, emoji);
+  }
+
+  async getMessageReactions(messageId: string) {
+    return await this.chatRepo.getMessageReactions(messageId);
+  }
+
+  async getMessageReactionSummary(messageId: string) {
+    return await this.chatRepo.getMessageReactionSummary(messageId);
+  }
+
+  // ==================== MODERATION ====================
+
+  async moderateDeleteMessage(messageId: string, moderatorId: string, reason?: string) {
+    return await this.chatRepo.moderateDeleteMessage(messageId, moderatorId, reason);
+  }
+
+  async getReportedMessages() {
+    return await this.chatRepo.getReportedMessages();
+  }
+
+  async banUserFromChat(userId: string, moderatorId: string, reason?: string, duration?: number) {
+    return await this.chatRepo.banUserFromChat(userId, moderatorId, reason, duration);
+  }
+
+  async unbanUserFromChat(userId: string) {
+    return await this.chatRepo.unbanUserFromChat(userId);
+  }
+
+  async isUserBanned(userId: string) {
+    return await this.chatRepo.isUserBanned(userId);
+  }
+
+  async reportMessage(messageId: string, reporterId: string, reason: string) {
+    return await this.chatRepo.reportMessage(messageId, reporterId, reason);
+  }
+
+  async getConversationParticipants(conversationId: string) {
+    return await this.chatRepo.getConversationParticipants(conversationId);
   }
 }

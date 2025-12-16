@@ -4,6 +4,41 @@ import { RowDataPacket } from "mysql2";
 export class GroupChatRepository {
   private db = dbPool;
 
+  // ==================== AUTHORIZATION ====================
+
+  /**
+   * Check if user is member of a group
+   */
+  async isUserInGroup(userId: string, groupId: string): Promise<boolean> {
+    const [rows] = await this.db.execute<RowDataPacket[]>(
+      `SELECT 1 FROM group_members WHERE group_id = ? AND user_id = ? AND is_active = 1 LIMIT 1`,
+      [groupId, userId]
+    );
+    return rows.length > 0;
+  }
+
+  /**
+   * Check if user is admin of a group
+   */
+  async isUserGroupAdmin(userId: string, groupId: string): Promise<boolean> {
+    const [rows] = await this.db.execute<RowDataPacket[]>(
+      `SELECT 1 FROM group_members WHERE group_id = ? AND user_id = ? AND role = 'admin' AND is_active = 1 LIMIT 1`,
+      [groupId, userId]
+    );
+    return rows.length > 0;
+  }
+
+  /**
+   * Get user's role in group
+   */
+  async getUserGroupRole(userId: string, groupId: string): Promise<string | null> {
+    const [rows] = await this.db.execute<RowDataPacket[]>(
+      `SELECT role FROM group_members WHERE group_id = ? AND user_id = ? AND is_active = 1 LIMIT 1`,
+      [groupId, userId]
+    );
+    return rows.length > 0 ? rows[0].role : null;
+  }
+
   // Create a new group conversation
   async createGroupConversation(
     name: string,
@@ -172,5 +207,34 @@ export class GroupChatRepository {
         [avatarUrl, groupId]
       );
     }
+  }
+
+  // Update member role
+  async updateMemberRole(
+    groupId: string,
+    userId: string,
+    role: "admin" | "member"
+  ): Promise<void> {
+    await this.db.execute(
+      `UPDATE group_members SET role = ? WHERE group_id = ? AND user_id = ?`,
+      [role, groupId, userId]
+    );
+  }
+
+  // Get group info
+  async getGroupInfo(groupId: string): Promise<RowDataPacket | null> {
+    const [rows] = await this.db.execute<RowDataPacket[]>(
+      `SELECT * FROM group_conversations WHERE id = ? AND is_active = 1`,
+      [groupId]
+    );
+    return rows[0] || null;
+  }
+
+  // Delete group (soft delete)
+  async deleteGroup(groupId: string): Promise<void> {
+    await this.db.execute(
+      `UPDATE group_conversations SET is_active = 0 WHERE id = ?`,
+      [groupId]
+    );
   }
 }

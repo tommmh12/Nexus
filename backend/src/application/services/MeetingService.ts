@@ -230,14 +230,27 @@ export class MeetingService {
             logger.info({ meetingId, config }, 'Meeting missing valid Daily room - creating...');
 
             try {
-                // Generate unique room name based on meetingId
-                const roomName = `nexus-${meetingId.slice(0, 8)}-${Date.now().toString(36)}`;
+                // Generate deterministic room name based on meetingId to avoid race conditions
+                const roomName = `nexus-${meetingId}`;
 
                 // Create room via Daily API
-                const room = await dailyService.createRoom(roomName, {
-                    privacy: meeting.accessMode === 'private' ? 'private' : 'public',
-                    expiryMinutes: 60 * 24, // 24 hours
-                });
+                let room;
+                try {
+                    room = await dailyService.createRoom(roomName, {
+                        privacy: meeting.accessMode === 'private' ? 'private' : 'public',
+                        expiryMinutes: 60 * 24, // 24 hours
+                    });
+                } catch (createError: any) {
+                    // If room already exists, fetch it
+                    if (createError.response?.status === 400 || createError.message?.includes('already exists')) {
+                        logger.info({ meetingId, roomName }, 'Room already exists, fetching details');
+                        const existingRoom = await dailyService.getRoom(roomName);
+                        if (!existingRoom) throw createError;
+                        room = existingRoom;
+                    } else {
+                        throw createError;
+                    }
+                }
 
                 // Build new provider config
                 config = {

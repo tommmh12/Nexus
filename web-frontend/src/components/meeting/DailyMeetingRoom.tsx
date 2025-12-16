@@ -46,13 +46,13 @@ let globalRoomUrl: string | null = null;
 let lastDestroyTime: number = 0;
 const DESTROY_COOLDOWN_MS = 500; // Wait 500ms after destroy before creating new frame
 
-function destroyGlobalCallFrame() {
+async function destroyGlobalCallFrame() {
     if (globalCallFrame) {
         console.log('[Daily] Destroying global call frame');
         try {
-            globalCallFrame.leave();
+            await globalCallFrame.leave();
         } catch (e) {
-            // Ignore leave errors
+            console.warn('[Daily] Error leaving:', e);
         }
         try {
             globalCallFrame.destroy();
@@ -125,7 +125,7 @@ export const DailyMeetingRoom: React.FC<DailyMeetingRoomProps> = ({
             }
 
             // Destroy any existing frame first
-            destroyGlobalCallFrame();
+            await destroyGlobalCallFrame();
 
             // Wait for SDK cooldown after destroy
             await waitForDestroyCooldown();
@@ -171,7 +171,7 @@ export const DailyMeetingRoom: React.FC<DailyMeetingRoomProps> = ({
                 // Event handlers
                 callFrame.on('left-meeting', () => {
                     console.log('[Daily] Left meeting');
-                    destroyGlobalCallFrame();
+                    destroyGlobalCallFrame().catch(e => console.error(e));
                     onLeave?.();
                 });
 
@@ -214,7 +214,7 @@ export const DailyMeetingRoom: React.FC<DailyMeetingRoomProps> = ({
             mountedRef.current = false;
             // Only destroy if this component owns the frame
             if (localCallFrame === globalCallFrame) {
-                destroyGlobalCallFrame();
+                destroyGlobalCallFrame().catch(e => console.error('[Daily] Cleanup error:', e));
             }
         };
     }, [roomUrl, token]); // Re-init if roomUrl or token changes

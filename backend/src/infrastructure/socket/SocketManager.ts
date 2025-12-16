@@ -1,6 +1,7 @@
 import { Server as SocketIOServer, Socket } from "socket.io";
 import { Server as HTTPServer } from "http";
 import { ChatService } from "../../application/services/ChatService.js";
+import { dailyService } from "../../application/services/DailyService.js";
 import jwt from "jsonwebtoken";
 
 interface AuthenticatedSocket extends Socket {
@@ -17,6 +18,7 @@ interface ActiveCall {
   recipientId: string;
   recipientName: string;
   roomName: string;
+  roomUrl: string; // Full Daily.co room URL
   isVideoCall: boolean;
   startTime: Date;
 }
@@ -57,7 +59,7 @@ export class SocketManager {
         const decoded = jwt.verify(
           token,
           process.env.JWT_SECRET ||
-            "nexus_super_secret_key_change_in_production_2024"
+          "nexus_super_secret_key_change_in_production_2024"
         ) as any;
         socket.userId = decoded.userId;
         socket.userRole = decoded.role;
@@ -92,6 +94,12 @@ export class SocketManager {
       socket.on("message:delete", (data) =>
         this.handleDeleteMessage(socket, data)
       );
+
+      // Edit/Recall/Reaction events
+      socket.on("message:edit", (data) => this.handleEditMessage(socket, data));
+      socket.on("message:recall", (data) => this.handleRecallMessage(socket, data));
+      socket.on("reaction:add", (data) => this.handleAddReaction(socket, data));
+      socket.on("reaction:remove", (data) => this.handleRemoveReaction(socket, data));
 
       // Call events
       socket.on("call:start", (data) => this.handleCallStart(socket, data));
@@ -171,9 +179,27 @@ export class SocketManager {
   }
 
   private async handleSendMessage(socket: AuthenticatedSocket, data: any) {
-    if (!socket.userId) return;
+    console.log(`📨 handleSendMessage called by ${socket.userId}`, data);
+    
+    if (!socket.userId) {
+      console.error('❌ No userId on socket');
+      return;
+    }
 
     try {
+      // Check if user is banned
+      const isBanned = await this.chatService.isUserBanned(socket.userId);
+      console.log(`🔍 User ${socket.userId} banned status:`, isBanned);
+      
+      if (isBanned) {
+        socket.emit("error", { 
+          code: "USER_BANNED",
+          message: "Bạn đã bị cấm chat. Vui lòng liên hệ quản trị viên." 
+        });
+        return;
+      }
+
+      console.log('📝 Creating message in database...');
       const message = await this.chatService.sendMessage({
         conversationId: data.conversationId,
         senderId: socket.userId,
@@ -182,24 +208,32 @@ export class SocketManager {
         messageType: data.messageType || "text",
       });
 
-      // Emit to conversation room (including sender)
-      this.io.to(`conversation:${data.conversationId}`).emit("message:new", {
-        message,
+      const messagePayload = {
+        message: {
+          ...message,
+          sender_id: message.sender_id,
+          sender_name: message.sender_name || socket.userName,
+          sender_avatar: message.sender_avatar,
+          message_text: message.message_text,
+          created_at: message.created_at,
+        },
         conversationId: data.conversationId,
-      });
+      };
 
-      // Also emit to both users directly (in case they're not in the conversation room yet)
-      if (data.recipientId) {
-        const recipientSocketId = this.userSockets.get(data.recipientId);
-        if (recipientSocketId) {
-          this.io.to(recipientSocketId).emit("message:new", {
-            message,
-            conversationId: data.conversationId,
-          });
+      // Get participants to emit directly (more reliable than room-based)
+      const participants = await this.chatService.getConversationParticipants(data.conversationId);
+      const emittedSockets = new Set<string>();
+
+      // Emit directly to each participant's socket (avoid duplicates)
+      for (const participantId of participants) {
+        const socketId = this.userSockets.get(participantId);
+        if (socketId && !emittedSockets.has(socketId)) {
+          this.io.to(socketId).emit("message:new", messagePayload);
+          emittedSockets.add(socketId);
         }
       }
 
-      console.log(`💬 Message sent in conversation ${data.conversationId}`);
+      console.log(`💬 Message sent in conversation ${data.conversationId} to ${emittedSockets.size} sockets`);
     } catch (error) {
       console.error("Error sending message:", error);
       socket.emit("error", { message: "Failed to send message" });
@@ -297,6 +331,128 @@ export class SocketManager {
     }
   }
 
+  // ==================== EDIT/RECALL/REACTION HANDLERS ====================
+
+  private async handleEditMessage(
+    socket: AuthenticatedSocket,
+    data: { messageId: string; conversationId: string; newText: string }
+  ) {
+    if (!socket.userId) return;
+
+    try {
+      const edited = await this.chatService.editMessage(
+        data.messageId,
+        socket.userId,
+        data.newText
+      );
+
+      if (edited) {
+        // Broadcast to all participants
+        this.io
+          .to(`conversation:${data.conversationId}`)
+          .emit("message:edited", {
+            messageId: data.messageId,
+            conversationId: data.conversationId,
+            newText: data.newText,
+            editedAt: new Date().toISOString(),
+          });
+        console.log(`✏️ Message ${data.messageId} edited by ${socket.userId}`);
+      }
+    } catch (error: any) {
+      console.error("Error editing message:", error);
+      socket.emit("error", { message: error.message || "Failed to edit message" });
+    }
+  }
+
+  private async handleRecallMessage(
+    socket: AuthenticatedSocket,
+    data: { messageId: string; conversationId: string }
+  ) {
+    if (!socket.userId) return;
+
+    try {
+      const recalled = await this.chatService.recallMessage(
+        data.messageId,
+        socket.userId
+      );
+
+      if (recalled) {
+        // Broadcast to all participants
+        this.io
+          .to(`conversation:${data.conversationId}`)
+          .emit("message:recalled", {
+            messageId: data.messageId,
+            conversationId: data.conversationId,
+          });
+        console.log(`🔄 Message ${data.messageId} recalled by ${socket.userId}`);
+      }
+    } catch (error: any) {
+      console.error("Error recalling message:", error);
+      socket.emit("error", { message: error.message || "Failed to recall message" });
+    }
+  }
+
+  private async handleAddReaction(
+    socket: AuthenticatedSocket,
+    data: { messageId: string; conversationId: string; emoji: string }
+  ) {
+    if (!socket.userId) return;
+
+    try {
+      await this.chatService.addReaction(
+        data.messageId,
+        socket.userId,
+        data.emoji
+      );
+
+      // Broadcast to all participants
+      this.io
+        .to(`conversation:${data.conversationId}`)
+        .emit("reaction:added", {
+          messageId: data.messageId,
+          conversationId: data.conversationId,
+          userId: socket.userId,
+          userName: socket.userName,
+          emoji: data.emoji,
+        });
+      console.log(`👍 Reaction ${data.emoji} added to ${data.messageId} by ${socket.userId}`);
+    } catch (error) {
+      console.error("Error adding reaction:", error);
+      socket.emit("error", { message: "Failed to add reaction" });
+    }
+  }
+
+  private async handleRemoveReaction(
+    socket: AuthenticatedSocket,
+    data: { messageId: string; conversationId: string; emoji: string }
+  ) {
+    if (!socket.userId) return;
+
+    try {
+      const removed = await this.chatService.removeReaction(
+        data.messageId,
+        socket.userId,
+        data.emoji
+      );
+
+      if (removed) {
+        // Broadcast to all participants
+        this.io
+          .to(`conversation:${data.conversationId}`)
+          .emit("reaction:removed", {
+            messageId: data.messageId,
+            conversationId: data.conversationId,
+            userId: socket.userId,
+            emoji: data.emoji,
+          });
+        console.log(`👎 Reaction ${data.emoji} removed from ${data.messageId} by ${socket.userId}`);
+      }
+    } catch (error) {
+      console.error("Error removing reaction:", error);
+      socket.emit("error", { message: "Failed to remove reaction" });
+    }
+  }
+
   private async handleDisconnect(socket: AuthenticatedSocket) {
     if (!socket.userId) return;
 
@@ -353,8 +509,7 @@ export class SocketManager {
     const { callId, recipientId, recipientName, roomName, isVideoCall } = data;
 
     console.log(
-      `📞 Call started: ${socket.userId} -> ${recipientId} (${
-        isVideoCall ? "Video" : "Audio"
+      `📞 Call started: ${socket.userId} -> ${recipientId} (${isVideoCall ? "Video" : "Audio"
       })`
     );
 
@@ -385,6 +540,25 @@ export class SocketManager {
       return;
     }
 
+    // Create Daily.co room first
+    let roomUrl: string;
+    try {
+      const room = await dailyService.createRoom(roomName, {
+        privacy: 'private',
+        expiryMinutes: 60, // 1 hour expiry
+      });
+      roomUrl = room.url;
+      console.log(`🎬 Daily.co room created: ${roomUrl}`);
+    } catch (error: any) {
+      console.error('Failed to create Daily.co room:', error);
+      socket.emit("call:error", {
+        callId,
+        error: "room_creation_failed",
+        message: "Không thể tạo phòng họp video",
+      });
+      return;
+    }
+
     // Create call record
     const call: ActiveCall = {
       callId,
@@ -393,6 +567,7 @@ export class SocketManager {
       recipientId,
       recipientName,
       roomName,
+      roomUrl,
       isVideoCall,
       startTime: new Date(),
     };
@@ -400,16 +575,24 @@ export class SocketManager {
     this.activeCalls.set(callId, call);
     this.userInCall.set(socket.userId, callId);
 
-    // Send incoming call notification to recipient
+    // Send room ready notification to caller with roomUrl
+    socket.emit("call:room_ready", {
+      callId,
+      roomUrl,
+      roomName,
+    });
+
+    // Send incoming call notification to recipient with roomUrl
     this.io.to(recipientSocketId).emit("call:incoming", {
       callId,
       callerId: socket.userId,
       callerName: socket.userName || "User",
       roomName,
+      roomUrl, // Include full room URL
       isVideoCall,
     });
 
-    console.log(`📲 Incoming call notification sent to ${recipientId}`);
+    console.log(`📲 Incoming call notification sent to ${recipientId}, room URL sent to caller`);
   }
 
   private async handleCallAccept(

@@ -316,23 +316,31 @@ const EmployeeLayout: React.FC<EmployeeLayoutProps> = ({ user, onLogout }) => {
 
       {/* Main Content */}
       <main className="pt-16 min-h-screen">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <Routes>
-            <Route path="dashboard" element={<EmployeeDashboard />} />
-            <Route path="tasks" element={<MyTasksPage />} />
-            <Route path="tasks/:id" element={<MyTasksPage />} />
-            <Route path="projects" element={<EmployeeProjectModule />} />
-            <Route path="projects/:id" element={<EmployeeProjectModule />} />
-            <Route path="booking" element={<EmployeeBookingModule />} />
-            <Route path="meetings" element={<EmployeeMeetingModule />} />
-            <Route path="chat" element={<EmployeeChatManager />} />
-            <Route path="news" element={<EmployeeNewsModule />} />
-            <Route path="forum" element={<EmployeeForumModule />} />
-            <Route path="notifications" element={<NotificationsPage />} />
-            <Route path="profile" element={<EmployeeUserProfile />} />
-            <Route path="*" element={<Navigate to="dashboard" replace />} />
-          </Routes>
-        </div>
+        {/* Chat page gets full width, other pages get max-width container */}
+        {activePage === 'chat' ? (
+          <div className="h-[calc(100vh-64px)]">
+            <Routes>
+              <Route path="chat" element={<EmployeeChatManager />} />
+            </Routes>
+          </div>
+        ) : (
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <Routes>
+              <Route path="dashboard" element={<EmployeeDashboard />} />
+              <Route path="tasks" element={<MyTasksPage />} />
+              <Route path="tasks/:id" element={<MyTasksPage />} />
+              <Route path="projects" element={<EmployeeProjectModule />} />
+              <Route path="projects/:id" element={<EmployeeProjectModule />} />
+              <Route path="booking" element={<EmployeeBookingModule />} />
+              <Route path="meetings" element={<EmployeeMeetingModule />} />
+              <Route path="news" element={<EmployeeNewsModule />} />
+              <Route path="forum" element={<EmployeeForumModule />} />
+              <Route path="notifications" element={<NotificationsPage />} />
+              <Route path="profile" element={<EmployeeUserProfile />} />
+              <Route path="*" element={<Navigate to="dashboard" replace />} />
+            </Routes>
+          </div>
+        )}
       </main>
     </div>
   );
