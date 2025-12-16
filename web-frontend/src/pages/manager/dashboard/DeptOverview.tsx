@@ -74,7 +74,7 @@ export const DeptOverview: React.FC = () => {
       const token = localStorage.getItem("accessToken");
 
       // Fetch department stats
-      const statsRes = await fetch("http://localhost:5000/api/manager/stats", {
+      const statsRes = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/manager/stats`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -108,7 +108,7 @@ export const DeptOverview: React.FC = () => {
 
       // Fetch team members
       const teamRes = await fetch(
-        "http://localhost:5000/api/manager/employees",
+        `${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/manager/employees`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -191,9 +191,8 @@ export const DeptOverview: React.FC = () => {
         </div>
         {trend && (
           <div
-            className={`flex items-center text-sm ${
-              trend.up ? "text-green-600" : "text-red-600"
-            }`}
+            className={`flex items-center text-sm ${trend.up ? "text-green-600" : "text-red-600"
+              }`}
           >
             <TrendingUp
               className={`w-4 h-4 mr-1 ${!trend.up && "rotate-180"}`}

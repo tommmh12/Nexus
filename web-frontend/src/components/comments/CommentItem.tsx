@@ -90,7 +90,7 @@ export const CommentItem: React.FC<CommentItemProps> = ({
             // Add the image with full URL
             const imageUrl = match[2].startsWith('http')
                 ? match[2]
-                : `http://localhost:5000${match[2]}`;
+                : `${import.meta.env.VITE_STATIC_URL || 'http://localhost:5000'}${match[2]}`;
 
             parts.push(
                 <div key={match.index} className="my-2">

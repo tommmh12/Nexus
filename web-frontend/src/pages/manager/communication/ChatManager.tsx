@@ -301,18 +301,18 @@ export const ChatManager: React.FC = () => {
         const conversations = response.data;
         const groups = groupsResponse.success
           ? groupsResponse.data.map((g: any) => ({
-              id: g.id,
-              other_user_id: g.id,
-              other_user_name: g.name,
-              other_user_email: "",
-              other_user_status: "offline",
-              last_message_text: g.last_message,
-              last_message_time: g.last_message_time,
-              last_message_sender_id: "",
-              unread_count: g.unread_count || 0,
-              is_group: true,
-              member_count: g.member_count,
-            }))
+            id: g.id,
+            other_user_id: g.id,
+            other_user_name: g.name,
+            other_user_email: "",
+            other_user_status: "offline",
+            last_message_text: g.last_message,
+            last_message_time: g.last_message_time,
+            last_message_sender_id: "",
+            unread_count: g.unread_count || 0,
+            is_group: true,
+            member_count: g.member_count,
+          }))
           : [];
 
         setConversations([...conversations, ...groups]);
@@ -727,9 +727,8 @@ export const ChatManager: React.FC = () => {
           <div className="mt-2 flex items-center gap-2 text-xs">
             <Circle
               size={8}
-              className={`fill-current ${
-                isConnected ? "text-green-500" : "text-red-500"
-              }`}
+              className={`fill-current ${isConnected ? "text-green-500" : "text-red-500"
+                }`}
             />
             <span className="text-slate-500">
               {isConnected ? "Đang kết nối" : "Mất kết nối"}
@@ -752,11 +751,10 @@ export const ChatManager: React.FC = () => {
               <div
                 key={conv.id}
                 onClick={() => handleSelectConversation(conv)}
-                className={`p-4 cursor-pointer border-b border-slate-100 hover:bg-slate-50 ${
-                  activeConversation?.id === conv.id
+                className={`p-4 cursor-pointer border-b border-slate-100 hover:bg-slate-50 ${activeConversation?.id === conv.id
                     ? "bg-brand-50 border-l-4 border-l-brand-500"
                     : ""
-                }`}
+                  }`}
               >
                 <div className="flex items-start gap-3">
                   <div className="relative flex-shrink-0">
@@ -773,11 +771,10 @@ export const ChatManager: React.FC = () => {
                     )}
                     <Circle
                       size={12}
-                      className={`absolute bottom-0 right-0 fill-current border-2 border-white rounded-full ${
-                        conv.other_user_status === "online"
+                      className={`absolute bottom-0 right-0 fill-current border-2 border-white rounded-full ${conv.other_user_status === "online"
                           ? "text-green-500"
                           : "text-slate-300"
-                      }`}
+                        }`}
                     />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -831,11 +828,10 @@ export const ChatManager: React.FC = () => {
                   )}
                   <Circle
                     size={10}
-                    className={`absolute bottom-0 right-0 fill-current border-2 border-white rounded-full ${
-                      activeConversation.other_user_status === "online"
+                    className={`absolute bottom-0 right-0 fill-current border-2 border-white rounded-full ${activeConversation.other_user_status === "online"
                         ? "text-green-500"
                         : "text-slate-300"
-                    }`}
+                      }`}
                   />
                 </div>
                 <div>
@@ -852,11 +848,10 @@ export const ChatManager: React.FC = () => {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => handleStartCall(false)}
-                  className={`p-2 rounded-full transition-colors ${
-                    activeConversation.is_group
+                  className={`p-2 rounded-full transition-colors ${activeConversation.is_group
                       ? "opacity-50 cursor-not-allowed"
                       : "hover:bg-green-50 hover:text-green-600"
-                  }`}
+                    }`}
                   disabled={activeConversation.is_group}
                   title={
                     activeConversation.is_group
@@ -868,11 +863,10 @@ export const ChatManager: React.FC = () => {
                 </button>
                 <button
                   onClick={() => handleStartCall(true)}
-                  className={`p-2 rounded-full transition-colors ${
-                    activeConversation.is_group
+                  className={`p-2 rounded-full transition-colors ${activeConversation.is_group
                       ? "opacity-50 cursor-not-allowed"
                       : "hover:bg-blue-50 hover:text-blue-600"
-                  }`}
+                    }`}
                   disabled={activeConversation.is_group}
                   title={
                     activeConversation.is_group
@@ -884,9 +878,8 @@ export const ChatManager: React.FC = () => {
                 </button>
                 <button
                   onClick={() => setShowUserInfo(!showUserInfo)}
-                  className={`p-2 hover:bg-slate-100 rounded-full ${
-                    showUserInfo ? "bg-brand-50" : ""
-                  }`}
+                  className={`p-2 hover:bg-slate-100 rounded-full ${showUserInfo ? "bg-brand-50" : ""
+                    }`}
                 >
                   <Info
                     size={18}
@@ -915,15 +908,14 @@ export const ChatManager: React.FC = () => {
                       </div>
                     )}
                     <div
-                      className={`flex ${
-                        isMe ? "justify-end" : "justify-start"
-                      } group ${isGrouped ? "mt-0.5" : "mt-3"}`}
+                      className={`flex ${isMe ? "justify-end" : "justify-start"
+                        } group ${isGrouped ? "mt-0.5" : "mt-3"}`}
                     >
                       {/* Avatar for other user's messages */}
                       {!isMe && !isGrouped && (
                         <div className="flex-shrink-0 mr-2">
                           {msg.sender_avatar ||
-                          activeConversation?.other_user_avatar ? (
+                            activeConversation?.other_user_avatar ? (
                             <img
                               src={
                                 msg.sender_avatar ||
@@ -947,17 +939,16 @@ export const ChatManager: React.FC = () => {
                       )}
                       {!isMe && isGrouped && <div className="w-8 mr-2" />}
                       <div
-                        className={`max-w-lg ${
-                          isMe ? "items-end" : "items-start"
-                        } flex flex-col`}
+                        className={`max-w-lg ${isMe ? "items-end" : "items-start"
+                          } flex flex-col`}
                       >
                         {/* Render Image OUTSIDE bubble - standalone */}
                         {msg.attachment_id &&
-                        msg.file_path &&
-                        msg.file_type === "image" ? (
+                          msg.file_path &&
+                          msg.file_type === "image" ? (
                           <div className="mb-1">
                             <img
-                              src={`http://localhost:5000/${msg.file_path.replace(
+                              src={`${import.meta.env.VITE_STATIC_URL || 'http://localhost:5000'}/${msg.file_path.replace(
                                 /\\/g,
                                 "/"
                               )}`}
@@ -965,7 +956,7 @@ export const ChatManager: React.FC = () => {
                               className="max-w-sm rounded-xl shadow-md cursor-pointer hover:opacity-95 transition-opacity"
                               onClick={() =>
                                 window.open(
-                                  `http://localhost:5000/${msg.file_path.replace(
+                                  `${import.meta.env.VITE_STATIC_URL || 'http://localhost:5000'}/${msg.file_path.replace(
                                     /\\/g,
                                     "/"
                                   )}`,
@@ -974,9 +965,8 @@ export const ChatManager: React.FC = () => {
                               }
                             />
                             <div
-                              className={`flex items-center gap-1 mt-1 px-1 ${
-                                isMe ? "justify-end" : "justify-start"
-                              }`}
+                              className={`flex items-center gap-1 mt-1 px-1 ${isMe ? "justify-end" : "justify-start"
+                                }`}
                             >
                               <span className="text-[10px] text-slate-400">
                                 {formatTime(msg.created_at)}
@@ -995,11 +985,10 @@ export const ChatManager: React.FC = () => {
                         ) : msg.message_text ? (
                           /* Text message in bubble (with or without attachment) */
                           <div
-                            className={`px-3 py-2 rounded-2xl text-sm shadow-sm ${
-                              isMe
+                            className={`px-3 py-2 rounded-2xl text-sm shadow-sm ${isMe
                                 ? "bg-blue-500 text-white rounded-br-none"
                                 : "bg-white text-slate-800 border border-slate-200 rounded-bl-none"
-                            }`}
+                              }`}
                           >
                             {/* File attachment (non-image) */}
                             {msg.attachment_id &&
@@ -1007,16 +996,15 @@ export const ChatManager: React.FC = () => {
                               msg.file_type !== "image" && (
                                 <div className="mb-2">
                                   <a
-                                    href={`http://localhost:5000/${msg.file_path.replace(
+                                    href={`${import.meta.env.VITE_STATIC_URL || 'http://localhost:5000'}/${msg.file_path.replace(
                                       /\\/g,
                                       "/"
                                     )}`}
                                     download={msg.file_name}
-                                    className={`flex items-center gap-2 p-2 rounded-lg border ${
-                                      isMe
+                                    className={`flex items-center gap-2 p-2 rounded-lg border ${isMe
                                         ? "bg-blue-400/30 border-blue-300"
                                         : "bg-slate-50 border-slate-200"
-                                    }`}
+                                      }`}
                                   >
                                     <FileText
                                       size={20}
@@ -1026,19 +1014,17 @@ export const ChatManager: React.FC = () => {
                                     />
                                     <div className="flex-1 min-w-0">
                                       <div
-                                        className={`text-xs font-medium truncate ${
-                                          isMe ? "text-white" : "text-slate-900"
-                                        }`}
+                                        className={`text-xs font-medium truncate ${isMe ? "text-white" : "text-slate-900"
+                                          }`}
                                       >
                                         {msg.file_name}
                                       </div>
                                       {msg.file_size && (
                                         <div
-                                          className={`text-[10px] ${
-                                            isMe
+                                          className={`text-[10px] ${isMe
                                               ? "text-blue-100"
                                               : "text-slate-500"
-                                          }`}
+                                            }`}
                                         >
                                           {(
                                             msg.file_size /
@@ -1061,9 +1047,8 @@ export const ChatManager: React.FC = () => {
 
                             <div className="mb-0.5">{msg.message_text}</div>
                             <div
-                              className={`flex items-center gap-1 justify-end ${
-                                isMe ? "text-blue-100" : "text-slate-400"
-                              }`}
+                              className={`flex items-center gap-1 justify-end ${isMe ? "text-blue-100" : "text-slate-400"
+                                }`}
                             >
                               <span className="text-[10px]">
                                 {formatTime(msg.created_at)}
@@ -1188,11 +1173,10 @@ export const ChatManager: React.FC = () => {
                 />
                 <div className="pb-1 pr-1">
                   <button
-                    className={`rounded-lg h-9 w-9 flex items-center justify-center ${
-                      messageInput.trim() && !sending
+                    className={`rounded-lg h-9 w-9 flex items-center justify-center ${messageInput.trim() && !sending
                         ? "bg-brand-600 hover:bg-brand-700 text-white"
                         : "bg-slate-300 text-slate-500 cursor-not-allowed"
-                    }`}
+                      }`}
                     disabled={!messageInput.trim() || sending}
                     onClick={handleSendMessage}
                   >
@@ -1277,11 +1261,10 @@ export const ChatManager: React.FC = () => {
                         </div>
                         <Circle
                           size={12}
-                          className={`absolute bottom-0 right-0 fill-current border-2 border-white rounded-full ${
-                            user.status === "online"
+                          className={`absolute bottom-0 right-0 fill-current border-2 border-white rounded-full ${user.status === "online"
                               ? "text-green-500"
                               : "text-slate-300"
-                          }`}
+                            }`}
                         />
                       </div>
                       <div className="flex-1 min-w-0">
@@ -1299,13 +1282,12 @@ export const ChatManager: React.FC = () => {
                       </div>
                       <div className="flex-shrink-0">
                         <span
-                          className={`text-xs px-2 py-1 rounded-full ${
-                            user.role === "admin"
+                          className={`text-xs px-2 py-1 rounded-full ${user.role === "admin"
                               ? "bg-red-100 text-red-700"
                               : user.role === "manager"
-                              ? "bg-blue-100 text-blue-700"
-                              : "bg-slate-100 text-slate-700"
-                          }`}
+                                ? "bg-blue-100 text-blue-700"
+                                : "bg-slate-100 text-slate-700"
+                            }`}
                         >
                           {user.role}
                         </span>
@@ -1390,9 +1372,8 @@ export const ChatManager: React.FC = () => {
                           <div
                             key={user.id}
                             onClick={() => toggleUserSelection(user.id)}
-                            className={`p-3 hover:bg-slate-50 cursor-pointer border-b border-slate-100 last:border-b-0 flex items-center gap-3 ${
-                              isSelected ? "bg-brand-50" : ""
-                            }`}
+                            className={`p-3 hover:bg-slate-50 cursor-pointer border-b border-slate-100 last:border-b-0 flex items-center gap-3 ${isSelected ? "bg-brand-50" : ""
+                              }`}
                           >
                             <div className="flex-shrink-0">
                               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center text-white font-bold">
@@ -1437,11 +1418,10 @@ export const ChatManager: React.FC = () => {
               <button
                 onClick={handleCreateGroup}
                 disabled={!groupName.trim() || selectedUsers.length === 0}
-                className={`px-4 py-2 rounded-lg transition-colors ${
-                  !groupName.trim() || selectedUsers.length === 0
+                className={`px-4 py-2 rounded-lg transition-colors ${!groupName.trim() || selectedUsers.length === 0
                     ? "bg-slate-300 text-slate-500 cursor-not-allowed"
                     : "bg-brand-600 text-white hover:bg-brand-700"
-                }`}
+                  }`}
               >
                 Tạo nhóm ({selectedUsers.length})
               </button>
@@ -1461,11 +1441,10 @@ export const ChatManager: React.FC = () => {
                 </div>
                 <Circle
                   size={16}
-                  className={`absolute bottom-1 right-1 fill-current border-4 border-white rounded-full ${
-                    activeConversation.other_user_status === "online"
+                  className={`absolute bottom-1 right-1 fill-current border-4 border-white rounded-full ${activeConversation.other_user_status === "online"
                       ? "text-green-500"
                       : "text-slate-300"
-                  }`}
+                    }`}
                 />
               </div>
               <h3 className="text-xl font-bold text-slate-900 mb-1">
@@ -1542,7 +1521,7 @@ export const ChatManager: React.FC = () => {
                     className="aspect-square bg-slate-100 rounded-lg overflow-hidden cursor-pointer hover:opacity-90"
                     onClick={() =>
                       window.open(
-                        `http://localhost:5000/${msg.file_path?.replace(
+                        `${import.meta.env.VITE_STATIC_URL || 'http://localhost:5000'}/${msg.file_path?.replace(
                           /\\/g,
                           "/"
                         )}`,
@@ -1551,7 +1530,7 @@ export const ChatManager: React.FC = () => {
                     }
                   >
                     <img
-                      src={`http://localhost:5000/${msg.file_path?.replace(
+                      src={`${import.meta.env.VITE_STATIC_URL || 'http://localhost:5000'}/${msg.file_path?.replace(
                         /\\/g,
                         "/"
                       )}`}
@@ -1563,23 +1542,23 @@ export const ChatManager: React.FC = () => {
               {messages.filter(
                 (m) => m.attachment_id && m.file_type === "image"
               ).length === 0 && (
-                <div className="col-span-3 text-center text-xs text-slate-400 py-4">
-                  Chưa có ảnh nào
-                </div>
-              )}
+                  <div className="col-span-3 text-center text-xs text-slate-400 py-4">
+                    Chưa có ảnh nào
+                  </div>
+                )}
             </div>
             {messages.filter((m) => m.attachment_id && m.file_type === "image")
               .length > 6 && (
-              <button className="w-full mt-3 text-sm text-brand-600 hover:text-brand-700 font-medium">
-                Xem tất cả (
-                {
-                  messages.filter(
-                    (m) => m.attachment_id && m.file_type === "image"
-                  ).length
-                }
-                )
-              </button>
-            )}
+                <button className="w-full mt-3 text-sm text-brand-600 hover:text-brand-700 font-medium">
+                  Xem tất cả (
+                  {
+                    messages.filter(
+                      (m) => m.attachment_id && m.file_type === "image"
+                    ).length
+                  }
+                  )
+                </button>
+              )}
           </div>
         </div>
       )}

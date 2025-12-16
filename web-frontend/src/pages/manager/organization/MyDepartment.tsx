@@ -79,7 +79,7 @@ export const MyDepartment: React.FC = () => {
       const token = localStorage.getItem("accessToken");
 
       // Fetch manager stats (includes department info)
-      const statsRes = await fetch("http://localhost:5000/api/manager/stats", {
+      const statsRes = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/manager/stats`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -107,7 +107,7 @@ export const MyDepartment: React.FC = () => {
 
       // Fetch team members
       const teamRes = await fetch(
-        "http://localhost:5000/api/manager/employees",
+        `${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/manager/employees`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -274,31 +274,28 @@ export const MyDepartment: React.FC = () => {
             <div className="flex gap-2">
               <button
                 onClick={() => setFilterStatus("all")}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
-                  filterStatus === "all"
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition ${filterStatus === "all"
                     ? "bg-brand-600 text-white"
                     : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                }`}
+                  }`}
               >
                 Tất cả ({statusCounts.all || 0})
               </button>
               <button
                 onClick={() => setFilterStatus("active")}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
-                  filterStatus === "active"
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition ${filterStatus === "active"
                     ? "bg-green-600 text-white"
                     : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                }`}
+                  }`}
               >
                 Hoạt động ({statusCounts.active || 0})
               </button>
               <button
                 onClick={() => setFilterStatus("inactive")}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
-                  filterStatus === "inactive"
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition ${filterStatus === "inactive"
                     ? "bg-slate-600 text-white"
                     : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                }`}
+                  }`}
               >
                 Không hoạt động ({statusCounts.inactive || 0})
               </button>
@@ -351,11 +348,10 @@ export const MyDepartment: React.FC = () => {
                     </p>
                     <div className="flex items-center gap-2 mt-2">
                       <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                          emp.status === "Active"
+                        className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${emp.status === "Active"
                             ? "bg-green-100 text-green-700"
                             : "bg-slate-100 text-slate-600"
-                        }`}
+                          }`}
                       >
                         {emp.status === "Active"
                           ? "Đang hoạt động"
@@ -413,11 +409,10 @@ export const MyDepartment: React.FC = () => {
                   {selectedEmployee.position || selectedEmployee.role}
                 </p>
                 <span
-                  className={`mt-2 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                    selectedEmployee.status === "Active"
+                  className={`mt-2 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${selectedEmployee.status === "Active"
                       ? "bg-green-100 text-green-700"
                       : "bg-slate-100 text-slate-600"
-                  }`}
+                    }`}
                 >
                   {selectedEmployee.status === "Active"
                     ? "Đang hoạt động"

@@ -2,7 +2,7 @@ import axios from "axios";
 
 // Assuming VITE_API_URL or similar is defined/used in other services. 
 // Based on taskService.ts, it uses hardcoded "http://localhost:5000/api".
-const API_URL = "http://localhost:5000/api";
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 const getAuthHeader = () => {
     const token = localStorage.getItem("accessToken");

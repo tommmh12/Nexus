@@ -677,7 +677,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
       try {
         const token = localStorage.getItem("accessToken");
         const response = await fetch(
-          "http://localhost:5000/api/alert-rules/my-alerts",
+          `${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/alert-rules/my-alerts`,
           {
             headers: {
               "Content-Type": "application/json",

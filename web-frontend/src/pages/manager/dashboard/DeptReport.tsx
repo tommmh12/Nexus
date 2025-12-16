@@ -66,7 +66,7 @@ export const DeptReport: React.FC = () => {
     try {
       const token = localStorage.getItem("accessToken");
       const response = await fetch(
-        `http://localhost:5000/api/manager/reports/generate?type=${reportType}&startDate=${dateRange.start}&endDate=${dateRange.end}`,
+        `${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/manager/reports/generate?type=${reportType}&startDate=${dateRange.start}&endDate=${dateRange.end}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -169,7 +169,7 @@ export const DeptReport: React.FC = () => {
     try {
       const token = localStorage.getItem("accessToken");
       const response = await fetch(
-        `http://localhost:5000/api/manager/reports/export?format=${exportFormat}&type=${reportType}&startDate=${dateRange.start}&endDate=${dateRange.end}`,
+        `${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/manager/reports/export?format=${exportFormat}&type=${reportType}&startDate=${dateRange.start}&endDate=${dateRange.end}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -396,7 +396,7 @@ export const DeptReport: React.FC = () => {
                   {Math.round(
                     (reportData.summary.completedTasks /
                       reportData.summary.totalTasks) *
-                      100
+                    100
                   )}
                   %
                 </p>
@@ -451,13 +451,12 @@ export const DeptReport: React.FC = () => {
                       </td>
                       <td className="py-3 px-4 text-center">
                         <span
-                          className={`px-2 py-1 rounded text-sm ${
-                            emp.attendanceRate >= 95
+                          className={`px-2 py-1 rounded text-sm ${emp.attendanceRate >= 95
                               ? "bg-green-100 text-green-700"
                               : emp.attendanceRate >= 90
-                              ? "bg-yellow-100 text-yellow-700"
-                              : "bg-red-100 text-red-700"
-                          }`}
+                                ? "bg-yellow-100 text-yellow-700"
+                                : "bg-red-100 text-red-700"
+                            }`}
                         >
                           {emp.attendanceRate}%
                         </span>
@@ -511,13 +510,12 @@ export const DeptReport: React.FC = () => {
                   </div>
                   <div className="w-full bg-slate-200 rounded-full h-2">
                     <div
-                      className={`h-2 rounded-full ${
-                        project.progress === 100
+                      className={`h-2 rounded-full ${project.progress === 100
                           ? "bg-green-600"
                           : project.progress >= 50
-                          ? "bg-blue-600"
-                          : "bg-yellow-600"
-                      }`}
+                            ? "bg-blue-600"
+                            : "bg-yellow-600"
+                        }`}
                       style={{ width: `${project.progress}%` }}
                     />
                   </div>

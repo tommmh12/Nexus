@@ -13,7 +13,7 @@ import {
     AttendanceReportEntry,
 } from "../types/meeting.types";
 
-const API_BASE_URL = "http://localhost:5000/api/v2";
+const API_BASE_URL = import.meta.env.VITE_API_URL?.replace(/\/api$/, '/api/v2') || "http://localhost:5000/api/v2";
 
 // Generate a unique client instance ID for this browser session
 const getClientInstanceId = (): string => {

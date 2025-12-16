@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { Comment, CommentEditHistory, ReactionType } from '../types/commentTypes';
 
-const API_URL = 'http://localhost:5000/api/comments';
+const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api') + '/comments';
 
 // Helper to get auth header (assuming token is stored in localStorage)
 const getAuthHeader = () => {
@@ -80,7 +80,7 @@ export const commentService = {
         formData.append('image', file);
 
         const token = localStorage.getItem('accessToken');
-        const response = await axios.post('http://localhost:5000/api/upload/comment-image', formData, {
+        const response = await axios.post((import.meta.env.VITE_API_URL || 'http://localhost:5000/api') + '/upload/comment-image', formData, {
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'multipart/form-data'

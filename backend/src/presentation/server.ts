@@ -26,6 +26,7 @@ import onlineMeetingRoutes from "./routes/onlineMeeting.routes.js";
 import activityLogRoutes from "./routes/activityLog.routes.js";
 import alertRuleRoutes from "./routes/alertRule.routes.js";
 import managerRoutes from "./routes/manager.routes.js";
+import meetingRoutesV2 from "./routes/meeting.routes.js";
 import { SocketManager } from "../infrastructure/socket/SocketManager.js";
 import { alertSchedulerService } from "../application/services/AlertSchedulerService.js";
 
@@ -44,7 +45,12 @@ app.use(
 );
 app.use(
   cors({
-    origin: ["http://localhost:3000", "http://localhost:5173"],
+    origin: [
+      "http://localhost:3000",
+      "http://localhost:5173",
+      "https://studyplannerapp.io.vn",
+      "https://api.studyplannerapp.io.vn"
+    ],
     credentials: true,
   })
 );
@@ -88,6 +94,7 @@ app.use("/api/meetings", onlineMeetingRoutes);
 app.use("/api/activity-logs", activityLogRoutes);
 app.use("/api/alert-rules", alertRuleRoutes);
 app.use("/api/manager", managerRoutes);
+app.use("/api/v2/meetings", meetingRoutesV2);
 
 // Serve uploaded files with CORS
 app.use(

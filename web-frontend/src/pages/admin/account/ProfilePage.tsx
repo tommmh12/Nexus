@@ -21,7 +21,7 @@ import { Button } from "../../../components/system/ui/Button";
 import { Input } from "../../../components/system/ui/Input";
 import { authService } from "../../../services/authService";
 
-const API_BASE = "http://localhost:5000/api";
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 interface UserProfile {
   id: string;
@@ -151,8 +151,8 @@ export const ProfilePage: React.FC = () => {
         projectCount = Array.isArray(projectsData)
           ? projectsData.length
           : projectsData.data
-          ? projectsData.data.length
-          : 0;
+            ? projectsData.data.length
+            : 0;
       }
 
       // Fetch tasks count - could be from tasks API
@@ -166,8 +166,8 @@ export const ProfilePage: React.FC = () => {
         taskCount = Array.isArray(tasksData)
           ? tasksData.filter((t: any) => t.status === "Completed").length
           : tasksData.data
-          ? tasksData.data.filter((t: any) => t.status === "Completed").length
-          : 0;
+            ? tasksData.data.filter((t: any) => t.status === "Completed").length
+            : 0;
       }
 
       setStats({
