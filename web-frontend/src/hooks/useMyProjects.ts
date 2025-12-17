@@ -42,24 +42,39 @@ export const useMyProjects = (): UseMyProjectsReturn => {
 
     try {
       const data = await projectService.getProjects();
-      const mappedProjects: MyProject[] = (data || []).map((p: any) => ({
-        id: p.id,
-        name: p.name || p.title,
-        code: p.code || '',
-        description: p.description || '',
-        status: p.status || 'Active',
-        startDate: p.startDate || '',
-        endDate: p.endDate || '',
-        progress: p.progress || 0,
-        members: (p.members || []).map((m: any) => ({
-          id: m.id || m.userId,
-          name: m.name || m.fullName || 'Unknown',
-          avatarUrl: m.avatarUrl,
-          role: m.role || 'Member',
-        })),
-        taskCount: p.taskCount || p.tasks?.length || 0,
-        completedTaskCount: p.completedTaskCount || 0,
-      }));
+      const mappedProjects: MyProject[] = (data || []).map((p: any) => {
+        // Normalize status to proper case
+        const rawStatus = (p.status || 'planning').toLowerCase();
+        let normalizedStatus = 'Active';
+        if (rawStatus === 'completed' || rawStatus === 'complete' || rawStatus === 'done') {
+          normalizedStatus = 'Completed';
+        } else if (rawStatus === 'on_hold' || rawStatus === 'onhold' || rawStatus === 'paused') {
+          normalizedStatus = 'OnHold';
+        } else if (rawStatus === 'planning' || rawStatus === 'planned') {
+          normalizedStatus = 'Planning';
+        } else if (rawStatus === 'active' || rawStatus === 'in_progress') {
+          normalizedStatus = 'Active';
+        }
+
+        return {
+          id: p.id,
+          name: p.name || p.title,
+          code: p.code || '',
+          description: p.description || '',
+          status: normalizedStatus,
+          startDate: p.startDate || p.start_date || '',
+          endDate: p.endDate || p.end_date || '',
+          progress: p.progress || 0,
+          members: (p.members || []).map((m: any) => ({
+            id: m.id || m.userId,
+            name: m.name || m.fullName || 'Unknown',
+            avatarUrl: m.avatarUrl,
+            role: m.role || 'Member',
+          })),
+          taskCount: p.taskCount || p.tasks?.length || 0,
+          completedTaskCount: p.completedTaskCount || 0,
+        };
+      });
 
       setProjects(mappedProjects);
     } catch (err: any) {

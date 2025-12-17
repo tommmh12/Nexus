@@ -1,6 +1,11 @@
 import { Router } from "express";
 import * as ForumController from "../controllers/ForumController.js";
 import { authMiddleware } from "../middlewares/auth.middleware.js";
+import {
+    requireForumPermission,
+    ForumPolicy,
+} from "../../application/policies/index.js";
+import { requireRole } from "../middlewares/rbac.middleware.js";
 
 const router = Router();
 
@@ -11,9 +16,9 @@ router.get("/categories", ForumController.getCategories);
 router.use(authMiddleware);
 
 // Category management routes (admin only)
-router.post("/categories", ForumController.createCategory);
-router.put("/categories/:id", ForumController.updateCategory);
-router.delete("/categories/:id", ForumController.deleteCategory);
+router.post("/categories", requireRole("admin"), ForumController.createCategory);
+router.put("/categories/:id", requireRole("admin"), ForumController.updateCategory);
+router.delete("/categories/:id", requireRole("admin"), ForumController.deleteCategory);
 
 // Hot topics endpoint
 router.get("/hot-topics", ForumController.getHotTopics);
@@ -24,9 +29,28 @@ router.get("/user-stats/:userId", ForumController.getUserForumStats);
 router.get("/", ForumController.getAllPosts);
 router.get("/:id", ForumController.getPostById);
 router.post("/", ForumController.createPost);
-router.put("/:id", ForumController.updatePost);
-router.delete("/:id", ForumController.deletePost);
-router.post("/:id/moderate", ForumController.moderatePost);
+
+// Edit post - author or admin
+router.put(
+    "/:id",
+    requireForumPermission(ForumPolicy.canEdit),
+    ForumController.updatePost
+);
+
+// Delete post - author, admin, or manager
+router.delete(
+    "/:id",
+    requireForumPermission(ForumPolicy.canDelete),
+    ForumController.deletePost
+);
+
+// Moderate post - admin/manager only
+router.post(
+    "/:id/moderate",
+    requireForumPermission(ForumPolicy.canModerate),
+    ForumController.moderatePost
+);
+
 router.post("/:id/vote", ForumController.toggleVote);
 router.get("/:postId/comments", ForumController.getComments);
 router.post("/:postId/comments", ForumController.createComment);

@@ -4,6 +4,7 @@
  * - Room creation/deletion
  * - Meeting token generation
  * - Webhook signature verification
+ * - Automatic retry for transient failures
  */
 
 import axios, { AxiosInstance, AxiosError } from 'axios';
@@ -11,6 +12,19 @@ import crypto from 'crypto';
 import { createModuleLogger } from '../../infrastructure/logger.js';
 
 const logger = createModuleLogger('DailyService');
+
+// =====================================================
+// Retry Configuration
+// =====================================================
+
+const RETRY_CONFIG = {
+    maxRetries: 3,
+    baseDelayMs: 1000,
+    maxDelayMs: 5000,
+    retryableStatuses: [408, 429, 500, 502, 503, 504],
+};
+
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 // =====================================================
 // Types
@@ -93,7 +107,7 @@ export class DailyService {
                 'Authorization': `Bearer ${apiKey || ''}`,
                 'Content-Type': 'application/json',
             },
-            timeout: 10000, // 10 second timeout
+            timeout: 15000, // 15 second timeout (increased for reliability)
         });
 
         // Add response interceptor for error logging
@@ -116,6 +130,51 @@ export class DailyService {
      */
     isEnabled(): boolean {
         return this.isConfigured;
+    }
+
+    /**
+     * Execute request with automatic retry for transient failures
+     */
+    private async withRetry<T>(
+        operation: () => Promise<T>,
+        operationName: string
+    ): Promise<T> {
+        let lastError: Error | null = null;
+
+        for (let attempt = 0; attempt <= RETRY_CONFIG.maxRetries; attempt++) {
+            try {
+                return await operation();
+            } catch (error) {
+                lastError = error as Error;
+
+                if (error instanceof AxiosError) {
+                    const status = error.response?.status;
+                    const isRetryable = status && RETRY_CONFIG.retryableStatuses.includes(status);
+                    const isTimeout = error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT';
+
+                    if ((isRetryable || isTimeout) && attempt < RETRY_CONFIG.maxRetries) {
+                        const delay = Math.min(
+                            RETRY_CONFIG.baseDelayMs * Math.pow(2, attempt),
+                            RETRY_CONFIG.maxDelayMs
+                        );
+                        logger.warn({
+                            operationName,
+                            attempt: attempt + 1,
+                            maxRetries: RETRY_CONFIG.maxRetries,
+                            status,
+                            delay,
+                        }, `Retrying ${operationName} after transient failure`);
+                        await sleep(delay);
+                        continue;
+                    }
+                }
+
+                // Non-retryable error or max retries exceeded
+                throw error;
+            }
+        }
+
+        throw lastError;
     }
 
     /**
@@ -152,27 +211,29 @@ export class DailyService {
             exp: exp ? new Date(exp * 1000).toISOString() : 'none',
         }, 'Creating Daily room with time constraints');
 
-        const response = await this.client.post<DailyRoom>('/rooms', {
-            name,
-            privacy: options?.privacy || 'private',
-            properties: {
-                exp,
-                nbf,
-                enable_knocking: options?.enableKnocking ?? true,
-                enable_screenshare: true,
-                enable_chat: true,
-                enable_recording: options?.enableRecording ? 'cloud' : undefined,
-                max_participants: 100,
-            },
-        });
+        return this.withRetry(async () => {
+            const response = await this.client.post<DailyRoom>('/rooms', {
+                name,
+                privacy: options?.privacy || 'private',
+                properties: {
+                    exp,
+                    nbf,
+                    enable_knocking: options?.enableKnocking ?? true,
+                    enable_screenshare: true,
+                    enable_chat: true,
+                    enable_recording: options?.enableRecording ? 'cloud' : undefined,
+                    max_participants: 100,
+                },
+            });
 
-        logger.info({
-            roomName: name,
-            roomUrl: response.data.url,
-            privacy: options?.privacy
-        }, 'Daily room created');
+            logger.info({
+                roomName: name,
+                roomUrl: response.data.url,
+                privacy: options?.privacy
+            }, 'Daily room created');
 
-        return response.data;
+            return response.data;
+        }, 'createRoom');
     }
 
     /**
@@ -184,8 +245,10 @@ export class DailyService {
         }
 
         try {
-            const response = await this.client.get<DailyRoom>(`/rooms/${roomName}`);
-            return response.data;
+            return await this.withRetry(async () => {
+                const response = await this.client.get<DailyRoom>(`/rooms/${roomName}`);
+                return response.data;
+            }, 'getRoom');
         } catch (error) {
             if ((error as AxiosError).response?.status === 404) {
                 return null;
@@ -203,7 +266,9 @@ export class DailyService {
         }
 
         try {
-            await this.client.delete(`/rooms/${roomName}`);
+            await this.withRetry(async () => {
+                await this.client.delete(`/rooms/${roomName}`);
+            }, 'deleteRoom');
             logger.info({ roomName }, 'Daily room deleted');
             return true;
         } catch (error) {
@@ -227,26 +292,28 @@ export class DailyService {
             ? Math.floor(Date.now() / 1000) + (options.expiryMinutes * 60)
             : Math.floor(Date.now() / 1000) + 7200; // 2 hours default
 
-        const response = await this.client.post<DailyMeetingToken>('/meeting-tokens', {
-            properties: {
-                room_name: roomName,
-                user_id: options.userId,
-                user_name: options.userName,
-                is_owner: options.isModerator ?? false,
-                enable_screenshare: true,
-                start_video_off: false,
-                start_audio_off: false,
-                exp,
-            },
-        });
+        return this.withRetry(async () => {
+            const response = await this.client.post<DailyMeetingToken>('/meeting-tokens', {
+                properties: {
+                    room_name: roomName,
+                    user_id: options.userId,
+                    user_name: options.userName,
+                    is_owner: options.isModerator ?? false,
+                    enable_screenshare: true,
+                    start_video_off: false,
+                    start_audio_off: false,
+                    exp,
+                },
+            });
 
-        logger.debug({
-            roomName,
-            userId: options.userId,
-            isModerator: options.isModerator
-        }, 'Meeting token created');
+            logger.debug({
+                roomName,
+                userId: options.userId,
+                isModerator: options.isModerator
+            }, 'Meeting token created');
 
-        return response.data.token;
+            return response.data.token;
+        }, 'createMeetingToken');
     }
 
     /**

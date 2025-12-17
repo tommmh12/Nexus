@@ -107,6 +107,13 @@ export class SocketManager {
       socket.on("call:decline", (data) => this.handleCallDecline(socket, data));
       socket.on("call:end", (data) => this.handleCallEnd(socket, data));
 
+      // Task realtime events
+      socket.on("task:join", (data) => this.handleJoinTask(socket, data));
+      socket.on("task:leave", (data) => this.handleLeaveTask(socket, data));
+      socket.on("checklist:toggle", (data) => this.handleChecklistToggle(socket, data));
+      socket.on("comment:add", (data) => this.handleCommentAdd(socket, data));
+      socket.on("task:update_status", (data) => this.handleTaskStatusUpdate(socket, data));
+
       // Disconnect
       socket.on("disconnect", () => this.handleDisconnect(socket));
     });
@@ -677,6 +684,109 @@ export class SocketManager {
     console.log(`📴 Call ${callId} ended by ${socket.userId}`);
   }
 
+  // ==================== TASK REALTIME HANDLERS ====================
+
+  private handleJoinTask(
+    socket: AuthenticatedSocket,
+    data: { taskId: string }
+  ) {
+    const { taskId } = data;
+    socket.join(`task:${taskId}`);
+    console.log(`📋 User ${socket.userId} joined task room: ${taskId}`);
+  }
+
+  private handleLeaveTask(
+    socket: AuthenticatedSocket,
+    data: { taskId: string }
+  ) {
+    const { taskId } = data;
+    socket.leave(`task:${taskId}`);
+    console.log(`👋 User ${socket.userId} left task room: ${taskId}`);
+  }
+
+  private async handleChecklistToggle(
+    socket: AuthenticatedSocket,
+    data: { taskId: string; checklistId: string; isCompleted: boolean }
+  ) {
+    if (!socket.userId) return;
+
+    const { taskId, checklistId, isCompleted } = data;
+
+    try {
+      // Broadcast to all users viewing this task (except sender)
+      socket.to(`task:${taskId}`).emit("checklist:toggled", {
+        taskId,
+        checklistId,
+        isCompleted,
+        userId: socket.userId,
+        userName: socket.userName || "User",
+        timestamp: new Date().toISOString(),
+      });
+
+      console.log(`✅ Checklist ${checklistId} toggled to ${isCompleted} by ${socket.userId}`);
+    } catch (error) {
+      console.error("Error broadcasting checklist toggle:", error);
+      socket.emit("error", { message: "Failed to sync checklist update" });
+    }
+  }
+
+  private async handleCommentAdd(
+    socket: AuthenticatedSocket,
+    data: { taskId: string; content: string }
+  ) {
+    if (!socket.userId) return;
+
+    const { taskId, content } = data;
+
+    try {
+      // Create comment object for broadcast
+      const comment = {
+        id: `temp-${Date.now()}`, // Will be replaced by actual ID from API
+        userName: socket.userName || "User",
+        userAvatar: "", // Could fetch from user service
+        text: content,
+        timestamp: new Date().toLocaleString("vi-VN"),
+      };
+
+      // Broadcast to all users viewing this task (except sender)
+      socket.to(`task:${taskId}`).emit("comment:added", {
+        taskId,
+        comment,
+        userId: socket.userId,
+      });
+
+      console.log(`💬 Comment added to task ${taskId} by ${socket.userId}`);
+    } catch (error) {
+      console.error("Error broadcasting comment:", error);
+      socket.emit("error", { message: "Failed to sync comment" });
+    }
+  }
+
+  private async handleTaskStatusUpdate(
+    socket: AuthenticatedSocket,
+    data: { taskId: string; status: string }
+  ) {
+    if (!socket.userId) return;
+
+    const { taskId, status } = data;
+
+    try {
+      // Broadcast to all users viewing this task (except sender)
+      socket.to(`task:${taskId}`).emit("task:status_updated", {
+        taskId,
+        status,
+        userId: socket.userId,
+        userName: socket.userName || "User",
+        timestamp: new Date().toISOString(),
+      });
+
+      console.log(`📊 Task ${taskId} status updated to ${status} by ${socket.userId}`);
+    } catch (error) {
+      console.error("Error broadcasting status update:", error);
+      socket.emit("error", { message: "Failed to sync status update" });
+    }
+  }
+
   // ==================== UTILITY METHODS ====================
 
   public emitToUser(userId: string, event: string, data: any) {
@@ -684,6 +794,10 @@ export class SocketManager {
     if (socketId) {
       this.io.to(socketId).emit(event, data);
     }
+  }
+
+  public emitToTask(taskId: string, event: string, data: any) {
+    this.io.to(`task:${taskId}`).emit(event, data);
   }
 
   public getIO() {

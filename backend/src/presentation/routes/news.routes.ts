@@ -1,6 +1,13 @@
 import { Router } from "express";
 import * as NewsController from "../controllers/NewsController.js";
 import { authMiddleware } from "../middlewares/auth.middleware.js";
+import {
+  requireNewsPermission,
+  requireNewsCreatePermission,
+  requireDepartmentAccessPermission,
+  NewsPolicy,
+} from "../../application/policies/index.js";
+import { requireRole } from "../middlewares/rbac.middleware.js";
 
 const router = Router();
 
@@ -21,24 +28,42 @@ router.get(
 router.use(authMiddleware);
 
 // Department access management (Admin only) - MUST be before /:id routes
-router.get("/department-access", NewsController.getDepartmentsWithAccess);
+router.get("/department-access", requireDepartmentAccessPermission, NewsController.getDepartmentsWithAccess);
 router.get("/departments", NewsController.getAllDepartments);
-router.post("/department-access", NewsController.addDepartmentAccess);
+router.post("/department-access", requireDepartmentAccessPermission, NewsController.addDepartmentAccess);
 router.delete(
   "/department-access/:departmentId",
+  requireDepartmentAccessPermission,
   NewsController.removeDepartmentAccess
 );
 
-// Comments moderation
-router.post("/comments/:commentId/moderate", NewsController.moderateComment);
+// Comments moderation - admin/manager only
+router.post("/comments/:commentId/moderate", requireRole("admin", "manager"), NewsController.moderateComment);
 
 // Article routes with :id parameter
 router.get("/", NewsController.getAllArticles);
-router.post("/", NewsController.createArticle);
+
+// Create article - admin/manager only
+router.post("/", requireNewsCreatePermission, NewsController.createArticle);
+
 router.get("/:id", NewsController.getArticleById);
-router.put("/:id", NewsController.updateArticle);
-router.delete("/:id", NewsController.deleteArticle);
-router.post("/:id/moderate", NewsController.moderateArticle);
+
+// Edit article - author or admin
+router.put(
+  "/:id",
+  requireNewsPermission(NewsPolicy.canEdit),
+  NewsController.updateArticle
+);
+
+// Delete article - author or admin
+router.delete(
+  "/:id",
+  requireNewsPermission(NewsPolicy.canDelete),
+  NewsController.deleteArticle
+);
+
+// Moderate article - admin/manager only
+router.post("/:id/moderate", requireRole("admin", "manager"), NewsController.moderateArticle);
 router.post("/:id/like", NewsController.toggleLike);
 router.get("/:articleId/comments", NewsController.getComments);
 router.post("/:articleId/comments", NewsController.createComment);

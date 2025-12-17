@@ -3,11 +3,13 @@ import { TaskRepository } from "../../infrastructure/repositories/TaskRepository
 import { ProjectRepository } from "../../infrastructure/repositories/ProjectRepository.js";
 
 import { NotificationService } from "./NotificationService.js";
+import { CommentRepository } from "../../infrastructure/repositories/CommentRepository.js";
 
 export class TaskService {
   private taskRepo = new TaskRepository();
   private projectRepo = new ProjectRepository();
   private notificationService = new NotificationService();
+  private commentRepo = new CommentRepository();
 
   async getTasksByProject(projectId: string) {
     return await this.taskRepo.getTasksByProjectId(projectId);
@@ -19,7 +21,18 @@ export class TaskService {
       throw new Error("Không tìm thấy task");
     }
     const checklist = await this.taskRepo.getTaskChecklist(id);
-    return { ...task, checklist };
+    
+    // Fetch comments for this task
+    const rawComments = await this.commentRepo.findByThread('task', id);
+    const comments = rawComments.map((c: any) => ({
+      id: c.id,
+      userName: c.author?.full_name || c.author_name || 'Unknown',
+      userAvatar: c.author?.avatar_url || c.author_avatar || '',
+      text: c.content,
+      timestamp: new Date(c.created_at).toLocaleString('vi-VN'),
+    }));
+    
+    return { ...task, checklist, comments };
   }
 
   async createTask(taskData: any) {

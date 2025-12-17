@@ -45,18 +45,11 @@ export const taskService = {
     });
     const tasks = response.data.data || response.data;
 
-    // Fetch checklist for each task (Note: This is N+1, optimize later if needed)
-    const tasksWithChecklist = await Promise.all(tasks.map(async (task: any) => {
-      try {
-        const checklistRes = await axios.get(`${API_URL}/tasks/${task.id}`, { headers: getAuthHeader() });
-        return checklistRes.data.data; // Task detail includes checklist
-      } catch (e) {
-        return task;
-      }
-    }));
-
-    return tasksWithChecklist;
+    // Return tasks directly - individual task detail will be fetched when needed
+    // Removed N+1 pattern that was causing 403 errors due to permission checks
+    return tasks;
   },
+
 
   getTaskById: async (taskId: string): Promise<TaskDetail> => {
     const response = await axios.get(`${API_URL}/tasks/${taskId}`, {

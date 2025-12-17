@@ -5,6 +5,8 @@
  * - Daily.co provider ONLY
  * - Attendance tracking
  * - Webhook handling
+ * - Input validation
+ * - Error handling with specific error types
  */
 
 import { MeetingRepository } from '../../infrastructure/repositories/MeetingRepository.js';
@@ -24,6 +26,60 @@ import { createModuleLogger } from '../../infrastructure/logger.js';
 const logger = createModuleLogger('MeetingService');
 
 // =====================================================
+// Error Types for better error handling
+// =====================================================
+
+export class MeetingError extends Error {
+    constructor(
+        message: string,
+        public code: string,
+        public statusCode: number = 400
+    ) {
+        super(message);
+        this.name = 'MeetingError';
+    }
+}
+
+export class MeetingNotFoundError extends MeetingError {
+    constructor(meetingId: string) {
+        super(`Meeting not found: ${meetingId}`, 'MEETING_NOT_FOUND', 404);
+    }
+}
+
+export class MeetingAccessDeniedError extends MeetingError {
+    constructor() {
+        super('Access denied to this meeting', 'ACCESS_DENIED', 403);
+    }
+}
+
+export class MeetingValidationError extends MeetingError {
+    constructor(message: string) {
+        super(message, 'VALIDATION_ERROR', 400);
+    }
+}
+
+export class MeetingProviderError extends MeetingError {
+    constructor(message: string) {
+        super(message, 'PROVIDER_ERROR', 503);
+    }
+}
+
+// =====================================================
+// Constants
+// =====================================================
+
+const MEETING_CONSTRAINTS = {
+    TITLE_MIN_LENGTH: 3,
+    TITLE_MAX_LENGTH: 200,
+    DESCRIPTION_MAX_LENGTH: 2000,
+    MAX_DURATION_HOURS: 8,
+    PAST_TOLERANCE_MINUTES: 5,
+    IDEMPOTENCY_WINDOW_SECONDS: 30,
+    TOKEN_EXPIRY_MINUTES: 180,
+    ROOM_EXPIRY_HOURS: 24,
+} as const;
+
+// =====================================================
 // Service Implementation
 // =====================================================
 
@@ -35,42 +91,82 @@ export class MeetingService {
     }
 
     // =====================================================
+    // Input Validation Helpers
+    // =====================================================
+
+    private validateTitle(title: string): void {
+        if (!title || typeof title !== 'string') {
+            throw new MeetingValidationError('Title is required');
+        }
+        const trimmed = title.trim();
+        if (trimmed.length < MEETING_CONSTRAINTS.TITLE_MIN_LENGTH) {
+            throw new MeetingValidationError(`Title must be at least ${MEETING_CONSTRAINTS.TITLE_MIN_LENGTH} characters`);
+        }
+        if (trimmed.length > MEETING_CONSTRAINTS.TITLE_MAX_LENGTH) {
+            throw new MeetingValidationError(`Title cannot exceed ${MEETING_CONSTRAINTS.TITLE_MAX_LENGTH} characters`);
+        }
+    }
+
+    private validateDescription(description?: string): void {
+        if (description && description.length > MEETING_CONSTRAINTS.DESCRIPTION_MAX_LENGTH) {
+            throw new MeetingValidationError(`Description cannot exceed ${MEETING_CONSTRAINTS.DESCRIPTION_MAX_LENGTH} characters`);
+        }
+    }
+
+    private validateScheduledTimes(scheduledStart: string, scheduledEnd?: string): { start: Date; end?: Date } {
+        const start = new Date(scheduledStart);
+        if (isNaN(start.getTime())) {
+            throw new MeetingValidationError('Invalid scheduled start time format');
+        }
+
+        const now = new Date();
+        const pastTolerance = new Date(now.getTime() - MEETING_CONSTRAINTS.PAST_TOLERANCE_MINUTES * 60 * 1000);
+        if (start < pastTolerance) {
+            throw new MeetingValidationError('Cannot schedule meeting in the past');
+        }
+
+        let end: Date | undefined;
+        if (scheduledEnd) {
+            end = new Date(scheduledEnd);
+            if (isNaN(end.getTime())) {
+                throw new MeetingValidationError('Invalid scheduled end time format');
+            }
+            if (end <= start) {
+                throw new MeetingValidationError('End time must be after start time');
+            }
+            const durationMs = end.getTime() - start.getTime();
+            const maxDurationMs = MEETING_CONSTRAINTS.MAX_DURATION_HOURS * 60 * 60 * 1000;
+            if (durationMs > maxDurationMs) {
+                throw new MeetingValidationError(`Meeting duration cannot exceed ${MEETING_CONSTRAINTS.MAX_DURATION_HOURS} hours`);
+            }
+        }
+
+        return { start, end };
+    }
+
+    private validateAccessMode(accessMode: string): 'public' | 'private' {
+        if (accessMode !== 'public' && accessMode !== 'private') {
+            throw new MeetingValidationError('Access mode must be "public" or "private"');
+        }
+        return accessMode;
+    }
+
+    // =====================================================
     // Create Meeting
     // =====================================================
 
     async createMeeting(dto: CreateMeetingDTO, creatorId: string): Promise<Meeting> {
-        // === Validation ===
-        logger.info({ dto, creatorId }, 'Creating meeting...');
+        logger.info({ title: dto.title, creatorId }, 'Creating meeting...');
 
-        const now = new Date();
-        const scheduledStart = new Date(dto.scheduledStart);
+        // === Input Validation ===
+        this.validateTitle(dto.title);
+        this.validateDescription(dto.description);
+        const { start: startTime, end: endTime } = this.validateScheduledTimes(dto.scheduledStart, dto.scheduledEnd);
+        const accessMode = this.validateAccessMode(dto.accessMode);
 
-        if (isNaN(scheduledStart.getTime())) {
-            logger.error({ scheduledStart: dto.scheduledStart }, 'Invalid scheduled start time');
-            throw new Error('Invalid scheduled start time');
-        }
-
-        // Allow meetings to start immediately (5 minute tolerance for clock drift)
-        const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000);
-        if (scheduledStart < fiveMinutesAgo) {
-            logger.error({ scheduledStart, fiveMinutesAgo }, 'Cannot schedule meeting in the past');
-            throw new Error('Cannot schedule meeting in the past');
-        }
-
-        if (dto.scheduledEnd) {
-            const scheduledEnd = new Date(dto.scheduledEnd);
-            if (isNaN(scheduledEnd.getTime())) {
-                throw new Error('Invalid scheduled end time');
-            }
-            if (scheduledEnd <= scheduledStart) {
-                throw new Error('End time must be after start time');
-            }
-            const durationMs = scheduledEnd.getTime() - scheduledStart.getTime();
-            const maxDurationMs = 8 * 60 * 60 * 1000; // 8 hours
-            if (durationMs > maxDurationMs) {
-                throw new Error('Meeting duration cannot exceed 8 hours');
-            }
-        }
+        // Sanitize title and description
+        const sanitizedTitle = dto.title.trim();
+        const sanitizedDescription = dto.description?.trim();
 
         // === Determine provider ===
         const meetingType = dto.type || 'ONLINE';
@@ -78,66 +174,74 @@ export class MeetingService {
         let providerConfig = null;
 
         if (meetingType === 'ONLINE' || meetingType === 'HYBRID') {
-            const configuredProvider = process.env.MEETING_PROVIDER || 'DAILY';
+            if (!dailyService.isEnabled()) {
+                throw new MeetingProviderError('Video conference not configured. DAILY_API_KEY is required.');
+            }
 
-            if (configuredProvider === 'DAILY' && dailyService.isEnabled()) {
-                provider = 'DAILY';
-                const roomName = this.generateRoomName();
+            provider = 'DAILY';
+            const roomName = this.generateRoomName();
 
-                // Parse scheduled times for room constraints
-                const startTime = new Date(dto.scheduledStart);
-                const endTime = dto.scheduledEnd ? new Date(dto.scheduledEnd) : undefined;
+            try {
+                const room = await dailyService.createRoom(roomName, {
+                    privacy: accessMode === 'private' ? 'private' : 'public',
+                    startTime,
+                    endTime,
+                    expiryMinutes: endTime ? undefined : MEETING_CONSTRAINTS.MAX_DURATION_HOURS * 60,
+                });
 
-                try {
-                    const room = await dailyService.createRoom(roomName, {
-                        privacy: dto.accessMode === 'private' ? 'private' : 'public',
-                        startTime,
-                        endTime,
-                        // Fallback to 8 hours if no end time set
-                        expiryMinutes: endTime ? undefined : 60 * 8,
-                    });
-
-                    providerConfig = {
-                        version: 1,
-                        roomName: room.name,
-                        roomUrl: room.url,
-                        privacy: room.privacy,
-                    } as DailyProviderConfig;
-                } catch (error) {
-                    logger.error({ error, roomName }, 'Failed to create Daily room');
-                    throw new Error('Failed to create video room');
-                }
-            } else {
-                // Daily.co is required - no fallback
-                throw new Error('Video conference not configured. DAILY_API_KEY is required.');
+                providerConfig = {
+                    version: 1,
+                    roomName: room.name,
+                    roomUrl: room.url,
+                    privacy: room.privacy,
+                } as DailyProviderConfig;
+            } catch (error: any) {
+                logger.error({ error: error.message, roomName }, 'Failed to create Daily room');
+                throw new MeetingProviderError('Failed to create video room. Please try again.');
             }
         }
 
         // === Create meeting in database ===
-        const meeting = await this.repo.createMeeting({
-            ...dto,
-            type: meetingType,
-            provider,
-            providerConfig,
-        }, creatorId);
+        try {
+            const meeting = await this.repo.createMeeting({
+                ...dto,
+                title: sanitizedTitle,
+                description: sanitizedDescription,
+                accessMode,
+                type: meetingType,
+                provider,
+                providerConfig,
+            }, creatorId);
 
-        // === Record initial status ===
-        await this.repo.recordStatusChange(
-            meeting.id,
-            null,
-            'scheduled',
-            creatorId,
-            'Meeting created'
-        );
+            // === Record initial status ===
+            await this.repo.recordStatusChange(
+                meeting.id,
+                null,
+                'scheduled',
+                creatorId,
+                'Meeting created'
+            );
 
-        logger.info({
-            meetingId: meeting.id,
-            provider,
-            type: meetingType,
-            creatorId
-        }, 'Meeting created');
+            logger.info({
+                meetingId: meeting.id,
+                provider,
+                type: meetingType,
+                creatorId
+            }, 'Meeting created successfully');
 
-        return meeting;
+            return meeting;
+        } catch (error: any) {
+            // Cleanup Daily room if database insert fails
+            if (providerConfig && provider === 'DAILY') {
+                try {
+                    await dailyService.deleteRoom((providerConfig as DailyProviderConfig).roomName);
+                } catch (cleanupError) {
+                    logger.warn({ error: cleanupError }, 'Failed to cleanup Daily room after DB error');
+                }
+            }
+            logger.error({ error: error.message }, 'Failed to create meeting in database');
+            throw new MeetingError('Failed to create meeting', 'DATABASE_ERROR', 500);
+        }
     }
 
     // =====================================================
@@ -149,24 +253,29 @@ export class MeetingService {
         userId: string,
         dto: JoinMeetingDTO = {}
     ): Promise<JoinMeetingResponse> {
+        // Validate meetingId format
+        if (!meetingId || typeof meetingId !== 'string') {
+            throw new MeetingValidationError('Invalid meeting ID');
+        }
+
         const meeting = await this.repo.getMeetingById(meetingId);
         if (!meeting) {
-            throw new Error('Meeting not found');
+            throw new MeetingNotFoundError(meetingId);
         }
 
         // === Check access ===
         const hasAccess = await this.repo.checkUserAccess(meetingId, userId);
         if (!hasAccess) {
             logger.warn({ meetingId, userId }, 'Access denied to meeting');
-            throw new Error('Access denied');
+            throw new MeetingAccessDeniedError();
         }
 
         // === Validate state ===
         if (meeting.status === 'cancelled') {
-            throw new Error('Cannot join cancelled meeting');
+            throw new MeetingValidationError('Cannot join cancelled meeting');
         }
         if (meeting.status === 'ended') {
-            throw new Error('Meeting has ended');
+            throw new MeetingValidationError('Meeting has ended');
         }
 
         // === Get or create session ===
@@ -216,7 +325,7 @@ export class MeetingService {
         // === VALIDATE DAILY CONFIG ===
         if (!dailyService.isEnabled()) {
             logger.error({ meetingId }, 'DAILY_API_KEY not configured');
-            throw new Error('Video conferencing not configured. Please set DAILY_API_KEY environment variable.');
+            throw new MeetingProviderError('Video conferencing not configured. Please contact administrator.');
         }
 
         // === ENSURE DAILY ROOM EXISTS (Self-healing) ===
@@ -238,7 +347,7 @@ export class MeetingService {
                 try {
                     room = await dailyService.createRoom(roomName, {
                         privacy: meeting.accessMode === 'private' ? 'private' : 'public',
-                        expiryMinutes: 60 * 24, // 24 hours
+                        expiryMinutes: MEETING_CONSTRAINTS.ROOM_EXPIRY_HOURS * 60,
                     });
                 } catch (createError: any) {
                     // If room already exists, fetch it
@@ -276,7 +385,7 @@ export class MeetingService {
                     status: createError.response?.status,
                     data: createError.response?.data,
                 }, 'Failed to create Daily room');
-                throw new Error(`Failed to create video room: ${createError.message}`);
+                throw new MeetingProviderError('Failed to create video room. Please try again.');
             }
         }
 
@@ -287,7 +396,7 @@ export class MeetingService {
                 userName,
                 userEmail,
                 isModerator,
-                expiryMinutes: 180,
+                expiryMinutes: MEETING_CONSTRAINTS.TOKEN_EXPIRY_MINUTES,
             });
             roomUrl = config.roomUrl;
             logger.info({ meetingId, userId, roomName: config.roomName }, 'Daily.co token generated');
@@ -311,7 +420,7 @@ export class MeetingService {
                 status: tokenError.response?.status,
                 data: tokenError.response?.data,
             }, 'Failed to generate Daily token');
-            throw new Error(`Failed to generate meeting token: ${tokenError.message}`);
+            throw new MeetingProviderError('Failed to generate meeting token. Please try again.');
         }
     }
 
@@ -322,12 +431,21 @@ export class MeetingService {
     async endMeeting(meetingId: string, userId: string, reason?: string): Promise<void> {
         const meeting = await this.repo.getMeetingById(meetingId);
         if (!meeting) {
-            throw new Error('Meeting not found');
+            throw new MeetingNotFoundError(meetingId);
         }
 
         // Only creator can end
         if (meeting.creatorId !== userId) {
-            throw new Error('Only meeting creator can end the meeting');
+            throw new MeetingAccessDeniedError();
+        }
+
+        // Validate current status allows ending
+        if (meeting.status === 'ended') {
+            logger.warn({ meetingId }, 'Meeting already ended');
+            return; // Idempotent - already ended
+        }
+        if (meeting.status === 'cancelled') {
+            throw new MeetingValidationError('Cannot end a cancelled meeting');
         }
 
         await this.transitionStatus(meetingId, 'ended', userId, reason || 'Manually ended');
@@ -338,8 +456,10 @@ export class MeetingService {
         // Record leave for all active participants
         await this.repo.recordBulkLeave(meetingId, 'Meeting ended');
 
-        // Delete provider room
-        await this.cleanupProviderRoom(meeting);
+        // Delete provider room (fire and forget, don't fail the operation)
+        this.cleanupProviderRoom(meeting).catch(err => {
+            logger.warn({ meetingId, error: err.message }, 'Background room cleanup failed');
+        });
 
         logger.info({ meetingId, userId }, 'Meeting ended');
     }
@@ -351,18 +471,32 @@ export class MeetingService {
     async cancelMeeting(meetingId: string, userId: string, reason?: string): Promise<void> {
         const meeting = await this.repo.getMeetingById(meetingId);
         if (!meeting) {
-            throw new Error('Meeting not found');
+            throw new MeetingNotFoundError(meetingId);
         }
 
         // Only creator can cancel
         if (meeting.creatorId !== userId) {
-            throw new Error('Only meeting creator can cancel the meeting');
+            throw new MeetingAccessDeniedError();
+        }
+
+        // Validate current status allows cancellation
+        if (meeting.status === 'cancelled') {
+            logger.warn({ meetingId }, 'Meeting already cancelled');
+            return; // Idempotent - already cancelled
+        }
+        if (meeting.status === 'ended') {
+            throw new MeetingValidationError('Cannot cancel an ended meeting');
+        }
+        if (meeting.status === 'active') {
+            throw new MeetingValidationError('Cannot cancel an active meeting. End it instead.');
         }
 
         await this.transitionStatus(meetingId, 'cancelled', userId, reason || 'Cancelled by organizer');
 
-        // Delete provider room
-        await this.cleanupProviderRoom(meeting);
+        // Delete provider room (fire and forget)
+        this.cleanupProviderRoom(meeting).catch(err => {
+            logger.warn({ meetingId, error: err.message }, 'Background room cleanup failed');
+        });
 
         logger.info({ meetingId, userId }, 'Meeting cancelled');
     }

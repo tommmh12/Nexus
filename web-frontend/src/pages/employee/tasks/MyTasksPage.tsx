@@ -10,11 +10,14 @@ import {
   Calendar,
   CheckSquare,
   Eye,
-  X,
-  ArrowRight
+  Wifi,
+  WifiOff,
 } from 'lucide-react';
 import { useMyTasks, MyTask } from '../../../hooks/useMyTasks';
 import { Avatar } from '../../../components/ui/Avatar';
+import { TaskListSkeleton, KanbanBoardSkeleton } from '../../../components/ui/TaskSkeleton';
+import { TaskDetailPanelEnhanced } from '../../../components/projects/TaskDetailPanelEnhanced';
+import { useSocket } from '../../../hooks/useSocket';
 
 // --- Configuration ---
 const THEME = {
@@ -43,6 +46,7 @@ const MyTasksPage: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>(); // Get Task ID from URL
   const { tasks, loading, error, refetch } = useMyTasks();
+  const { isConnected } = useSocket();
 
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [searchTerm, setSearchTerm] = useState('');
@@ -92,7 +96,35 @@ const MyTasksPage: React.FC = () => {
     });
   }, [tasks, searchTerm, statusFilter]);
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center text-slate-400">Loading tasks...</div>;
+  // Loading state with skeleton
+  if (loading) {
+    return (
+      <div className={`min-h-screen ${THEME.bg} p-6 font-sans text-slate-800`}>
+        <div className="max-w-7xl mx-auto space-y-8">
+          {/* Header skeleton */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div>
+              <div className="h-8 bg-slate-200 rounded w-48 animate-pulse mb-2" />
+              <div className="h-4 bg-slate-100 rounded w-64 animate-pulse" />
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-24 bg-slate-200 rounded-xl animate-pulse" />
+              <div className="h-10 w-10 bg-slate-200 rounded-xl animate-pulse" />
+              <div className="h-10 w-32 bg-slate-200 rounded-xl animate-pulse" />
+            </div>
+          </div>
+          {/* Filter skeleton */}
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            <div className="lg:col-span-3 h-14 bg-slate-200 rounded-[20px] animate-pulse" />
+            <div className="h-24 bg-slate-800 rounded-[20px] animate-pulse" />
+          </div>
+          {/* Content skeleton */}
+          {viewMode === 'list' ? <TaskListSkeleton count={5} /> : <KanbanBoardSkeleton />}
+        </div>
+      </div>
+    );
+  }
+
   if (error) return <div className="text-red-500 text-center p-10">{error}</div>;
 
   return (
@@ -104,6 +136,13 @@ const MyTasksPage: React.FC = () => {
           <div>
             <h1 className="text-3xl font-bold text-slate-900 tracking-tight flex items-center gap-3">
               <CheckSquare className="text-teal-600" /> My Tasks
+              {/* Realtime connection indicator */}
+              <span className={`flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full ${
+                isConnected ? 'bg-green-50 text-green-600' : 'bg-slate-100 text-slate-400'
+              }`}>
+                {isConnected ? <Wifi size={12} /> : <WifiOff size={12} />}
+                {isConnected ? 'Live' : 'Offline'}
+              </span>
             </h1>
             <p className="text-slate-500 mt-1 font-medium">
               You have <span className="text-slate-900 font-bold">{stats.pending}</span> pending tasks today.
@@ -266,65 +305,14 @@ const MyTasksPage: React.FC = () => {
 
       </div>
 
-      {/* TASK DETAIL MODAL */}
+      {/* TASK DETAIL MODAL - Enhanced with realtime & optimistic updates */}
       {activeTask && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={handleCloseDetail}>
-          <div className="bg-white w-full max-w-2xl rounded-[32px] p-8 shadow-2xl animate-in zoom-in-95" onClick={e => e.stopPropagation()}>
-            <div className="flex justify-between items-start mb-6">
-              <div>
-                <button onClick={() => { if (activeTask.projectId) navigate(`/employee/projects/${activeTask.projectId}`); }} className="text-xs font-bold text-slate-400 uppercase tracking-wider hover:text-teal-600 flex items-center gap-1 transition-colors">
-                  <FolderKanban size={12} /> {safeProjectName(activeTask.projectName)}
-                </button>
-                <h2 className="text-2xl font-bold text-slate-900 mt-2">{activeTask.title}</h2>
-              </div>
-              <button className="p-2 hover:bg-slate-100 rounded-full transition-colors" onClick={handleCloseDetail}>
-                <X size={24} className="text-slate-400" />
-              </button>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4 mb-8">
-              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                <label className="text-xs font-bold text-slate-400 uppercase">Status</label>
-                <div className="font-bold text-slate-900 mt-1 flex items-center gap-2">
-                  <div className={`w-2 h-2 rounded-full ${activeTask.status === 'Done' ? 'bg-emerald-500' : 'bg-slate-400'}`}></div>
-                  {activeTask.status}
-                </div>
-              </div>
-              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                <label className="text-xs font-bold text-slate-400 uppercase">Due Date</label>
-                <div className="font-bold text-slate-900 mt-1 flex items-center gap-2">
-                  <Calendar size={16} className="text-slate-400" /> {formatDate(activeTask.dueDate)}
-                </div>
-              </div>
-            </div>
-
-            <div className="prose prose-sm text-slate-600 mb-8 bg-slate-50/50 p-6 rounded-2xl">
-              <h4 className="font-bold text-slate-900 mb-2">Description</h4>
-              <p>{activeTask.description || 'No description provided.'}</p>
-            </div>
-
-            <div className="flex items-center gap-2 mb-8">
-              <span className="text-xs font-bold text-slate-400 uppercase">Assignees:</span>
-              <div className="flex -space-x-2">
-                {(activeTask.assignees || []).map((a, i) => (
-                  <Avatar key={i} name={a.name} src={a.avatarUrl || undefined} size="sm" className="border-2 border-white" />
-                ))}
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-3 pt-4 border-t border-slate-50">
-              <button onClick={handleCloseDetail} className="px-6 py-3 rounded-xl font-bold text-slate-500 hover:bg-slate-50 transition-colors">Close</button>
-              {activeTask.projectId && (
-                <button
-                  onClick={() => { navigate(`/employee/projects/${activeTask.projectId}`); }}
-                  className={`${THEME.buttonPrimary} px-6 py-3 flex items-center gap-2 shadow-lg shadow-slate-900/10`}
-                >
-                  Open Project <ArrowRight size={18} />
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
+        <TaskDetailPanelEnhanced
+          taskId={activeTask.id}
+          initialTask={activeTask}
+          onClose={handleCloseDetail}
+          onTaskUpdate={refetch}
+        />
       )}
     </div>
   );

@@ -1,10 +1,12 @@
 /**
  * Daily Meeting Room Component
  * Renders Daily.co Prebuilt UI for video meetings
- * Uses module-level singleton to prevent "Duplicate DailyIframe" errors
+ * - Module-level singleton to prevent "Duplicate DailyIframe" errors
+ * - Automatic reconnection on network issues
+ * - Proper cleanup and error handling
  */
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 
 // Types for Daily.co SDK
 interface DailyCallOptions {
@@ -25,6 +27,7 @@ interface DailyCall {
     on: (event: string, callback: (event?: any) => void) => void;
     off: (event: string, callback: (event?: any) => void) => void;
     iframe: () => HTMLIFrameElement | null;
+    meetingState: () => string;
 }
 
 interface DailyIframeSDK {
@@ -36,6 +39,16 @@ declare global {
         DailyIframe?: DailyIframeSDK;
     }
 }
+
+// =====================================================
+// Constants
+// =====================================================
+
+const RECONNECT_CONFIG = {
+    maxAttempts: 3,
+    baseDelay: 2000, // ms
+    maxDelay: 10000, // ms
+};
 
 // =====================================================
 // MODULE-LEVEL SINGLETON - Prevents duplicate instances
@@ -87,6 +100,8 @@ interface DailyMeetingRoomProps {
     onLeave?: () => void;
     /** Callback on error */
     onError?: (error: Error) => void;
+    /** Callback for connection state changes */
+    onConnectionStateChange?: (state: 'connecting' | 'connected' | 'reconnecting' | 'disconnected') => void;
     /** Custom container class name */
     className?: string;
     /** Minimum height for the container */
@@ -102,13 +117,22 @@ export const DailyMeetingRoom: React.FC<DailyMeetingRoomProps> = ({
     token,
     onLeave,
     onError,
+    onConnectionStateChange,
     className = '',
     minHeight = '600px',
 }) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const mountedRef = useRef(true);
+    const reconnectAttemptRef = useRef(0);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [connectionState, setConnectionState] = useState<'connecting' | 'connected' | 'reconnecting' | 'disconnected'>('connecting');
+
+    // Update connection state and notify parent
+    const updateConnectionState = useCallback((state: typeof connectionState) => {
+        setConnectionState(state);
+        onConnectionStateChange?.(state);
+    }, [onConnectionStateChange]);
 
     useEffect(() => {
         mountedRef.current = true;
@@ -171,6 +195,7 @@ export const DailyMeetingRoom: React.FC<DailyMeetingRoomProps> = ({
                 // Event handlers
                 callFrame.on('left-meeting', () => {
                     console.log('[Daily] Left meeting');
+                    updateConnectionState('disconnected');
                     destroyGlobalCallFrame().catch(e => console.error(e));
                     onLeave?.();
                 });
@@ -178,12 +203,45 @@ export const DailyMeetingRoom: React.FC<DailyMeetingRoomProps> = ({
                 callFrame.on('error', (e: any) => {
                     console.error('[Daily] Error:', e);
                     const msg = e?.errorMsg || 'Unknown error';
-                    setError(msg);
-                    onError?.(new Error(msg));
+                    
+                    // Check if this is a recoverable network error
+                    const isNetworkError = msg.toLowerCase().includes('network') || 
+                                          msg.toLowerCase().includes('connection');
+                    
+                    if (isNetworkError && reconnectAttemptRef.current < RECONNECT_CONFIG.maxAttempts) {
+                        reconnectAttemptRef.current++;
+                        const delay = Math.min(
+                            RECONNECT_CONFIG.baseDelay * Math.pow(2, reconnectAttemptRef.current - 1),
+                            RECONNECT_CONFIG.maxDelay
+                        );
+                        console.log(`[Daily] Network error, attempting reconnect ${reconnectAttemptRef.current}/${RECONNECT_CONFIG.maxAttempts} in ${delay}ms`);
+                        updateConnectionState('reconnecting');
+                        
+                        setTimeout(() => {
+                            if (mountedRef.current && globalCallFrame) {
+                                globalCallFrame.join({ url: roomUrl, token }).catch(joinErr => {
+                                    console.error('[Daily] Reconnect failed:', joinErr);
+                                    setError('Failed to reconnect. Please try again.');
+                                    onError?.(new Error('Reconnection failed'));
+                                });
+                            }
+                        }, delay);
+                    } else {
+                        setError(msg);
+                        onError?.(new Error(msg));
+                    }
                 });
 
                 callFrame.on('joined-meeting', () => {
                     console.log('[Daily] Joined meeting');
+                    reconnectAttemptRef.current = 0; // Reset reconnect counter on successful join
+                    updateConnectionState('connected');
+                });
+
+                callFrame.on('network-quality-change', (e: any) => {
+                    if (e?.threshold === 'very-low') {
+                        console.warn('[Daily] Network quality very low');
+                    }
                 });
 
                 // Join
@@ -229,6 +287,14 @@ export const DailyMeetingRoom: React.FC<DailyMeetingRoomProps> = ({
                         <p className="text-white font-semibold">Joining meeting...</p>
                         <p className="text-slate-400 text-sm mt-1">Please wait while we connect you</p>
                     </div>
+                </div>
+            )}
+
+            {/* Reconnecting State */}
+            {connectionState === 'reconnecting' && !isLoading && (
+                <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-yellow-500/90 text-white px-4 py-2 rounded-lg z-20 flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span className="text-sm font-medium">Reconnecting... (Attempt {reconnectAttemptRef.current}/{RECONNECT_CONFIG.maxAttempts})</span>
                 </div>
             )}
 

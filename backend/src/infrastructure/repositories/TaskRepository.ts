@@ -21,7 +21,19 @@ export class TaskRepository {
           FROM task_assignees ta
           JOIN users u2 ON ta.user_id = u2.id
           WHERE ta.task_id = t.id
-        ) as assignees
+        ) as assignees,
+        (
+          SELECT JSON_ARRAYAGG(
+            JSON_OBJECT(
+              'id', ci.id,
+              'text', ci.text,
+              'isCompleted', ci.is_completed
+            )
+          )
+          FROM task_checklist_items ci
+          WHERE ci.task_id = t.id
+          ORDER BY ci.created_at ASC
+        ) as checklist
       FROM tasks t
       LEFT JOIN users u ON t.created_by = u.id
       WHERE t.project_id = ? AND t.deleted_at IS NULL
@@ -32,6 +44,8 @@ export class TaskRepository {
       const [rows] = await this.db.query<RowDataPacket[]>(query, [projectId]);
       return rows.map((row) => {
         let assignees = [];
+        let checklist = [];
+
         try {
           if (row.assignees) {
             assignees =
@@ -44,6 +58,18 @@ export class TaskRepository {
           assignees = [];
         }
 
+        try {
+          if (row.checklist) {
+            checklist =
+              typeof row.checklist === "string"
+                ? JSON.parse(row.checklist)
+                : row.checklist;
+          }
+        } catch (e) {
+          console.error("Error parsing checklist JSON", e);
+          checklist = [];
+        }
+
         return {
           ...row,
           attachments:
@@ -51,6 +77,7 @@ export class TaskRepository {
               ? JSON.parse(row.attachments)
               : row.attachments || [],
           assignees: Array.isArray(assignees) ? assignees : [],
+          checklist: Array.isArray(checklist) ? checklist : [],
         };
       });
     } catch (error) {

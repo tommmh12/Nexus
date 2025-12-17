@@ -5,7 +5,14 @@
  */
 
 import { Request, Response } from "express";
-import { MeetingService } from "../../application/services/MeetingService.js";
+import { 
+    MeetingService, 
+    MeetingError,
+    MeetingNotFoundError,
+    MeetingAccessDeniedError,
+    MeetingValidationError,
+    MeetingProviderError 
+} from "../../application/services/MeetingService.js";
 import { MeetingRepository } from "../../infrastructure/repositories/MeetingRepository.js";
 import { CreateMeetingDTO, JoinMeetingDTO } from "../../domain/entities/Meeting.js";
 import { createModuleLogger } from "../../infrastructure/logger.js";
@@ -13,6 +20,56 @@ import { createModuleLogger } from "../../infrastructure/logger.js";
 const logger = createModuleLogger('MeetingController');
 const meetingService = new MeetingService(new MeetingRepository());
 const meetingRepo = new MeetingRepository();
+
+// =====================================================
+// Error Handler Helper
+// =====================================================
+
+function handleMeetingError(error: any, res: Response, defaultMessage: string) {
+    if (error instanceof MeetingNotFoundError) {
+        return res.status(404).json({
+            success: false,
+            code: error.code,
+            message: error.message,
+        });
+    }
+    if (error instanceof MeetingAccessDeniedError) {
+        return res.status(403).json({
+            success: false,
+            code: error.code,
+            message: error.message,
+        });
+    }
+    if (error instanceof MeetingValidationError) {
+        return res.status(400).json({
+            success: false,
+            code: error.code,
+            message: error.message,
+        });
+    }
+    if (error instanceof MeetingProviderError) {
+        return res.status(503).json({
+            success: false,
+            code: error.code,
+            message: error.message,
+        });
+    }
+    if (error instanceof MeetingError) {
+        return res.status(error.statusCode).json({
+            success: false,
+            code: error.code,
+            message: error.message,
+        });
+    }
+    
+    // Unknown error - log and return generic message
+    logger.error({ error: error.message, stack: error.stack }, defaultMessage);
+    return res.status(500).json({
+        success: false,
+        code: 'INTERNAL_ERROR',
+        message: defaultMessage,
+    });
+}
 
 // =====================================================
 // Create Meeting
@@ -24,16 +81,18 @@ export const createMeeting = async (req: Request, res: Response) => {
         if (!userId) {
             return res.status(401).json({
                 success: false,
-                message: "Unauthorized",
+                code: 'UNAUTHORIZED',
+                message: "Authentication required",
             });
         }
 
         const meetingData: CreateMeetingDTO = req.body;
 
-        // Validate required fields
+        // Basic presence check (detailed validation in service)
         if (!meetingData.title || !meetingData.scheduledStart) {
             return res.status(400).json({
                 success: false,
+                code: 'VALIDATION_ERROR',
                 message: "Title and scheduled start time are required",
             });
         }
@@ -46,13 +105,7 @@ export const createMeeting = async (req: Request, res: Response) => {
             message: "Meeting created successfully",
         });
     } catch (error: any) {
-        logger.error({ error: error.message, body: req.body }, "Error creating meeting");
-
-        // Return the actual error message for validation errors
-        return res.status(400).json({
-            success: false,
-            message: error.message || "Error creating meeting",
-        });
+        return handleMeetingError(error, res, "Failed to create meeting");
     }
 };
 
@@ -128,7 +181,8 @@ export const joinMeeting = async (req: Request, res: Response) => {
         if (!userId) {
             return res.status(401).json({
                 success: false,
-                message: "Unauthorized",
+                code: 'UNAUTHORIZED',
+                message: "Authentication required",
             });
         }
 
@@ -144,38 +198,7 @@ export const joinMeeting = async (req: Request, res: Response) => {
             data: joinResponse,
         });
     } catch (error: any) {
-        logger.error({
-            error: error.message,
-            stack: error.stack,
-            meetingId: req.params.id
-        }, "Error joining meeting");
-        console.error("Full join meeting error:", error);
-
-        if (error.message === 'Meeting not found') {
-            return res.status(404).json({
-                success: false,
-                message: "Meeting not found",
-            });
-        }
-
-        if (error.message === 'Access denied') {
-            return res.status(403).json({
-                success: false,
-                message: "Access denied to this meeting",
-            });
-        }
-
-        if (error.message.includes('cancelled') || error.message.includes('ended')) {
-            return res.status(400).json({
-                success: false,
-                message: error.message,
-            });
-        }
-
-        return res.status(500).json({
-            success: false,
-            message: error.message || "Error joining meeting",
-        });
+        return handleMeetingError(error, res, "Failed to join meeting");
     }
 };
 
@@ -281,29 +304,10 @@ export const endMeeting = async (req: Request, res: Response) => {
 
         res.json({
             success: true,
-            message: "Meeting ended",
+            message: "Meeting ended successfully",
         });
     } catch (error: any) {
-        logger.error({ error: error.message }, "Error ending meeting");
-
-        if (error.message.includes('creator')) {
-            return res.status(403).json({
-                success: false,
-                message: error.message,
-            });
-        }
-
-        if (error.message.includes('transition')) {
-            return res.status(400).json({
-                success: false,
-                message: error.message,
-            });
-        }
-
-        return res.status(500).json({
-            success: false,
-            message: "Error ending meeting",
-        });
+        return handleMeetingError(error, res, "Failed to end meeting");
     }
 };
 
@@ -321,29 +325,10 @@ export const cancelMeeting = async (req: Request, res: Response) => {
 
         res.json({
             success: true,
-            message: "Meeting cancelled",
+            message: "Meeting cancelled successfully",
         });
     } catch (error: any) {
-        logger.error({ error: error.message }, "Error cancelling meeting");
-
-        if (error.message.includes('creator')) {
-            return res.status(403).json({
-                success: false,
-                message: error.message,
-            });
-        }
-
-        if (error.message.includes('transition')) {
-            return res.status(400).json({
-                success: false,
-                message: error.message,
-            });
-        }
-
-        return res.status(500).json({
-            success: false,
-            message: "Error cancelling meeting",
-        });
+        return handleMeetingError(error, res, "Failed to cancel meeting");
     }
 };
 

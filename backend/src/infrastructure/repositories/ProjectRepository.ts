@@ -371,4 +371,17 @@ export class ProjectRepository {
     ]);
     return rows;
   }
+
+  /**
+   * Check if user is a member of the project
+   */
+  async isMember(projectId: string, userId: string): Promise<boolean> {
+    const query = `
+      SELECT 1 FROM project_members 
+      WHERE project_id = ? AND user_id = ?
+      LIMIT 1
+    `;
+    const [rows] = await this.db.query<RowDataPacket[]>(query, [projectId, userId]);
+    return rows.length > 0;
+  }
 }
