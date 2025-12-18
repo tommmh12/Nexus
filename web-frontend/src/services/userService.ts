@@ -32,7 +32,19 @@ export interface User {
   role: "Admin" | "Manager" | "Employee";
   status: "Active" | "Blocked" | "Pending";
   join_date?: string;
+  address?: string;
+  emergency_contact_name?: string;
+  emergency_contact_phone?: string;
+  emergency_contact_relationship?: string;
 }
+
+export type UpdateUserRequest = Partial<CreateUserRequest> & {
+  address?: string;
+  emergency_contact_name?: string;
+  emergency_contact_phone?: string;
+  emergency_contact_relationship?: string;
+  avatar_url?: string;
+};
 
 export const userService = {
   createUser: async (userData: CreateUserRequest): Promise<User> => {
@@ -56,7 +68,10 @@ export const userService = {
     return response.data;
   },
 
-  updateUser: async (userId: string, userData: Partial<CreateUserRequest>): Promise<void> => {
+  updateUser: async (
+    userId: string,
+    userData: UpdateUserRequest
+  ): Promise<void> => {
     await axios.put(`${API_URL}/users/${userId}`, userData, {
       headers: getAuthHeader(),
     });
@@ -68,4 +83,3 @@ export const userService = {
     });
   },
 };
-

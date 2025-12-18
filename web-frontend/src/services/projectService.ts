@@ -5,8 +5,17 @@ const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 const getAccessToken = () => localStorage.getItem("accessToken");
 
 export const projectService = {
+  // Get all projects (admin only)
   async getProjects() {
     const response = await axios.get(`${API_URL}/projects`, {
+      headers: { Authorization: `Bearer ${getAccessToken()}` },
+    });
+    return response.data.data || response.data;
+  },
+
+  // Get projects where current user is a member (for employees)
+  async getMyProjects() {
+    const response = await axios.get(`${API_URL}/projects/my-projects`, {
       headers: { Authorization: `Bearer ${getAccessToken()}` },
     });
     return response.data.data || response.data;
@@ -41,19 +50,22 @@ export const projectService = {
   },
 
   // --- Members ---
-  async addMember(projectId: string, userId: string, role: string = 'Member') {
-    const response = await axios.post(`${API_URL}/projects/${projectId}/members`, { userId, role }, {
-      headers: { Authorization: `Bearer ${getAccessToken()}` },
-    });
+  async addMember(projectId: string, userId: string, role: string = "Member") {
+    const response = await axios.post(
+      `${API_URL}/projects/${projectId}/members`,
+      { userId, role },
+      {
+        headers: { Authorization: `Bearer ${getAccessToken()}` },
+      }
+    );
     return response.data.data || response.data;
   },
-
 
   async removeMember(projectId: string, userId: string) {
     await axios.delete(`${API_URL}/projects/${projectId}/members/${userId}`, {
       headers: { Authorization: `Bearer ${getAccessToken()}` },
     });
-    return this.getProjectById(projectId).then(p => p.members || []);
+    return this.getProjectById(projectId).then((p) => p.members || []);
   },
 
   async generateProjectCode() {

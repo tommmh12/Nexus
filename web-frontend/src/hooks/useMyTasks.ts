@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
-import { taskService, TaskDetail } from '../services/taskService';
-import { projectService } from '../services/projectService';
+import { useState, useEffect, useCallback } from "react";
+import { taskService, TaskDetail } from "../services/taskService";
+import { projectService } from "../services/projectService";
 
 export interface MyTask extends TaskDetail {
   projectName: string;
@@ -25,8 +25,8 @@ export const useMyTasks = (): UseMyTasksReturn => {
     setError(null);
 
     try {
-      // First get all projects
-      const projects = await projectService.getProjects();
+      // Get only projects where user is a member
+      const projects = await projectService.getMyProjects();
       const allTasks: MyTask[] = [];
 
       // Fetch tasks from each project
@@ -36,7 +36,7 @@ export const useMyTasks = (): UseMyTasksReturn => {
           const mappedTasks = (projectTasks || []).map((task: TaskDetail) => ({
             ...task,
             projectName: project.name || project.title,
-            projectCode: project.code || '',
+            projectCode: project.code || "",
           }));
           allTasks.push(...mappedTasks);
         } catch (err) {
@@ -47,36 +47,48 @@ export const useMyTasks = (): UseMyTasksReturn => {
       // Sort by due date (nearest first), then by priority
       allTasks.sort((a, b) => {
         // Priority order: Critical > High > Medium > Low
-        const priorityOrder: Record<string, number> = { Critical: 0, High: 1, Medium: 2, Low: 3 };
-        const priorityDiff = (priorityOrder[a.priority] || 4) - (priorityOrder[b.priority] || 4);
-        
+        const priorityOrder: Record<string, number> = {
+          Critical: 0,
+          High: 1,
+          Medium: 2,
+          Low: 3,
+        };
+        const priorityDiff =
+          (priorityOrder[a.priority] || 4) - (priorityOrder[b.priority] || 4);
+
         if (a.dueDate && b.dueDate) {
-          const dateDiff = new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+          const dateDiff =
+            new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
           if (dateDiff !== 0) return dateDiff;
         }
-        
+
         return priorityDiff;
       });
 
       setTasks(allTasks);
     } catch (err: any) {
-      console.error('Error fetching tasks:', err);
-      setError(err.response?.data?.message || 'Không thể tải danh sách công việc');
+      console.error("Error fetching tasks:", err);
+      setError(
+        err.response?.data?.message || "Không thể tải danh sách công việc"
+      );
     } finally {
       setLoading(false);
     }
   }, []);
 
-  const updateTaskStatus = useCallback(async (taskId: string, statusId: string) => {
-    try {
-      await taskService.updateTaskStatus(taskId, statusId);
-      // Refetch to get updated data
-      await fetchTasks();
-    } catch (err: any) {
-      console.error('Error updating task status:', err);
-      throw err;
-    }
-  }, [fetchTasks]);
+  const updateTaskStatus = useCallback(
+    async (taskId: string, statusId: string) => {
+      try {
+        await taskService.updateTaskStatus(taskId, statusId);
+        // Refetch to get updated data
+        await fetchTasks();
+      } catch (err: any) {
+        console.error("Error updating task status:", err);
+        throw err;
+      }
+    },
+    [fetchTasks]
+  );
 
   useEffect(() => {
     fetchTasks();
