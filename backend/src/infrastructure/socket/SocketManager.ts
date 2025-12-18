@@ -59,7 +59,7 @@ export class SocketManager {
         const decoded = jwt.verify(
           token,
           process.env.JWT_SECRET ||
-          "nexus_super_secret_key_change_in_production_2024"
+            "nexus_super_secret_key_change_in_production_2024"
         ) as any;
         socket.userId = decoded.userId;
         socket.userRole = decoded.role;
@@ -97,9 +97,13 @@ export class SocketManager {
 
       // Edit/Recall/Reaction events
       socket.on("message:edit", (data) => this.handleEditMessage(socket, data));
-      socket.on("message:recall", (data) => this.handleRecallMessage(socket, data));
+      socket.on("message:recall", (data) =>
+        this.handleRecallMessage(socket, data)
+      );
       socket.on("reaction:add", (data) => this.handleAddReaction(socket, data));
-      socket.on("reaction:remove", (data) => this.handleRemoveReaction(socket, data));
+      socket.on("reaction:remove", (data) =>
+        this.handleRemoveReaction(socket, data)
+      );
 
       // Call events
       socket.on("call:start", (data) => this.handleCallStart(socket, data));
@@ -110,9 +114,13 @@ export class SocketManager {
       // Task realtime events
       socket.on("task:join", (data) => this.handleJoinTask(socket, data));
       socket.on("task:leave", (data) => this.handleLeaveTask(socket, data));
-      socket.on("checklist:toggle", (data) => this.handleChecklistToggle(socket, data));
+      socket.on("checklist:toggle", (data) =>
+        this.handleChecklistToggle(socket, data)
+      );
       socket.on("comment:add", (data) => this.handleCommentAdd(socket, data));
-      socket.on("task:update_status", (data) => this.handleTaskStatusUpdate(socket, data));
+      socket.on("task:update_status", (data) =>
+        this.handleTaskStatusUpdate(socket, data)
+      );
 
       // Disconnect
       socket.on("disconnect", () => this.handleDisconnect(socket));
@@ -187,9 +195,9 @@ export class SocketManager {
 
   private async handleSendMessage(socket: AuthenticatedSocket, data: any) {
     console.log(`📨 handleSendMessage called by ${socket.userId}`, data);
-    
+
     if (!socket.userId) {
-      console.error('❌ No userId on socket');
+      console.error("❌ No userId on socket");
       return;
     }
 
@@ -197,16 +205,16 @@ export class SocketManager {
       // Check if user is banned
       const isBanned = await this.chatService.isUserBanned(socket.userId);
       console.log(`🔍 User ${socket.userId} banned status:`, isBanned);
-      
+
       if (isBanned) {
-        socket.emit("error", { 
+        socket.emit("error", {
           code: "USER_BANNED",
-          message: "Bạn đã bị cấm chat. Vui lòng liên hệ quản trị viên." 
+          message: "Bạn đã bị cấm chat. Vui lòng liên hệ quản trị viên.",
         });
         return;
       }
 
-      console.log('📝 Creating message in database...');
+      console.log("📝 Creating message in database...");
       const message = await this.chatService.sendMessage({
         conversationId: data.conversationId,
         senderId: socket.userId,
@@ -228,7 +236,9 @@ export class SocketManager {
       };
 
       // Get participants to emit directly (more reliable than room-based)
-      const participants = await this.chatService.getConversationParticipants(data.conversationId);
+      const participants = await this.chatService.getConversationParticipants(
+        data.conversationId
+      );
       const emittedSockets = new Set<string>();
 
       // Emit directly to each participant's socket (avoid duplicates)
@@ -240,7 +250,9 @@ export class SocketManager {
         }
       }
 
-      console.log(`💬 Message sent in conversation ${data.conversationId} to ${emittedSockets.size} sockets`);
+      console.log(
+        `💬 Message sent in conversation ${data.conversationId} to ${emittedSockets.size} sockets`
+      );
     } catch (error) {
       console.error("Error sending message:", error);
       socket.emit("error", { message: "Failed to send message" });
@@ -367,7 +379,9 @@ export class SocketManager {
       }
     } catch (error: any) {
       console.error("Error editing message:", error);
-      socket.emit("error", { message: error.message || "Failed to edit message" });
+      socket.emit("error", {
+        message: error.message || "Failed to edit message",
+      });
     }
   }
 
@@ -391,11 +405,15 @@ export class SocketManager {
             messageId: data.messageId,
             conversationId: data.conversationId,
           });
-        console.log(`🔄 Message ${data.messageId} recalled by ${socket.userId}`);
+        console.log(
+          `🔄 Message ${data.messageId} recalled by ${socket.userId}`
+        );
       }
     } catch (error: any) {
       console.error("Error recalling message:", error);
-      socket.emit("error", { message: error.message || "Failed to recall message" });
+      socket.emit("error", {
+        message: error.message || "Failed to recall message",
+      });
     }
   }
 
@@ -413,16 +431,16 @@ export class SocketManager {
       );
 
       // Broadcast to all participants
-      this.io
-        .to(`conversation:${data.conversationId}`)
-        .emit("reaction:added", {
-          messageId: data.messageId,
-          conversationId: data.conversationId,
-          userId: socket.userId,
-          userName: socket.userName,
-          emoji: data.emoji,
-        });
-      console.log(`👍 Reaction ${data.emoji} added to ${data.messageId} by ${socket.userId}`);
+      this.io.to(`conversation:${data.conversationId}`).emit("reaction:added", {
+        messageId: data.messageId,
+        conversationId: data.conversationId,
+        userId: socket.userId,
+        userName: socket.userName,
+        emoji: data.emoji,
+      });
+      console.log(
+        `👍 Reaction ${data.emoji} added to ${data.messageId} by ${socket.userId}`
+      );
     } catch (error) {
       console.error("Error adding reaction:", error);
       socket.emit("error", { message: "Failed to add reaction" });
@@ -452,7 +470,9 @@ export class SocketManager {
             userId: socket.userId,
             emoji: data.emoji,
           });
-        console.log(`👎 Reaction ${data.emoji} removed from ${data.messageId} by ${socket.userId}`);
+        console.log(
+          `👎 Reaction ${data.emoji} removed from ${data.messageId} by ${socket.userId}`
+        );
       }
     } catch (error) {
       console.error("Error removing reaction:", error);
@@ -516,7 +536,8 @@ export class SocketManager {
     const { callId, recipientId, recipientName, roomName, isVideoCall } = data;
 
     console.log(
-      `📞 Call started: ${socket.userId} -> ${recipientId} (${isVideoCall ? "Video" : "Audio"
+      `📞 Call started: ${socket.userId} -> ${recipientId} (${
+        isVideoCall ? "Video" : "Audio"
       })`
     );
 
@@ -549,15 +570,50 @@ export class SocketManager {
 
     // Create Daily.co room first
     let roomUrl: string;
+    let callerToken: string = "";
+    let recipientToken: string = "";
+
     try {
       const room = await dailyService.createRoom(roomName, {
-        privacy: 'private',
+        privacy: "public", // Changed to public to avoid knocking
         expiryMinutes: 60, // 1 hour expiry
+        enableKnocking: false, // Disable knocking - allow direct join
       });
       roomUrl = room.url;
       console.log(`🎬 Daily.co room created: ${roomUrl}`);
+
+      // Create tokens for both participants with their names
+      // For voice calls, start with video off
+      const startVideoOff = !isVideoCall;
+
+      try {
+        callerToken = await dailyService.createMeetingToken(roomName, {
+          userId: socket.userId,
+          userName: socket.userName || "Caller",
+          isModerator: true,
+          expiryMinutes: 60,
+          startVideoOff, // Voice call = camera off, Video call = camera on
+        });
+
+        recipientToken = await dailyService.createMeetingToken(roomName, {
+          userId: recipientId,
+          userName: recipientName || "Recipient",
+          isModerator: false,
+          expiryMinutes: 60,
+          startVideoOff, // Voice call = camera off, Video call = camera on
+        });
+
+        console.log(
+          `🎫 Meeting tokens created for both participants (videoOff: ${startVideoOff})`
+        );
+      } catch (tokenError) {
+        console.warn(
+          "Failed to create meeting tokens, will use room URL only:",
+          tokenError
+        );
+      }
     } catch (error: any) {
-      console.error('Failed to create Daily.co room:', error);
+      console.error("Failed to create Daily.co room:", error);
       socket.emit("call:error", {
         callId,
         error: "room_creation_failed",
@@ -582,24 +638,28 @@ export class SocketManager {
     this.activeCalls.set(callId, call);
     this.userInCall.set(socket.userId, callId);
 
-    // Send room ready notification to caller with roomUrl
+    // Send room ready notification to caller with roomUrl and token
     socket.emit("call:room_ready", {
       callId,
       roomUrl,
       roomName,
+      token: callerToken, // Include caller's token
     });
 
-    // Send incoming call notification to recipient with roomUrl
+    // Send incoming call notification to recipient with roomUrl and token
     this.io.to(recipientSocketId).emit("call:incoming", {
       callId,
       callerId: socket.userId,
       callerName: socket.userName || "User",
       roomName,
       roomUrl, // Include full room URL
+      token: recipientToken, // Include recipient's token
       isVideoCall,
     });
 
-    console.log(`📲 Incoming call notification sent to ${recipientId}, room URL sent to caller`);
+    console.log(
+      `📲 Incoming call notification sent to ${recipientId}, tokens sent to both parties`
+    );
   }
 
   private async handleCallAccept(
@@ -723,7 +783,9 @@ export class SocketManager {
         timestamp: new Date().toISOString(),
       });
 
-      console.log(`✅ Checklist ${checklistId} toggled to ${isCompleted} by ${socket.userId}`);
+      console.log(
+        `✅ Checklist ${checklistId} toggled to ${isCompleted} by ${socket.userId}`
+      );
     } catch (error) {
       console.error("Error broadcasting checklist toggle:", error);
       socket.emit("error", { message: "Failed to sync checklist update" });
@@ -780,7 +842,9 @@ export class SocketManager {
         timestamp: new Date().toISOString(),
       });
 
-      console.log(`📊 Task ${taskId} status updated to ${status} by ${socket.userId}`);
+      console.log(
+        `📊 Task ${taskId} status updated to ${status} by ${socket.userId}`
+      );
     } catch (error) {
       console.error("Error broadcasting status update:", error);
       socket.emit("error", { message: "Failed to sync status update" });

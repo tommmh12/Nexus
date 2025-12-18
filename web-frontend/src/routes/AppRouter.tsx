@@ -9,6 +9,8 @@ import {
 import { Dashboard } from "../components/Dashboard";
 import EmployeeLayout from "../layouts/EmployeeLayout";
 import { UserRole } from "../types";
+import { GlobalCallProvider } from "../contexts/GlobalCallContext";
+import { FloatingChatBubble } from "../components/chat/FloatingChatBubble";
 
 interface AppRouterProps {
   user: {
@@ -63,96 +65,104 @@ export const AppRouter: React.FC<AppRouterProps> = ({ user, onLogout }) => {
 
   return (
     <BrowserRouter>
-      {/* Handle role mismatch redirects */}
-      <RoleRedirect rolePrefix={rolePrefix} />
+      <GlobalCallProvider currentUserName={user.name}>
+        {/* Handle role mismatch redirects */}
+        <RoleRedirect rolePrefix={rolePrefix} />
 
-      <Routes>
-        {/* Admin Routes */}
-        {isAdmin && (
-          <>
-            <Route
-              path="/admin/*"
-              element={<Dashboard user={user} onLogout={onLogout} />}
-            />
-            <Route
-              path="/"
-              element={<Navigate to="/admin/overview" replace />}
-            />
-            {/* Redirect wrong role paths to admin */}
-            <Route
-              path="/manager/*"
-              element={<Navigate to="/admin/overview" replace />}
-            />
-            <Route
-              path="/employee/*"
-              element={<Navigate to="/admin/overview" replace />}
-            />
-          </>
-        )}
+        <Routes>
+          {/* Admin Routes */}
+          {isAdmin && (
+            <>
+              <Route
+                path="/admin/*"
+                element={<Dashboard user={user} onLogout={onLogout} />}
+              />
+              <Route
+                path="/"
+                element={<Navigate to="/admin/overview" replace />}
+              />
+              {/* Redirect wrong role paths to admin */}
+              <Route
+                path="/manager/*"
+                element={<Navigate to="/admin/overview" replace />}
+              />
+              <Route
+                path="/employee/*"
+                element={<Navigate to="/admin/overview" replace />}
+              />
+            </>
+          )}
 
-        {/* Department Manager Routes */}
-        {isManager && (
-          <>
-            <Route
-              path="/manager/*"
-              element={<Dashboard user={user} onLogout={onLogout} />}
-            />
-            <Route
-              path="/"
-              element={<Navigate to="/manager/dept-overview" replace />}
-            />
-            {/* Redirect wrong role paths to manager */}
-            <Route
-              path="/admin/*"
-              element={<Navigate to="/manager/dept-overview" replace />}
-            />
-            <Route
-              path="/employee/*"
-              element={<Navigate to="/manager/dept-overview" replace />}
-            />
-          </>
-        )}
+          {/* Department Manager Routes */}
+          {isManager && (
+            <>
+              <Route
+                path="/manager/*"
+                element={<Dashboard user={user} onLogout={onLogout} />}
+              />
+              <Route
+                path="/"
+                element={<Navigate to="/manager/dept-overview" replace />}
+              />
+              {/* Redirect wrong role paths to manager */}
+              <Route
+                path="/admin/*"
+                element={<Navigate to="/manager/dept-overview" replace />}
+              />
+              <Route
+                path="/employee/*"
+                element={<Navigate to="/manager/dept-overview" replace />}
+              />
+            </>
+          )}
 
-        {/* Employee Routes - Uses separate EmployeeLayout with top navbar */}
-        {isEmployee && (
-          <>
-            <Route
-              path="/employee/*"
-              element={<EmployeeLayout user={user} onLogout={onLogout} />}
-            />
-            <Route
-              path="/"
-              element={<Navigate to="/employee/dashboard" replace />}
-            />
-            {/* Redirect wrong role paths to employee */}
-            <Route
-              path="/admin/*"
-              element={<Navigate to="/employee/dashboard" replace />}
-            />
-            <Route
-              path="/manager/*"
-              element={<Navigate to="/employee/dashboard" replace />}
-            />
-          </>
-        )}
+          {/* Employee Routes - Uses separate EmployeeLayout with top navbar */}
+          {isEmployee && (
+            <>
+              <Route
+                path="/employee/*"
+                element={<EmployeeLayout user={user} onLogout={onLogout} />}
+              />
+              <Route
+                path="/"
+                element={<Navigate to="/employee/dashboard" replace />}
+              />
+              {/* Redirect wrong role paths to employee */}
+              <Route
+                path="/admin/*"
+                element={<Navigate to="/employee/dashboard" replace />}
+              />
+              <Route
+                path="/manager/*"
+                element={<Navigate to="/employee/dashboard" replace />}
+              />
+            </>
+          )}
 
-        {/* Catch all - redirect to correct role prefix with correct default page */}
-        <Route
-          path="*"
-          element={
-            <Navigate
-              to={`${rolePrefix}/${
-                isEmployee
-                  ? "dashboard"
-                  : isManager
-                  ? "dept-overview"
-                  : "overview"
-              }`}
-              replace
-            />
-          }
+          {/* Catch all - redirect to correct role prefix with correct default page */}
+          <Route
+            path="*"
+            element={
+              <Navigate
+                to={`${rolePrefix}/${
+                  isEmployee
+                    ? "dashboard"
+                    : isManager
+                    ? "dept-overview"
+                    : "overview"
+                }`}
+                replace
+              />
+            }
+          />
+        </Routes>
+
+        {/* Floating Chat Bubble - Available on all pages */}
+        <FloatingChatBubble
+          currentUserId={user.id}
+          currentUserName={user.name}
         />
-      </Routes>
+      </GlobalCallProvider>
     </BrowserRouter>
   );
 };

@@ -1,6 +1,7 @@
 /**
  * Video Call Modal Component
- * For direct video calls (chat) - Uses Daily.co only
+ * For direct video calls (chat) - Uses Daily.co iframe directly
+ * Clean, modern UI with smooth animations
  */
 
 import React, { useEffect, useRef, useState, useCallback } from "react";
@@ -8,55 +9,26 @@ import {
   PhoneOff,
   Maximize2,
   Minimize2,
-  Users,
   ExternalLink,
   AlertCircle,
   RefreshCw,
+  Video,
+  Phone,
+  Volume2,
 } from "lucide-react";
 
 interface VideoCallModalProps {
   isOpen: boolean;
   onClose: () => void;
-  roomUrl?: string;       // Full Daily.co room URL
-  roomName?: string;      // Just room name (for backward compatibility)
+  roomUrl?: string;
+  roomName?: string;
   token?: string;
-  provider?: 'DAILY';
+  provider?: "DAILY";
   displayName: string;
   otherUserName: string;
   isVideoCall: boolean;
+  callStatus?: "idle" | "calling" | "connecting" | "active";
   onCallEnd?: () => void;
-}
-
-// Daily.co SDK types (Window.DailyIframe already declared in DailyMeetingRoom.tsx)
-interface DailyCall {
-  join: (options: { url: string; token?: string }) => Promise<void>;
-  leave: () => Promise<void>;
-  destroy: () => void;
-  on: (event: string, callback: (...args: any[]) => void) => void;
-  off: (event: string, callback: (...args: any[]) => void) => void;
-}
-
-// Module-level singleton for VideoCallModal
-let modalCallFrame: DailyCall | null = null;
-let isInitializing = false; // Lock to prevent duplicate initialization
-
-async function destroyModalCallFrame() {
-  if (modalCallFrame) {
-    console.log('[VideoCallModal] Destroying call frame');
-    const frame = modalCallFrame;
-    modalCallFrame = null; // Clear reference immediately
-    try {
-      await frame.leave();
-    } catch (e) {
-      console.warn('[VideoCallModal] Error leaving:', e);
-    }
-    try {
-      frame.destroy();
-    } catch (e) {
-      console.warn('[VideoCallModal] Error destroying:', e);
-    }
-  }
-  isInitializing = false;
 }
 
 export const VideoCallModal: React.FC<VideoCallModalProps> = ({
@@ -68,34 +40,58 @@ export const VideoCallModal: React.FC<VideoCallModalProps> = ({
   displayName,
   otherUserName,
   isVideoCall,
+  callStatus = "active",
   onCallEnd,
 }) => {
-  // Compute room URL from either roomUrl or roomName
-  // If roomName is already a full URL (starts with https://), use it directly
-  const roomUrl = roomUrlProp || (roomName?.startsWith('https://') ? roomName : (roomName ? `https://mma-e9.daily.co/${roomName}` : ''));
+  // Compute room URL - add query params for user name and video settings
+  const baseRoomUrl =
+    roomUrlProp ||
+    (roomName?.startsWith("https://")
+      ? roomName
+      : roomName
+      ? `https://mma-e9.daily.co/${roomName}`
+      : "");
 
-  const containerRef = useRef<HTMLDivElement>(null);
-  const mountedRef = useRef(true);
-  const onCallEndRef = useRef(onCallEnd);
-  const onCloseRef = useRef(onClose);
+  // Build iframe URL with preload parameters
+  const buildIframeUrl = useCallback(() => {
+    if (!baseRoomUrl) return "";
 
-  // Keep refs updated
-  onCallEndRef.current = onCallEnd;
-  onCloseRef.current = onClose;
+    const url = new URL(baseRoomUrl);
 
+    // Add token if available (includes user name and permissions)
+    if (token) {
+      url.searchParams.set("t", token);
+    }
+
+    // IMPORTANT: Skip the prejoin/haircheck screen - join immediately
+    url.searchParams.set("prejoinUI", "false");
+
+    // Hide Daily.co's leave button (we have our own)
+    url.searchParams.set("showLeaveButton", "false");
+
+    // Start with video off for voice calls, on for video calls
+    if (!isVideoCall) {
+      url.searchParams.set("startVideoOff", "true");
+    }
+
+    // Start with audio on
+    url.searchParams.set("startAudioOff", "false");
+
+    console.log("[VideoCallModal] Built iframe URL:", url.toString());
+    return url.toString();
+  }, [baseRoomUrl, token, isVideoCall]);
+
+  const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isMinimized, setIsMinimized] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [loadingMessage, setLoadingMessage] = useState('Đang kết nối...');
+  const [iframeKey, setIframeKey] = useState(0); // For forcing iframe reload
 
-
-  // Call duration timer
+  // Timer for call duration
   useEffect(() => {
-    if (!isOpen) {
+    if (!isOpen || isLoading) {
       setCallDuration(0);
-      setIsLoading(true);
-      setError(null);
       return;
     }
 
@@ -104,108 +100,45 @@ export const VideoCallModal: React.FC<VideoCallModalProps> = ({
     }, 1000);
 
     return () => clearInterval(timer);
+  }, [isOpen, isLoading]);
+
+  // Reset state when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setIsLoading(true);
+      setError(null);
+      setCallDuration(0);
+    }
   }, [isOpen]);
 
-  // Initialize Daily.co
+  // Handle iframe load
+  const handleIframeLoad = () => {
+    console.log("[VideoCallModal] Iframe loaded successfully");
+    setIsLoading(false);
+    setError(null);
+  };
+
+  // Handle iframe error
+  const handleIframeError = () => {
+    console.error("[VideoCallModal] Iframe failed to load");
+    setError("Không thể kết nối cuộc gọi");
+    setIsLoading(false);
+  };
+
+  // Timeout for loading
   useEffect(() => {
-    if (!isOpen || !roomUrl) return;
+    if (!isOpen || !baseRoomUrl) return;
 
-    mountedRef.current = true;
-    let localFrame: DailyCall | null = null;
-
-    const init = async () => {
-      // Prevent duplicate initialization
-      if (isInitializing || modalCallFrame) {
-        console.log('[VideoCallModal] Init skipped - already initializing or frame exists');
-        return;
+    const timeout = setTimeout(() => {
+      if (isLoading) {
+        console.warn("[VideoCallModal] Load timeout - 30s");
+        setError("Kết nối quá lâu. Vui lòng thử lại.");
+        setIsLoading(false);
       }
-      isInitializing = true;
+    }, 30000);
 
-      console.log('[VideoCallModal] Init, roomUrl:', roomUrl);
-      setLoadingMessage('Đang khởi tạo...');
-
-      // Destroy any previous frame (just in case)
-      await destroyModalCallFrame();
-      isInitializing = true; // Re-set after destroy clears it
-
-      // Load SDK
-      if (!window.DailyIframe) {
-        console.log('[VideoCallModal] Loading SDK...');
-        setLoadingMessage('Đang tải SDK...');
-        await loadDailySDK();
-      }
-      
-      setLoadingMessage('Đang tạo phòng họp...');
-
-      if (!mountedRef.current || !containerRef.current) return;
-
-      containerRef.current.innerHTML = '';
-      await new Promise(r => setTimeout(r, 50));
-
-      if (!mountedRef.current || !containerRef.current) return;
-
-      try {
-        console.log('[VideoCallModal] Creating frame...');
-        setLoadingMessage('Đang kết nối cuộc gọi...');
-        const callFrame = window.DailyIframe!.createFrame(containerRef.current, {
-          iframeStyle: {
-            width: '100%',
-            height: '100%',
-            border: '0',
-            borderRadius: '8px',
-          },
-          showLeaveButton: true,
-          showFullscreenButton: true,
-        });
-
-        modalCallFrame = callFrame;
-        localFrame = callFrame;
-
-        callFrame.on('left-meeting', () => {
-          console.log('[VideoCallModal] Left meeting');
-          destroyModalCallFrame().catch(console.error);
-          onCallEndRef.current?.();
-          onCloseRef.current();
-        });
-
-        callFrame.on('error', (e: any) => {
-          console.error('[VideoCallModal] Error:', e);
-          setError('Lỗi kết nối cuộc gọi');
-        });
-
-        callFrame.on('joined-meeting', () => {
-          console.log('[VideoCallModal] Joined');
-          if (mountedRef.current) setIsLoading(false);
-        });
-
-        // Only include token if it's a valid string
-        const joinOptions: { url: string; token?: string } = { url: roomUrl };
-        if (token && typeof token === 'string' && token.length > 0) {
-          joinOptions.token = token;
-        }
-        await callFrame.join(joinOptions);
-
-      } catch (err: any) {
-        console.error('[VideoCallModal] Failed:', err);
-        if (mountedRef.current) {
-          setError(err.message || 'Không thể kết nối');
-          setIsLoading(false);
-        }
-      }
-    };
-
-    init();
-
-    return () => {
-      mountedRef.current = false;
-      if (localFrame === modalCallFrame) {
-        destroyModalCallFrame().catch(console.error);
-      }
-    };
-    // Note: onCallEnd and onClose are intentionally excluded to prevent re-initialization
-    // when parent re-renders. We use the latest values via refs in the event handlers.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, roomUrl, token]);
+    return () => clearTimeout(timeout);
+  }, [isOpen, baseRoomUrl, isLoading]);
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -214,156 +147,293 @@ export const VideoCallModal: React.FC<VideoCallModalProps> = ({
   };
 
   const handleEndCall = () => {
-    destroyModalCallFrame().catch(console.error);
+    console.log("[VideoCallModal] End call clicked");
     onCallEnd?.();
     onClose();
   };
 
   const handleRetry = () => {
+    console.log("[VideoCallModal] Retry clicked");
     setError(null);
     setIsLoading(true);
-    destroyModalCallFrame().then(() => {
-      // Init will be re-triggered if we force a re-render or similar, but here we depend on effects.
-      // Actually, logic inside init cleans up. To re-trigger init, we might need to toggle isOpen or something.
-      // But for now, let's just clear and let the effect run if dependencies change.
-      // If dependencies don't change, effect won't re-run.
-      // But handleRetry logic was: destroy then... what?
-      // The original logic just destroyed. It relied on init? No.
-      // Use a key or forceUpdate? simpler: just reload page? No.
-      // Re-mount component? 
-      // For now, let's just make it async.
-    });
+    setIframeKey((prev) => prev + 1); // Force iframe reload
+  };
+
+  const openInNewTab = () => {
+    if (baseRoomUrl) {
+      window.open(baseRoomUrl, "_blank");
+    }
   };
 
   if (!isOpen) return null;
 
+  const iframeUrl = buildIframeUrl();
+
+  // Get initials for avatar
+  const getInitials = (name: string) => {
+    const parts = name.trim().split(" ");
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  };
+
   return (
     <div
-      className={`fixed z-50 transition-all duration-300 ${isMinimized
-        ? "bottom-4 right-4 w-96 h-64 rounded-xl shadow-2xl"
-        : "inset-4 md:inset-8 lg:inset-12 rounded-2xl shadow-2xl"
-        }`}
+      className={`fixed z-[100] transition-all duration-300 ease-out ${
+        isMinimized
+          ? "bottom-4 right-4 w-80 h-52 shadow-2xl"
+          : "inset-0 md:inset-4 lg:inset-8"
+      }`}
     >
+      {/* Backdrop with blur */}
       {!isMinimized && (
         <div
-          className="fixed inset-0 bg-black/60 -z-10"
+          className="absolute inset-0 -z-10 bg-black/70 backdrop-blur-md"
           onClick={() => setIsMinimized(true)}
         />
       )}
 
-      <div className="relative w-full h-full bg-slate-900 rounded-2xl overflow-hidden flex flex-col">
-        {/* Header */}
-        <div className="absolute top-0 left-0 right-0 z-10 bg-gradient-to-b from-black/80 to-transparent p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center text-white font-bold">
-                {otherUserName.charAt(0).toUpperCase()}
-              </div>
-              <div>
-                <h3 className="text-white font-semibold">{otherUserName}</h3>
-                <div className="flex items-center gap-2 text-white/70 text-sm">
-                  <Users size={14} />
-                  <span>{isVideoCall ? "Video Call" : "Voice Call"}</span>
-                  <span>•</span>
-                  <span>{formatDuration(callDuration)}</span>
+      {/* Modal Container */}
+      <div
+        className={`relative w-full h-full bg-gradient-to-b from-slate-900 to-slate-950 overflow-hidden flex flex-col transition-all duration-300 ${
+          isMinimized
+            ? "rounded-2xl cursor-pointer ring-2 ring-white/10 hover:ring-teal-500/50"
+            : "md:rounded-2xl"
+        }`}
+        onClick={isMinimized ? () => setIsMinimized(false) : undefined}
+      >
+        {/* Header - Modern design */}
+        <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 bg-gradient-to-r from-slate-800/90 to-slate-800/70 backdrop-blur-sm border-b border-white/5">
+          <div className="flex items-center gap-3">
+            {/* Avatar with gradient border */}
+            <div className="relative">
+              <div className="w-11 h-11 rounded-full bg-gradient-to-br from-teal-400 via-teal-500 to-emerald-600 p-0.5">
+                <div className="w-full h-full rounded-full bg-slate-800 flex items-center justify-center text-white font-semibold text-sm">
+                  {getInitials(otherUserName || "User")}
                 </div>
               </div>
+              {/* Online indicator */}
+              <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-slate-800"></div>
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => window.open(roomUrl, '_blank')}
-                className="p-2 hover:bg-white/20 rounded-full transition-colors"
-                title="Mở trong tab mới"
-              >
-                <ExternalLink size={20} className="text-white" />
-              </button>
-              <button
-                onClick={() => setIsMinimized(!isMinimized)}
-                className="p-2 hover:bg-white/20 rounded-full transition-colors"
-              >
-                {isMinimized ? <Maximize2 size={20} className="text-white" /> : <Minimize2 size={20} className="text-white" />}
-              </button>
-              <button
-                onClick={handleEndCall}
-                className="p-2 bg-red-500 hover:bg-red-600 rounded-full transition-colors"
-              >
-                <PhoneOff size={20} className="text-white" />
-              </button>
+
+            <div>
+              <div className="text-white font-semibold text-base">
+                {otherUserName || "Người dùng"}
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                {/* Call type icon */}
+                {isVideoCall ? (
+                  <Video size={14} className="text-teal-400" />
+                ) : (
+                  <Phone size={14} className="text-teal-400" />
+                )}
+                <span className="text-slate-400">
+                  {isVideoCall ? "Video" : "Thoại"}
+                </span>
+                <span className="text-slate-600">•</span>
+                {/* Duration with pulse animation when active */}
+                <span
+                  className={`font-mono ${
+                    !isLoading ? "text-green-400" : "text-slate-400"
+                  }`}
+                >
+                  {formatDuration(callDuration)}
+                </span>
+                {!isLoading && !error && (
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                  </span>
+                )}
+              </div>
             </div>
+          </div>
+
+          {/* Control buttons */}
+          <div className="flex items-center gap-1.5">
+            {/* Open in new tab */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                openInNewTab();
+              }}
+              className="p-2.5 rounded-xl hover:bg-white/10 text-slate-400 hover:text-white transition-all duration-200"
+              title="Mở trong tab mới"
+            >
+              <ExternalLink size={18} />
+            </button>
+
+            {/* Minimize/Maximize */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsMinimized(!isMinimized);
+              }}
+              className="p-2.5 rounded-xl hover:bg-white/10 text-slate-400 hover:text-white transition-all duration-200"
+              title={isMinimized ? "Phóng to" : "Thu nhỏ"}
+            >
+              {isMinimized ? <Maximize2 size={18} /> : <Minimize2 size={18} />}
+            </button>
+
+            {/* End call button - larger and more prominent */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleEndCall();
+              }}
+              className="ml-1 p-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white transition-all duration-200 hover:scale-105 active:scale-95 shadow-lg shadow-red-500/25"
+              title="Kết thúc cuộc gọi"
+            >
+              <PhoneOff size={18} />
+            </button>
           </div>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 w-full h-full pt-16">
-          {isLoading && !error && (
-            <div className="absolute inset-0 flex items-center justify-center bg-slate-900 z-5">
-              <div className="text-center">
-                <div className="animate-spin w-12 h-12 border-4 border-teal-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-                <p className="text-white font-medium mb-2">{loadingMessage}</p>
-                <p className="text-white/60 text-sm mb-4">Vui lòng đợi trong giây lát...</p>
-                <button
-                  onClick={handleEndCall}
-                  className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg flex items-center gap-2 mx-auto"
-                >
-                  <PhoneOff size={16} />
-                  Hủy cuộc gọi
-                </button>
+        {/* Content Area */}
+        <div className="flex-1 relative bg-slate-900 overflow-hidden">
+          {/* Calling State - Waiting for recipient to answer */}
+          {callStatus === "calling" && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-slate-900 to-slate-950 z-10">
+              {/* Avatar with ripple animation */}
+              <div className="relative mb-8">
+                <div className="w-32 h-32 rounded-full bg-gradient-to-br from-teal-400 via-teal-500 to-emerald-600 p-1">
+                  <div className="w-full h-full rounded-full bg-slate-800 flex items-center justify-center text-white font-bold text-3xl">
+                    {getInitials(otherUserName || "User")}
+                  </div>
+                </div>
+                {/* Multiple ripple effects */}
+                <div className="absolute inset-0 rounded-full border-2 border-teal-500/40 animate-ping"></div>
+                <div
+                  className="absolute inset-[-8px] rounded-full border-2 border-teal-500/20 animate-ping"
+                  style={{ animationDelay: "0.5s" }}
+                ></div>
+                <div
+                  className="absolute inset-[-16px] rounded-full border-2 border-teal-500/10 animate-ping"
+                  style={{ animationDelay: "1s" }}
+                ></div>
+              </div>
+
+              <p className="text-white text-2xl font-semibold mb-2">
+                {otherUserName || "Người dùng"}
+              </p>
+              <p className="text-teal-400 text-lg mb-6 flex items-center gap-2">
+                {isVideoCall ? <Video size={20} /> : <Phone size={20} />}
+                Đang gọi...
+              </p>
+
+              {/* Ringing indicator */}
+              <div className="flex gap-2 mb-8">
+                <div className="w-3 h-3 rounded-full bg-teal-500 animate-pulse"></div>
+                <div
+                  className="w-3 h-3 rounded-full bg-teal-500 animate-pulse"
+                  style={{ animationDelay: "0.3s" }}
+                ></div>
+                <div
+                  className="w-3 h-3 rounded-full bg-teal-500 animate-pulse"
+                  style={{ animationDelay: "0.6s" }}
+                ></div>
+              </div>
+
+              {/* Cancel call button */}
+              <button
+                onClick={handleEndCall}
+                className="px-8 py-3 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center gap-3 transition-all duration-200 hover:scale-105 active:scale-95 font-medium shadow-lg shadow-red-500/30"
+              >
+                <PhoneOff size={20} />
+                Hủy cuộc gọi
+              </button>
+            </div>
+          )}
+
+          {/* Loading State - Beautiful connecting animation */}
+          {callStatus !== "calling" && isLoading && !error && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-slate-900 to-slate-950 z-10">
+              {/* Avatar with pulse */}
+              <div className="relative mb-6">
+                <div className="w-24 h-24 rounded-full bg-gradient-to-br from-teal-400 via-teal-500 to-emerald-600 p-1 animate-pulse">
+                  <div className="w-full h-full rounded-full bg-slate-800 flex items-center justify-center text-white font-bold text-2xl">
+                    {getInitials(otherUserName || "User")}
+                  </div>
+                </div>
+                {/* Ripple effect */}
+                <div className="absolute inset-0 rounded-full border-2 border-teal-500/50 animate-ping"></div>
+              </div>
+
+              <p className="text-white text-xl font-medium mb-2">
+                Đang kết nối...
+              </p>
+              <p className="text-slate-400 text-sm flex items-center gap-2">
+                <Volume2 size={16} className="animate-pulse" />
+                Đang thiết lập cuộc gọi {isVideoCall ? "video" : "thoại"}
+              </p>
+
+              {/* Progress dots */}
+              <div className="flex gap-1.5 mt-6">
+                <div
+                  className="w-2 h-2 rounded-full bg-teal-500 animate-bounce"
+                  style={{ animationDelay: "0ms" }}
+                ></div>
+                <div
+                  className="w-2 h-2 rounded-full bg-teal-500 animate-bounce"
+                  style={{ animationDelay: "150ms" }}
+                ></div>
+                <div
+                  className="w-2 h-2 rounded-full bg-teal-500 animate-bounce"
+                  style={{ animationDelay: "300ms" }}
+                ></div>
               </div>
             </div>
           )}
 
+          {/* Error State */}
           {error && (
-            <div className="absolute inset-0 flex items-center justify-center bg-slate-900 z-5">
-              <div className="text-center">
-                <AlertCircle size={48} className="text-red-400 mx-auto mb-4" />
-                <p className="text-white font-medium mb-4">{error}</p>
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-slate-900 to-slate-950 z-10">
+              <div className="w-20 h-20 rounded-full bg-red-500/10 flex items-center justify-center mb-6 ring-4 ring-red-500/20">
+                <AlertCircle className="w-10 h-10 text-red-500" />
+              </div>
+              <p className="text-white text-xl font-medium mb-2">{error}</p>
+              <p className="text-slate-400 text-sm mb-6">
+                Vui lòng kiểm tra kết nối mạng
+              </p>
+              <div className="flex gap-3">
                 <button
                   onClick={handleRetry}
-                  className="flex items-center gap-2 mx-auto px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg"
+                  className="px-5 py-2.5 bg-teal-500 hover:bg-teal-600 text-white rounded-xl flex items-center gap-2 transition-all duration-200 hover:scale-105 active:scale-95 font-medium"
                 >
-                  <RefreshCw size={16} />
+                  <RefreshCw size={18} />
                   Thử lại
+                </button>
+                <button
+                  onClick={handleEndCall}
+                  className="px-5 py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-xl flex items-center gap-2 transition-all duration-200 hover:scale-105 active:scale-95 font-medium"
+                >
+                  <PhoneOff size={18} />
+                  Đóng
                 </button>
               </div>
             </div>
           )}
 
-          <div
-            ref={containerRef}
-            className="w-full h-full"
-            style={{ display: isLoading || error ? 'none' : 'block' }}
-          />
+          {/* Daily.co iframe - Full screen embed - Only show when NOT in calling state */}
+          {callStatus !== "calling" && iframeUrl && (
+            <iframe
+              key={iframeKey}
+              ref={iframeRef}
+              src={iframeUrl}
+              className={`w-full h-full border-0 transition-opacity duration-500 ${
+                isLoading || error ? "opacity-0" : "opacity-100"
+              }`}
+              allow="camera; microphone; fullscreen; display-capture; autoplay"
+              onLoad={handleIframeLoad}
+              onError={handleIframeError}
+              title="Video Call"
+            />
+          )}
         </div>
       </div>
     </div>
   );
 };
-
-// Helper to load Daily SDK
-async function loadDailySDK(): Promise<void> {
-  if (window.DailyIframe) return;
-
-  return new Promise((resolve, reject) => {
-    const existing = document.getElementById('daily-js-script');
-    if (existing) {
-      const check = setInterval(() => {
-        if (window.DailyIframe) {
-          clearInterval(check);
-          resolve();
-        }
-      }, 100);
-      setTimeout(() => { clearInterval(check); reject(new Error('Timeout')); }, 10000);
-      return;
-    }
-
-    const script = document.createElement('script');
-    script.id = 'daily-js-script';
-    script.src = 'https://unpkg.com/@daily-co/daily-js';
-    script.async = true;
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error('Failed to load SDK'));
-    document.head.appendChild(script);
-  });
-}
 
 export default VideoCallModal;

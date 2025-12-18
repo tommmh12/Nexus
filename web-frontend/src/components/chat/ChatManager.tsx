@@ -148,6 +148,7 @@ export default function ChatManager({
   const [activeCall, setActiveCall] = useState<{
     callId: string;
     roomName: string;
+    token?: string; // Daily.co meeting token
     recipientId: string;
     recipientName: string;
     isVideoCall: boolean;
@@ -157,11 +158,19 @@ export default function ChatManager({
     callerId: string;
     callerName: string;
     roomName?: string;
+    token?: string; // Daily.co meeting token
     isVideoCall: boolean;
   } | null>(null);
   const [callStatus, setCallStatus] = useState<
     "idle" | "calling" | "connecting" | "active"
   >("idle");
+
+  // Pending room data - saved when room is ready but call not yet accepted
+  const [pendingRoomData, setPendingRoomData] = useState<{
+    callId: string;
+    roomUrl: string;
+    token?: string;
+  } | null>(null);
 
   const [searchParams] = useSearchParams();
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -778,7 +787,7 @@ export default function ChatManager({
       setCallStatus("calling");
       setActiveCall({
         callId: result.callId,
-        roomName: result.roomName,
+        roomName: "", // Don't set roomName yet - wait for call:room_ready
         recipientId: activeConversation.participantId,
         recipientName: activeConversation.name,
         isVideoCall,
@@ -789,10 +798,13 @@ export default function ChatManager({
   const handleAcceptCall = () => {
     if (!incomingCall) return;
     acceptCall(incomingCall.callId);
-    setCallStatus("connecting");
+    // B (recipient) already has roomName and token from incoming call
+    // So set status to "active" immediately to show the call
+    setCallStatus("active");
     setActiveCall({
       callId: incomingCall.callId,
       roomName: incomingCall.roomName || "",
+      token: incomingCall.token, // Include token
       recipientId: incomingCall.callerId,
       recipientName: incomingCall.callerName,
       isVideoCall: incomingCall.isVideoCall,
@@ -815,14 +827,16 @@ export default function ChatManager({
 
   // Call event listeners
   useEffect(() => {
-    // When room is ready (for caller), update activeCall with roomUrl
+    // When room is ready (for caller), save pending data but DON'T join yet
+    // Only join when recipient accepts the call
     const unsubRoomReady = onRoomReady?.((data) => {
-      console.log("📹 Room ready:", data);
-      setActiveCall((prev) =>
-        prev && prev.callId === data.callId
-          ? { ...prev, roomName: data.roomUrl }
-          : prev
-      );
+      console.log("📹 Room ready (saved as pending):", data);
+      // Save room data as pending - will be applied when call is accepted
+      setPendingRoomData({
+        callId: data.callId,
+        roomUrl: data.roomUrl,
+        token: data.token,
+      });
     });
 
     const unsub1 = onIncomingCall((data) => {
@@ -831,25 +845,52 @@ export default function ChatManager({
         callId: data.callId,
         callerId: data.callerId,
         callerName: data.callerName,
-        roomName: data.roomUrl || data.roomUrl?.split("/").pop(), // Use full roomUrl if available
+        roomName: data.roomUrl || "",
+        token: data.token, // Include token
         isVideoCall: data.isVideoCall,
       });
     });
-    const unsub2 = onCallAccepted(() => setCallStatus("active"));
+
+    // When call is accepted, NOW update activeCall with room data
+    const unsub2 = onCallAccepted(() => {
+      console.log(
+        "✅ Call accepted! Joining room with pending data:",
+        pendingRoomData
+      );
+      setCallStatus("active");
+      // Now apply the pending room data to activeCall
+      if (pendingRoomData) {
+        setActiveCall((prev) =>
+          prev && prev.callId === pendingRoomData.callId
+            ? {
+                ...prev,
+                roomName: pendingRoomData.roomUrl,
+                token: pendingRoomData.token,
+              }
+            : prev
+        );
+        setPendingRoomData(null);
+      }
+    });
+
     const unsub3 = onCallDeclined(() => {
       setActiveCall(null);
+      setPendingRoomData(null);
       setCallStatus("idle");
     });
     const unsub4 = onCallEnded(() => {
       setActiveCall(null);
+      setPendingRoomData(null);
       setCallStatus("idle");
     });
     const unsub5 = onCallBusy(() => {
       setActiveCall(null);
+      setPendingRoomData(null);
       setCallStatus("idle");
     });
     const unsub6 = onNoAnswer(() => {
       setActiveCall(null);
+      setPendingRoomData(null);
       setCallStatus("idle");
     });
     return () => {
@@ -869,6 +910,7 @@ export default function ChatManager({
     onCallEnded,
     onCallBusy,
     onNoAnswer,
+    pendingRoomData,
   ]);
 
   const handleModerateDelete = async (messageId: string) => {
@@ -1935,9 +1977,52 @@ export default function ChatManager({
         onAccept={handleAcceptCall}
         onDecline={handleDeclineCall}
       />
-      {/* Only render VideoCallModal when there's an active call with valid roomName */}
+
+      {/* Calling Modal - Show while waiting for room to be ready */}
+      {activeCall && !activeCall.roomName && callStatus === "calling" && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-8 shadow-2xl text-center max-w-sm">
+            <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-teal-500 to-teal-600 rounded-full flex items-center justify-center">
+              {activeCall.isVideoCall ? (
+                <Video className="w-10 h-10 text-white" />
+              ) : (
+                <Phone className="w-10 h-10 text-white animate-pulse" />
+              )}
+            </div>
+            <h3 className="text-xl font-semibold text-slate-800 mb-2">
+              Đang gọi...
+            </h3>
+            <p className="text-slate-500 mb-6">
+              {activeCall.recipientName || "Người dùng"}
+            </p>
+            <div className="flex justify-center gap-2 mb-4">
+              <div
+                className="w-2 h-2 bg-teal-500 rounded-full animate-bounce"
+                style={{ animationDelay: "0ms" }}
+              ></div>
+              <div
+                className="w-2 h-2 bg-teal-500 rounded-full animate-bounce"
+                style={{ animationDelay: "150ms" }}
+              ></div>
+              <div
+                className="w-2 h-2 bg-teal-500 rounded-full animate-bounce"
+                style={{ animationDelay: "300ms" }}
+              ></div>
+            </div>
+            <button
+              onClick={handleEndCall}
+              className="px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-full font-medium transition-colors"
+            >
+              Hủy cuộc gọi
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Only render VideoCallModal when there's an active call */}
+      {/* For "calling" status: show "Đang gọi..." screen (no roomName needed) */}
+      {/* For "active" status: show Daily.co iframe (needs roomName) */}
       {activeCall &&
-      activeCall.roomName &&
       ["calling", "connecting", "active"].includes(callStatus) ? (
         <>
           {console.log("📹 Rendering VideoCallModal:", {
@@ -1948,9 +2033,11 @@ export default function ChatManager({
             isOpen={true}
             onClose={handleEndCall}
             roomName={activeCall.roomName}
+            token={activeCall.token}
             displayName={getCurrentUserName()}
             otherUserName={activeCall.recipientName || ""}
             isVideoCall={activeCall.isVideoCall || false}
+            callStatus={callStatus}
             onCallEnd={handleEndCall}
           />
         </>
